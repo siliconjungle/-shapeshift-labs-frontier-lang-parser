@@ -1,10 +1,12 @@
 import {
   actionNode,
+  capabilityNode,
   createDocument,
   effectNode,
   entityNode,
   externNode,
   latticeNode,
+  nativeSourceNode,
   stateNode,
   targetNode,
   typeNode
@@ -18,10 +20,12 @@ export function parseFrontierSource(source, options = {}) {
     if (block.kind === 'entity') nodes.push(parseEntity(block));
     if (block.kind === 'state') nodes.push(parseState(block));
     if (block.kind === 'action') nodes.push(parseAction(block));
+    if (block.kind === 'capability') nodes.push(parseCapability(block));
     if (block.kind === 'effect') nodes.push(parseEffect(block));
     if (block.kind === 'type') nodes.push(parseType(block));
     if (block.kind === 'extern') nodes.push(parseExtern(block));
     if (block.kind === 'lattice') nodes.push(parseLattice(block));
+    if (block.kind === 'nativeSource') nodes.push(parseNativeSource(block));
     if (block.kind === 'target') nodes.push(parseTarget(block));
   }
   return createDocument({ id: documentId, name: documentName, nodes });
@@ -35,7 +39,7 @@ function readName(source) { return /module\s+([A-Za-z_$][\w$]*)/.exec(source)?.[
 function readId(source) { return /module\s+[A-Za-z_$][\w$]*\s+@id\(\s*["']([^"']+)["']\s*\)/.exec(source)?.[1]; }
 function readBlocks(source) {
   const blocks = [];
-  const header = /\b(entity|state|action|effect|type|extern|lattice|target)\s+([^{}]+)\{/g;
+  const header = /\b(entity|state|action|capability|effect|type|extern|lattice|nativeSource|target)\s+([^{}]+)\{/g;
   let match;
   while ((match = header.exec(source))) {
     let depth = 1; let index = header.lastIndex;
@@ -95,7 +99,29 @@ function parseAction(block) {
 }
 function parseEffect(block) {
   const name = nameFrom(block.header);
-  return effectNode({ id: idFrom(block.header, `effect_${name}`), name, capability: /capability\s+([^\n]+)/.exec(block.body)?.[1]?.trim() ?? name, resources: readList('resources', block.body) });
+  return effectNode({
+    id: idFrom(block.header, `effect_${name}`),
+    name,
+    capability: /capability\s+([^\n]+)/.exec(block.body)?.[1]?.trim() ?? name,
+    input: parseOptionalTypeExpression(/input\s*:?\s*([^\n]+)/.exec(block.body)?.[1]),
+    returns: parseOptionalTypeExpression(/returns\s+([^\n]+)/.exec(block.body)?.[1]),
+    resources: readList('resources', block.body)
+  });
+}
+function parseCapability(block) {
+  const name = nameFrom(block.header);
+  return capabilityNode({
+    id: idFrom(block.header, `cap_${name}`),
+    name,
+    capability: readLine('capability', block.body) ?? name,
+    category: readWord('category', block.body),
+    input: parseOptionalTypeExpression(/input\s*:?\s*([^\n]+)/.exec(block.body)?.[1]),
+    returns: parseOptionalTypeExpression(/returns\s+([^\n]+)/.exec(block.body)?.[1]),
+    effects: readList('effects', block.body),
+    resources: readList('resources', block.body),
+    adapters: readAdapters(block.body),
+    unsupportedTargets: readUnsupportedTargets(block.body)
+  });
 }
 function parseType(block) {
   const name = nameFrom(block.header);
@@ -140,6 +166,32 @@ function parseLattice(block) {
     } : undefined
   });
 }
+function parseNativeSource(block) {
+  const name = nameFrom(block.header);
+  const losses = [];
+  const lossRe = /^\s*loss\s+([A-Za-z][\w-]*)\s+["']([^"']+)["'](?:\s+severity\s+([A-Za-z][\w-]*))?/gm;
+  let match;
+  while ((match = lossRe.exec(block.body))) {
+    losses.push({
+      id: `loss_${name}_${losses.length}`,
+      kind: match[1],
+      message: match[2],
+      severity: match[3] ?? 'warning'
+    });
+  }
+  return nativeSourceNode({
+    id: idFrom(block.header, `native_${name}`),
+    name,
+    language: readWord('language', block.body) ?? name,
+    parser: readWord('parser', block.body),
+    parserVersion: readWord('parserVersion', block.body),
+    sourcePath: readWord('sourcePath', block.body) ?? readWord('path', block.body),
+    sourceHash: readWord('sourceHash', block.body),
+    symbol: readWord('symbol', block.body),
+    frontierNodeIds: readList('frontierNodes', block.body),
+    losses: losses.length ? losses : undefined
+  });
+}
 function parseTarget(block) {
   const name = nameFrom(block.header);
   return targetNode({
@@ -156,6 +208,44 @@ function parseTarget(block) {
 function readList(label, body) { const line = new RegExp('^\\s*' + label + '\\s+([^\\n]+)', 'm').exec(body)?.[1]; return line ? line.split(',').map((item) => item.trim()).filter(Boolean) : undefined; }
 function readLine(label, body) { return new RegExp('^\\s*' + label + '\\s+([^\\n]+)', 'm').exec(body)?.[1]?.trim(); }
 function readWord(label, body) { return new RegExp('^\\s*' + label + '\\s+([^\\s,]+)', 'm').exec(body)?.[1]?.trim(); }
+function readInlineWord(label, text) { return new RegExp('(?:^|\\s)' + label + '\\s+([^\\s,]+)').exec(text)?.[1]?.trim(); }
+function readInlineQuoted(label, text) { return new RegExp("(?:^|\\s)" + label + "\\s+[\"']([^\"']+)[\"']").exec(text)?.[1]?.trim(); }
+function readAdapters(body) {
+  const adapters = [];
+  const re = /^\s*adapter\s+([A-Za-z][\w-]*)\s+symbol\s+([^\s]+)([^\n]*)$/gm;
+  let match;
+  while ((match = re.exec(body))) {
+    const rest = match[3] ?? '';
+    adapters.push({
+      target: {
+        language: match[1],
+        platform: readInlineWord('platform', rest),
+        framework: readInlineWord('framework', rest),
+        packageName: readInlineWord('package', rest) ?? readInlineWord('packageName', rest),
+        adapterPackage: readInlineWord('adapterPackage', rest)
+      },
+      symbol: match[2],
+      kind: readInlineWord('kind', rest),
+      packageName: readInlineWord('package', rest) ?? readInlineWord('packageName', rest),
+      importPath: readInlineWord('import', rest) ?? readInlineWord('importPath', rest),
+      requires: readInlineWord('requires', rest)?.split('|').map((item) => item.trim()).filter(Boolean)
+    });
+  }
+  return adapters.length ? adapters : undefined;
+}
+function readUnsupportedTargets(body) {
+  const unsupported = [];
+  const re = /^\s*unsupported\s+([A-Za-z][\w-]*)([^\n]*)$/gm;
+  let match;
+  while ((match = re.exec(body))) {
+    const rest = match[2] ?? '';
+    unsupported.push({
+      target: { language: match[1], platform: readInlineWord('platform', rest), framework: readInlineWord('framework', rest) },
+      reason: readInlineQuoted('reason', rest) ?? (rest.trim() || 'Unsupported by this target.')
+    });
+  }
+  return unsupported.length ? unsupported : undefined;
+}
 function parseMerge(text) {
   const kind = /merge\s+([A-Za-z][\w-]*)/.exec(text)?.[1];
   if (!kind) return undefined;
