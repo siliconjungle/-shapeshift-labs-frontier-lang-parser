@@ -1,6 +1,6 @@
 {
   "name": "@shapeshift-labs/frontier-lang-parser",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Parser for the first Frontier Lang .frontier syntax slice.",
   "type": "module",
   "main": "./dist/index.js",
@@ -53,7 +53,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@shapeshift-labs/frontier-lang-kernel": "0.3.0"
+    "@shapeshift-labs/frontier-lang-kernel": "0.3.1"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
