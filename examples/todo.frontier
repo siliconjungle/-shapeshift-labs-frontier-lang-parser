@@ -8,6 +8,14 @@ state TodoDb @id("state_todo") {
 view TodoList @id("view_todo_list") {
   reads TodoDb.todos
   dispatches action_add
+  prop disabled @id("view_prop_disabled"): Boolean
+  event save @id("view_event_save") action action_add input TodoInput
+  render Button @id("render_save_button") {
+    identity save
+    text "Save"
+    prop disabled disabled
+    on press save
+  }
 }
 migration TodoV1ToV2 @id("migration_todo_v1_v2") {
   from 1

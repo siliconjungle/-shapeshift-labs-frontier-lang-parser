@@ -21,6 +21,14 @@ state TodoDb @id("state_todo") {
 view TodoList @id("view_todo_list") {
   reads TodoDb.todos
   dispatches action_add
+  prop disabled @id("view_prop_disabled"): Boolean
+  event save @id("view_event_save") action action_add input TodoInput
+  render Button @id("render_save_button") {
+    identity save
+    text "Save"
+    prop disabled disabled
+    on press save
+  }
 }
 migration TodoV1ToV2 @id("migration_todo_v1_v2") {
   fromVersion 1
@@ -87,6 +95,12 @@ assert.equal(doc.nodes.state_todo.collections[0].merge.law, 'commutative');
 assert.equal(doc.nodes.view_todo_list.kind, 'view');
 assert.equal(doc.nodes.view_todo_list.reads[0], 'TodoDb.todos');
 assert.equal(doc.nodes.view_todo_list.dispatches[0], 'action_add');
+assert.equal(doc.nodes.view_todo_list.props[0].type, 'Boolean');
+assert.equal(doc.nodes.view_todo_list.events[0].input, 'TodoInput');
+assert.equal(doc.nodes.view_todo_list.renders[0].tagName, 'Button');
+assert.equal(doc.nodes.view_todo_list.renders[0].identityKey, 'save');
+assert.equal(doc.nodes.view_todo_list.renders[0].props[0].expression, 'disabled');
+assert.equal(doc.nodes.view_todo_list.renders[0].events[0].action, 'save');
 assert.equal(doc.nodes.migration_todo_v1_v2.kind, 'migration');
 assert.equal(doc.nodes.migration_todo_v1_v2.fromVersion, '1');
 assert.equal(doc.nodes.migration_todo_v1_v2.toVersion, '2');
@@ -96,3 +110,17 @@ assert.equal(doc.nodes.migration_todo_v1_v2.changes[0].statement, 'Todo.title');
 assert.equal(doc.nodes.migration_todo_v1_v2.invariants[0], 'title_present');
 assert.equal(doc.nodes.action_add.uses[0], 'Clock');
 assert.equal(doc.nodes.action_add.input, 'TodoInput');
+
+const newlineRenderDoc = parseFrontierSource(`module ViewProbe {
+view Detail @id("view_detail") {
+  prop visible @id("view_prop_visible"): Boolean
+  render Label @id("render_detail_label")
+  {
+    prop title @id("render_prop_title"): Text
+    on press save
+  }
+}
+}`);
+assert.deepEqual(newlineRenderDoc.nodes.view_detail.props.map((prop) => prop.name), ['visible']);
+assert.equal(newlineRenderDoc.nodes.view_detail.renders[0].tagName, 'Label');
+assert.equal(newlineRenderDoc.nodes.view_detail.renders[0].props[0].name, 'title');

@@ -10,9 +10,9 @@ import {
   nativeSourceNode,
   stateNode,
   targetNode,
-  typeNode,
-  viewNode
+  typeNode
 } from '@shapeshift-labs/frontier-lang-kernel';
+import { parseViewBlock } from './view.js';
 
 export function parseFrontierSource(source, options = {}) {
   const nodes = [];
@@ -22,7 +22,7 @@ export function parseFrontierSource(source, options = {}) {
     if (block.kind === 'entity') nodes.push(parseEntity(block));
     if (block.kind === 'state') nodes.push(parseState(block));
     if (block.kind === 'action') nodes.push(parseAction(block));
-    if (block.kind === 'view') nodes.push(parseView(block));
+    if (block.kind === 'view') nodes.push(parseViewBlock(block));
     if (block.kind === 'migration') nodes.push(parseMigration(block));
     if (block.kind === 'capability') nodes.push(parseCapability(block));
     if (block.kind === 'effect') nodes.push(parseEffect(block));
@@ -100,10 +100,6 @@ function parseAction(block) {
     writes: readList('writes', block.body),
     uses: readList('uses', block.body)
   });
-}
-function parseView(block) {
-  const name = nameFrom(block.header);
-  return viewNode({ id: idFrom(block.header, `view_${name}`), name, reads: readList('reads', block.body), dispatches: readList('dispatches', block.body) ?? readList('dispatch', block.body) });
 }
 function parseMigration(block) {
   const name = nameFrom(block.header);
