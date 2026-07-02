@@ -49,7 +49,7 @@ function addConstraint(plan, family, name, text) {
   const entry = cleanRecord({
     id: idFrom(text, `${config.field}_${name}`),
     sourceLanguage: readInlineWord('sourceLanguage', text) ?? plan.sourceLanguage,
-    target: readInlineWord('target', text) ?? plan.targets[0],
+    target: readInlineWord('targetLanguage', text) ?? plan.targets[0],
     mode: readInlineWord('mode', text),
     evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
     missingEvidence: readInlineList(text, 'missingEvidence'),
