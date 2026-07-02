@@ -260,6 +260,55 @@ and events stay attached to the child render node instead of leaking onto the
 parent. `kind component` records `component` instead of a literal HTML tag, so
 target adapters can decide how to project it.
 
+## Authored package and canvas syntax
+
+`.frontier` files can describe package-management and canvas semantic surfaces
+directly, without requiring the source of truth to be a generated JSON tree.
+These blocks make dependency, script, export, draw-command, command-trace, and
+proof-gap records queryable as source-level evidence. They intentionally do not
+claim package install equivalence, canvas runtime equivalence, or visual
+equivalence.
+
+```frontier
+packageManifest AppPackage @id("pkg_manifest_app") {
+  sourcePath package.json
+  sourceHash sha256:package
+  packageManager npm@11.0.0
+  evidence packageProbe @id("evidence_package_probe") kind test status passed path reports/package.json
+  metadata name @id("pkg_meta_name") value "@example/app" evidence evidence_package_probe
+  dependency react @id("pkg_dep_react") section dependencies range ^19.0.0 evidence evidence_package_probe
+  dependency typescript @id("pkg_dep_typescript") section peerDependencies range ^5.9.0 proofGap package-peer-compatibility-boundary evidence evidence_package_probe
+  script test @id("pkg_script_test") command "vitest --run" proofGap package-script-runtime-boundary evidence evidence_package_probe
+  export root @id("pkg_export_root") section exports name . target ./dist/index.js proofGap package-conditional-resolution-boundary evidence evidence_package_probe
+  gap workspace @id("pkg_gap_workspace") code package-workspace-graph-boundary summary "Workspace expansion requires repository graph evidence."
+}
+
+canvasSurface PreviewCanvas @id("canvas_surface_preview") {
+  sourcePath src/draw.js
+  sourceHash sha256:draw
+  evidence canvasProbe @id("evidence_canvas_probe") kind browser-probe status passed path reports/canvas.json
+  element preview @id("canvas_element_preview") name canvas category html-canvas order 1 identity canvas:preview attributes data-frontier-key=preview|width=100 evidence evidence_canvas_probe
+  command context @id("canvas_command_context") name getContext category context context 2d order 2 proofGap canvas-context-runtime-boundary evidence evidence_canvas_probe
+  state fillStyle @id("canvas_state_fill_style") name fillStyle category state order 3 proofGap canvas-stateful-render-order-boundary evidence evidence_canvas_probe
+  command fill @id("canvas_command_fill") name fillRect category draw context 2d order 4 proofGap canvas-stateful-render-order-boundary evidence evidence_canvas_probe
+  command offscreen @id("canvas_command_offscreen") name transferControlToOffscreen category offscreen order 5 proofGap canvas-offscreen-worker-boundary evidence evidence_canvas_probe
+  trace drawFrame @id("canvas_trace_draw_frame") commands getContext|fillStyle|fillRect|transferControlToOffscreen evidence evidence_canvas_probe
+  gap image @id("canvas_gap_image") code canvas-image-resource-boundary summary "Image drawing needs bitmap/resource evidence."
+}
+```
+
+The parser stores package blocks in `metadata.packageManifests` and canvas
+blocks in `metadata.canvasSurfaces`, and mirrors both under
+`metadata.universalAst` so compiler and merge tooling can see them next to
+native-source source maps and merge candidates. Package records keep
+`packageInstallEquivalenceClaim`, `installEquivalenceClaim`, and
+`runtimeEquivalenceClaim` false. Canvas records keep
+`browserRuntimeEquivalenceClaim`, `canvasRuntimeEquivalenceClaim`, and
+`canvasVisualEquivalenceClaim` false.
+Runtime probes, package-manager solver output, lockfile proof, browser pixels,
+worker transfer evidence, and GPU validation must still be supplied by higher
+layers before admission.
+
 ## Authored target projection syntax
 
 `.frontier` target blocks can carry projection contracts next to their emit settings. These rows describe what a target lowering claims to represent, what it still needs proof for, and which losses or missing evidence must stay visible to merge and translation tooling.

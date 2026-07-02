@@ -23,7 +23,7 @@ const PARADIGM_GROUPS = [
   'loweringRecords'
 ];
 
-export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], decisionGraphBlocks = [], dialectRegistryBlocks = [], interlinguaBlocks = [], resourceGraphBlocks = [], nativeSourceBlocks = [] } = {}) {
+export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], decisionGraphBlocks = [], dialectRegistryBlocks = [], interlinguaBlocks = [], resourceGraphBlocks = [], nativeSourceBlocks = [], packageManifestBlocks = [], canvasSurfaceBlocks = [] } = {}) {
   const metadata = {};
   if (proofBlocks.length) metadata.proof = mergeProofBlocks(proofBlocks);
   if (paradigmBlocks.length) metadata.paradigmSemantics = mergeParadigmBlocks(paradigmBlocks);
@@ -34,8 +34,10 @@ export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], op
   if (dialectRegistryBlocks.length) metadata.dialects = mergeDialectRegistryBlocks(dialectRegistryBlocks);
   if (interlinguaBlocks.length) metadata.universalInterlingua = mergeInterlinguaBlocks(interlinguaBlocks);
   if (resourceGraphBlocks.length) metadata.semanticResourceGraphs = mergeResourceGraphBlocks(resourceGraphBlocks);
-  if (nativeSourceBlocks.some((block) => block.sourceMaps.length || block.mergeCandidates.length || block.evidence.length)) {
-    metadata.universalAst = mergeNativeSourceBlocks(nativeSourceBlocks);
+  if (packageManifestBlocks.length) metadata.packageManifests = mergePackageManifestBlocks(packageManifestBlocks);
+  if (canvasSurfaceBlocks.length) metadata.canvasSurfaces = mergeCanvasSurfaceBlocks(canvasSurfaceBlocks);
+  if (nativeSourceBlocks.some((block) => block.sourceMaps.length || block.mergeCandidates.length || block.evidence.length) || packageManifestBlocks.length || canvasSurfaceBlocks.length) {
+    metadata.universalAst = mergeUniversalAstBlocks(nativeSourceBlocks, packageManifestBlocks, canvasSurfaceBlocks);
   }
   return Object.keys(metadata).length ? metadata : undefined;
 }
@@ -106,7 +108,7 @@ function mergeConstraintSpaceBlocks(blocks) {
   };
 }
 
-function mergeNativeSourceBlocks(blocks) {
+function mergeUniversalAstBlocks(blocks, packageManifestBlocks = [], canvasSurfaceBlocks = []) {
   return {
     id: blocks.length === 1 ? `universalAst:${blocks[0].node.id}` : 'universalAst:source',
     nativeSourceIds: blocks.map((block) => block.node.id),
@@ -114,7 +116,71 @@ function mergeNativeSourceBlocks(blocks) {
     mergeCandidates: blocks.flatMap((block) => block.mergeCandidates ?? []),
     evidence: blocks.flatMap((block) => block.evidence ?? []),
     losses: blocks.flatMap((block) => block.losses ?? []),
-    metadata: { authoredNativeSourceIds: blocks.map((block) => block.node.id) }
+    packageManifests: packageManifestBlocks,
+    canvasSurfaces: canvasSurfaceBlocks,
+    packageManifestIds: ids(packageManifestBlocks),
+    canvasSurfaceIds: ids(canvasSurfaceBlocks),
+    metadata: {
+      authoredNativeSourceIds: blocks.map((block) => block.node.id),
+      authoredPackageManifestIds: ids(packageManifestBlocks),
+      authoredCanvasSurfaceIds: ids(canvasSurfaceBlocks)
+    }
+  };
+}
+
+function mergePackageManifestBlocks(blocks) {
+  return {
+    id: blocks.length === 1 ? blocks[0].id : 'packageManifests:source',
+    manifests: blocks,
+    manifestIds: ids(blocks),
+    recordIds: blocks.flatMap((block) => ids(block.records)),
+    evidenceIds: blocks.flatMap((block) => ids(block.evidence)),
+    proofGapCodes: [...new Set(blocks.flatMap((block) => (block.proofGaps ?? []).map((gap) => gap.code).filter(Boolean)))],
+    summary: {
+      manifestCount: blocks.length,
+      recordCount: blocks.reduce((sum, block) => sum + (block.records?.length ?? 0), 0),
+      dependencyCount: blocks.reduce((sum, block) => sum + (block.summary?.dependencies ?? 0), 0),
+      scriptCount: blocks.reduce((sum, block) => sum + (block.summary?.scripts ?? 0), 0),
+      exportCount: blocks.reduce((sum, block) => sum + (block.summary?.exports ?? 0), 0),
+      proofGapCount: blocks.reduce((sum, block) => sum + (block.proofGaps?.length ?? 0), 0)
+    },
+    claims: {
+      autoMergeClaim: false,
+      semanticEquivalenceClaim: false,
+      packageInstallEquivalenceClaim: false,
+      installEquivalenceClaim: false,
+      runtimeEquivalenceClaim: false
+    },
+    metadata: { authoredPackageManifestIds: ids(blocks) }
+  };
+}
+
+function mergeCanvasSurfaceBlocks(blocks) {
+  return {
+    id: blocks.length === 1 ? blocks[0].id : 'canvasSurfaces:source',
+    surfaces: blocks,
+    surfaceIds: ids(blocks),
+    recordIds: blocks.flatMap((block) => ids(block.records)),
+    commandTraceIds: blocks.flatMap((block) => ids(block.commandTraces)),
+    evidenceIds: blocks.flatMap((block) => ids(block.evidence)),
+    proofGapCodes: [...new Set(blocks.flatMap((block) => (block.proofGaps ?? []).map((gap) => gap.code).filter(Boolean)))],
+    summary: {
+      surfaceCount: blocks.length,
+      recordCount: blocks.reduce((sum, block) => sum + (block.records?.length ?? 0), 0),
+      commandTraceCount: blocks.reduce((sum, block) => sum + (block.commandTraces?.length ?? 0), 0),
+      drawCommandCount: blocks.reduce((sum, block) => sum + (block.summary?.drawCommands ?? 0), 0),
+      offscreenCommandCount: blocks.reduce((sum, block) => sum + (block.summary?.offscreenCommands ?? 0), 0),
+      gpuCommandCount: blocks.reduce((sum, block) => sum + (block.summary?.gpuCommands ?? 0), 0),
+      proofGapCount: blocks.reduce((sum, block) => sum + (block.proofGaps?.length ?? 0), 0)
+    },
+    claims: {
+      autoMergeClaim: false,
+      semanticEquivalenceClaim: false,
+      browserRuntimeEquivalenceClaim: false,
+      canvasRuntimeEquivalenceClaim: false,
+      canvasVisualEquivalenceClaim: false
+    },
+    metadata: { authoredCanvasSurfaceIds: ids(blocks) }
   };
 }
 

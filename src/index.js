@@ -1,11 +1,13 @@
 import { actionNode, capabilityNode, createDocument, effectNode, entityNode, externNode, latticeNode, migrationNode, stateNode, targetNode, typeNode } from '@shapeshift-labs/frontier-lang-kernel';
 import { parseConstraintSpaceBlock } from './constraint-space.js';
 import { parseConversionBlock } from './conversion.js';
+import { parseCanvasSurfaceBlock } from './canvas-surface.js';
 import { parseDecisionGraphBlock } from './decision-graph.js';
 import { parseDialectRegistryBlock } from './dialect-registry.js';
 import { parseInterlinguaBlock } from './interlingua.js';
 import { createParsedMetadata } from './metadata.js';
 import { parseSemanticOperationsBlock } from './operations.js';
+import { parsePackageManifestBlock } from './package-manifest.js';
 import { parseParadigmBlock } from './paradigm.js';
 import { parseProofBlock } from './proof.js';
 import { parseResourceGraphBlock } from './resource-graph.js';
@@ -25,6 +27,8 @@ export function parseFrontierSource(source, options = {}) {
   const interlinguaBlocks = [];
   const resourceGraphBlocks = [];
   const nativeSourceBlocks = [];
+  const packageManifestBlocks = [];
+  const canvasSurfaceBlocks = [];
   const documentId = options.id ?? readId(source) ?? 'mod_frontier';
   const documentName = options.name ?? readName(source) ?? 'FrontierModule';
   for (const block of readBlocks(source)) {
@@ -53,8 +57,10 @@ export function parseFrontierSource(source, options = {}) {
     if (block.kind === 'dialectRegistry' || block.kind === 'universalDialectRegistry') dialectRegistryBlocks.push(parseDialectRegistryBlock(block));
     if (block.kind === 'interlingua' || block.kind === 'universalInterlingua') interlinguaBlocks.push(parseInterlinguaBlock(block));
     if (block.kind === 'resourceGraph' || block.kind === 'semanticResourceGraph') resourceGraphBlocks.push(parseResourceGraphBlock(block));
+    if (block.kind === 'packageManifest' || block.kind === 'packageGraph' || block.kind === 'packageSurface') packageManifestBlocks.push(parsePackageManifestBlock(block));
+    if (block.kind === 'canvasSurface' || block.kind === 'canvasGraph') canvasSurfaceBlocks.push(parseCanvasSurfaceBlock(block));
   }
-  const metadata = createParsedMetadata({ proofBlocks, paradigmBlocks, operationBlocks, conversionBlocks, constraintSpaceBlocks, decisionGraphBlocks, dialectRegistryBlocks, interlinguaBlocks, resourceGraphBlocks, nativeSourceBlocks });
+  const metadata = createParsedMetadata({ proofBlocks, paradigmBlocks, operationBlocks, conversionBlocks, constraintSpaceBlocks, decisionGraphBlocks, dialectRegistryBlocks, interlinguaBlocks, resourceGraphBlocks, nativeSourceBlocks, packageManifestBlocks, canvasSurfaceBlocks });
   return createDocument({ id: documentId, name: documentName, nodes, ...(metadata ? { metadata } : {}) });
 }
 
@@ -64,7 +70,7 @@ function readName(source) { return /module\s+([A-Za-z_$][\w$]*)/.exec(source)?.[
 function readId(source) { return /module\s+[A-Za-z_$][\w$]*\s+@id\(\s*["']([^"']+)["']\s*\)/.exec(source)?.[1]; }
 function readBlocks(source) {
   const blocks = [];
-  const header = /\b(entity|state|action|view|migration|capability|effect|type|extern|lattice|nativeSource|target|proof|paradigm|paradigmSemantics|operations|semanticOperations|conversion|universalConversionPlan|constraintSpace|possibilitySpace|decisionGraph|admissionGraph|dialectRegistry|universalDialectRegistry|interlingua|universalInterlingua|resourceGraph|semanticResourceGraph)\s+([^{}]+)\{/g;
+  const header = /\b(entity|state|action|view|migration|capability|effect|type|extern|lattice|nativeSource|target|proof|paradigm|paradigmSemantics|operations|semanticOperations|conversion|universalConversionPlan|constraintSpace|possibilitySpace|decisionGraph|admissionGraph|dialectRegistry|universalDialectRegistry|interlingua|universalInterlingua|resourceGraph|semanticResourceGraph|packageManifest|packageGraph|packageSurface|canvasSurface|canvasGraph)\s+([^{}]+)\{/g;
   let match;
   while ((match = header.exec(source))) {
     let depth = 1; let index = header.lastIndex;
