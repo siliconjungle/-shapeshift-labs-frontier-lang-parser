@@ -143,6 +143,7 @@ assert.equal(doc.metadata.semanticOperations.operations[1].nativeAstNodeIds[0], 
 assert.equal(doc.metadata.universalConversionPlan.id, 'conversion_todo_js_rust');
 assert.equal(doc.metadata.universalConversionPlan.targets[0], 'rust');
 assert.equal(doc.metadata.universalConversionPlan.typeConstraints.length, 2);
+assert.equal(doc.metadata.universalConversionPlan.typeConstraints[0].sourceLanguage, 'javascript');
 assert.equal(doc.metadata.universalConversionPlan.typeConstraints[0].sourceTypes[0].signatureHash, 'sig_add_todo');
 assert.equal(doc.metadata.universalConversionPlan.typeConstraints[1].targetTypes[0].symbolId, 'symbol:addTodoRust');
 assert.equal(doc.metadata.universalConversionPlan.controlFlowConstraints[0].sourceControlFlows[0].async, true);

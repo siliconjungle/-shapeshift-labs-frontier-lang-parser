@@ -48,7 +48,7 @@ function addConstraint(plan, family, name, text) {
   const record = parseConstraintRecord(name, text, role);
   const entry = cleanRecord({
     id: idFrom(text, `${config.field}_${name}`),
-    sourceLanguage: readInlineWord('sourceLanguage', text) ?? readInlineWord('source', text) ?? plan.sourceLanguage,
+    sourceLanguage: readInlineWord('sourceLanguage', text) ?? plan.sourceLanguage,
     target: readInlineWord('target', text) ?? plan.targets[0],
     mode: readInlineWord('mode', text),
     evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
