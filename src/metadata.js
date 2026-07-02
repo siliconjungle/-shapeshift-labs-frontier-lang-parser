@@ -21,12 +21,13 @@ const PARADIGM_GROUPS = [
   'loweringRecords'
 ];
 
-export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], conversionBlocks = [], nativeSourceBlocks = [] } = {}) {
+export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], nativeSourceBlocks = [] } = {}) {
   const metadata = {};
   if (proofBlocks.length) metadata.proof = mergeProofBlocks(proofBlocks);
   if (paradigmBlocks.length) metadata.paradigmSemantics = mergeParadigmBlocks(paradigmBlocks);
   if (operationBlocks.length) metadata.semanticOperations = mergeOperationBlocks(operationBlocks);
   if (conversionBlocks.length) metadata.universalConversionPlan = mergeConversionBlocks(conversionBlocks);
+  if (constraintSpaceBlocks.length) metadata.constraintSpaces = mergeConstraintSpaceBlocks(constraintSpaceBlocks);
   if (nativeSourceBlocks.some((block) => block.sourceMaps.length || block.mergeCandidates.length || block.evidence.length)) {
     metadata.universalAst = mergeNativeSourceBlocks(nativeSourceBlocks);
   }
@@ -77,6 +78,28 @@ function mergeConversionBlocks(blocks) {
   return plan;
 }
 
+function mergeConstraintSpaceBlocks(blocks) {
+  return {
+    id: blocks.length === 1 ? blocks[0].id : 'constraintSpaces:source',
+    spaces: blocks,
+    targets: [...new Set(blocks.flatMap((block) => block.targets ?? []))],
+    variableIds: blocks.flatMap((block) => ids(block.variables)),
+    constraintIds: blocks.flatMap((block) => ids(block.constraints)),
+    preferenceIds: blocks.flatMap((block) => ids(block.preferences)),
+    collapseStrategyIds: blocks.flatMap((block) => ids(block.collapseStrategies)),
+    admissionIds: blocks.flatMap((block) => ids(block.admissions)),
+    summary: {
+      spaceCount: blocks.length,
+      variableCount: sum(blocks, 'variableCount'),
+      constraintCount: sum(blocks, 'constraintCount'),
+      preferenceCount: sum(blocks, 'preferenceCount'),
+      collapseStrategyCount: sum(blocks, 'collapseStrategyCount'),
+      admissionCount: sum(blocks, 'admissionCount')
+    },
+    metadata: { authoredConstraintSpaceBlockIds: blocks.map((block) => block.id) }
+  };
+}
+
 function mergeNativeSourceBlocks(blocks) {
   return {
     id: blocks.length === 1 ? `universalAst:${blocks[0].node.id}` : 'universalAst:source',
@@ -87,4 +110,12 @@ function mergeNativeSourceBlocks(blocks) {
     losses: blocks.flatMap((block) => block.losses ?? []),
     metadata: { authoredNativeSourceIds: blocks.map((block) => block.node.id) }
   };
+}
+
+function ids(records = []) {
+  return records.map((record) => record?.id).filter(Boolean);
+}
+
+function sum(blocks, key) {
+  return blocks.reduce((total, block) => total + (block.summary?.[key] ?? 0), 0);
 }

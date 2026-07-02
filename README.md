@@ -239,6 +239,27 @@ conversion TodoJavascriptToRust @id("conversion_todo_js_rust") {
 
 `sourceRuntime` and `targetRuntime` become runtime maps. `runtimeRequirement` rows become proof obligations for host/runtime capabilities, including authored `requiredSignals` denominators such as source hashes, target hashes, probe ids, runtime commands, telemetry hashes, and capability-specific trace hashes. `proofEvidence` and `evidence` attach evidence ids, but the compiler still requires bound evidence records before a proof obligation is satisfied. `dialect` and `extern` rows preserve dialect-specific constructs, projection readiness, loss/evidence ids, and binding metadata without requiring the authored Frontier file to drop down to raw JSON.
 
+## Authored possibility spaces
+
+`.frontier` files can describe a governed space of valid implementations with `constraintSpace` or `possibilitySpace` blocks. These blocks are metadata-only: they do not add kernel nodes, but they preserve the variables, hard constraints, preferences, collapse strategies, and admission rules that let tools reason about semantic merge, translation, refactoring, and runtime projection as constraint satisfaction.
+
+```frontier
+possibilitySpace CheckoutSurface @id("space_checkout_surface") {
+  subject action_checkout
+  scope mod_checkout
+  target react
+  target swiftui
+  variable surface @id("space_variable_surface") kind projection domain react|swiftui|html-css-js default react preserve identity|event-flow
+  hard identity @id("space_constraint_identity") kind semantic-identity family identity subject action_checkout requires action|state|effect failClosed
+  soft bundleSize @id("space_constraint_bundle_size") kind bundle-budget family runtime target react predicate "bundle < 50kb"
+  preference nativeControls @id("space_preference_native_controls") kind platform-idiom target swiftui weight 0.8 reason "prefer native controls on iOS"
+  collapse mobileCheckout @id("space_collapse_mobile_checkout") strategy evidence-first target swiftui requires identity|runtime-proof produces view_checkout_mobile
+  admission mergeSafe @id("space_admission_merge_safe") kind semantic-merge status open requires hardConstraints|runtimeProof decision review failClosed
+}
+```
+
+The parser projects these blocks into `metadata.constraintSpaces`. Hard and soft constraints remain separate from preferences: hard constraints define validity, while preferences help choose among several valid shapes. `collapse` rows describe how a tool may choose a concrete projection, and `admission` rows describe what proof is required before a generated or merged shape should be accepted.
+
 ## Authored native source evidence
 
 `nativeSource` blocks can also carry source-bound merge evidence. This keeps parser/source-map/merge-candidate facts in `.frontier` text instead of requiring a raw JSON sidecar for the first authored program slice.

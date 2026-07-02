@@ -114,6 +114,18 @@ conversion TodoJavascriptToRust @id("conversion_todo_js_rust") {
   constraint memoryModel todoMemory @id("memory_model_todo") role source kind stable-reference resource TodoDb.todos lifetimeKind lexical regionKind heap evidence artifact_todo_title_probe
   constraint effect todoWrite @id("effect_constraint_todo_write") role source kind storage-write resource TodoDb.todos fact writes|deterministic evidence artifact_todo_title_probe
 }
+possibilitySpace TodoProjectionSpace @id("space_todo_projection") {
+  subject action_add
+  scope mod_todo
+  target typescript
+  target rust
+  variable uiSurface @id("space_variable_ui_surface") kind projection domain react|swiftui|html-css-js default react subject view_todo_list preserve identity|event-flow evidence artifact_todo_title_probe
+  hard identity @id("space_constraint_identity") kind semantic-identity family identity subject action_add variable space_variable_ui_surface requires action|state|effect evidence artifact_todo_title_probe conflictKey action:addTodo failClosed
+  soft bundleSize @id("space_constraint_bundle_size") kind bundle-budget family runtime target typescript variable space_variable_ui_surface predicate "bundle < 50kb" evidence artifact_todo_title_probe
+  preference nativeControls @id("space_preference_native_controls") kind platform-idiom target rust weight 0.8 variable space_variable_ui_surface prefer native-controls reason "native affordances when target supports them"
+  collapse rustWorker @id("space_collapse_rust_worker") strategy evidence-first target rust variable space_variable_ui_surface requires identity|runtime-proof produces action_add_rust evidence artifact_todo_title_probe admission space_admission_merge_safe status open
+  admission mergeSafe @id("space_admission_merge_safe") kind semantic-merge status open subject action_add target rust requires hardConstraints|runtimeProof evidence artifact_todo_title_probe decision review failClosed reason "runtime proof is required before auto admission"
+}
 action addTodo @id("action_add") {
   input TodoInput
   returns Patch
@@ -193,6 +205,21 @@ assert.equal(doc.metadata.universalConversionPlan.moduleConstraints[0].sourceMod
 assert.equal(doc.metadata.universalConversionPlan.scopeBindingConstraints[0].sourceBindings[0].localName, 'todo');
 assert.equal(doc.metadata.universalConversionPlan.memoryModelConstraints[0].sourceMemoryModels[0].lifetimeKind, 'lexical');
 assert.deepEqual(doc.metadata.universalConversionPlan.effectConstraints[0].sourceEffects[0].factKinds, ['writes', 'deterministic']);
+assert.equal(doc.metadata.constraintSpaces.id, 'space_todo_projection');
+assert.equal(doc.metadata.constraintSpaces.summary.spaceCount, 1);
+assert.equal(doc.metadata.constraintSpaces.summary.variableCount, 1);
+assert.equal(doc.metadata.constraintSpaces.summary.constraintCount, 2);
+assert.equal(doc.metadata.constraintSpaces.summary.preferenceCount, 1);
+assert.equal(doc.metadata.constraintSpaces.summary.collapseStrategyCount, 1);
+assert.equal(doc.metadata.constraintSpaces.summary.admissionCount, 1);
+assert.deepEqual(doc.metadata.constraintSpaces.targets, ['typescript', 'rust']);
+assert.equal(doc.metadata.constraintSpaces.spaces[0].subjectId, 'action_add');
+assert.deepEqual(doc.metadata.constraintSpaces.spaces[0].variables[0].domain, ['react', 'swiftui', 'html-css-js']);
+assert.equal(doc.metadata.constraintSpaces.spaces[0].constraints[0].strength, 'hard');
+assert.equal(doc.metadata.constraintSpaces.spaces[0].constraints[0].failClosed, true);
+assert.equal(doc.metadata.constraintSpaces.spaces[0].preferences[0].weight, 0.8);
+assert.equal(doc.metadata.constraintSpaces.spaces[0].collapseStrategies[0].strategy, 'evidence-first');
+assert.equal(doc.metadata.constraintSpaces.spaces[0].admissions[0].decision, 'review');
 assert.equal(doc.nodes.state_todo.collections[0].merge.law, 'commutative');
 assert.equal(doc.nodes.view_todo_list.kind, 'view');
 assert.equal(doc.nodes.view_todo_list.reads[0], 'TodoDb.todos');
