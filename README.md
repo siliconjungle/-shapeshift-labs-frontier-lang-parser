@@ -328,6 +328,21 @@ conversion TodoJavascriptToRust @id("conversion_todo_js_rust") {
 
 `sourceRuntime` and `targetRuntime` become runtime maps. `runtimeRequirement` rows become proof obligations for host/runtime capabilities, including authored `requiredSignals` denominators such as source hashes, target hashes, probe ids, runtime commands, telemetry hashes, and capability-specific trace hashes. `proofEvidence` and `evidence` attach evidence ids, but the compiler still requires bound evidence records before a proof obligation is satisfied. `dialect` and `extern` rows preserve dialect-specific constructs, projection readiness, loss/evidence ids, and binding metadata without requiring the authored Frontier file to drop down to raw JSON.
 
+## Authored dialect registry syntax
+
+`.frontier` files can carry reusable dialect registries with `dialectRegistry` or `universalDialectRegistry` blocks. These blocks describe language-specific constructs that should stay visible during translation instead of being silently collapsed into generic stubs.
+
+```frontier
+dialectRegistry RuntimeDialects @id("dialect_registry_runtime") {
+  language javascript
+  sourcePath src/runtime.ts
+  dialect nodeProcess @id("dialect_registry_node_process") dialect node.runtime kind runtime name process.env target rust disposition unsupported readiness blocked loss loss_node_process_projection evidence evidence_node_runtime sourceMap sourcemap_todo_ts
+  extern viteRoutes @id("dialect_registry_vite_routes") dialect vite.plugin.virtual-module externKind generatorArtifact target rust disposition runtime-required readiness needs-review evidence evidence_vite_routes_manifest bindingSymbol virtual:routes module vite
+}
+```
+
+The parser projects these rows into `metadata.dialects` as a `frontier.lang.universalDialectRegistry`-shaped object. `dialect` rows become universal dialect records, `extern` rows become universal extern records, and projection fields preserve target disposition, readiness, evidence ids, loss ids, source-map ids, and binding metadata. Registry records are evidence for route scoring, not proof of equivalent behavior: authored metadata keeps `autoMergeClaim` and `semanticEquivalenceClaim` false.
+
 ## Authored possibility spaces
 
 `.frontier` files can describe a governed space of valid implementations with `constraintSpace` or `possibilitySpace` blocks. These blocks are metadata-only: they do not add kernel nodes, but they preserve the variables, hard constraints, preferences, collapse strategies, and admission rules that let tools reason about semantic merge, translation, refactoring, and runtime projection as constraint satisfaction.
