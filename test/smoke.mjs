@@ -99,7 +99,7 @@ conversion TodoJavascriptToRust @id("conversion_todo_js_rust") {
   target rust
   sourceRuntime javascript node
   targetRuntime rust cli
-  runtimeRequirement fetchRuntime @id("runtime_requirement_fetch") capability fetch sourceRuntime node targetRuntime cli evidence artifact_todo_title_probe
+  runtimeRequirement fetchRuntime @id("runtime_requirement_fetch") capability fetch sourceRuntime node targetRuntime cli requiredSignals source-hash|target-hash|runtime-command|probe-id|telemetry-hash|network-trace-hash evidence artifact_todo_title_probe proofEvidence artifact_todo_title_probe
   dialect nodeProcess @id("dialect_node_process") language javascript dialect node.runtime kind runtime target rust disposition unsupported readiness blocked loss loss_node_process_projection
   extern viteRoutes @id("extern_vite_routes") language javascript dialect vite.plugin.virtual-module externKind generatorArtifact target rust disposition runtime-required evidence evidence_vite_routes_manifest bindingSymbol virtual:routes
   constraint type publicApi @id("type_constraint_public_api") role source kind public-function symbol symbol:addTodo signatureHash sig_add_todo evidence artifact_todo_title_probe
@@ -172,6 +172,8 @@ assert.equal(doc.metadata.universalConversionPlan.targetRuntimes.rust, 'cli');
 assert.equal(doc.metadata.universalConversionPlan.runtimeRequirements[0].capability, 'fetch');
 assert.equal(doc.metadata.universalConversionPlan.runtimeRequirements[0].sourceRuntime, 'node');
 assert.equal(doc.metadata.universalConversionPlan.runtimeRequirements[0].targetRuntime, 'cli');
+assert.equal(doc.metadata.universalConversionPlan.runtimeRequirements[0].requiredSignals.includes('network-trace-hash'), true);
+assert.equal(doc.metadata.universalConversionPlan.runtimeRequirements[0].proofEvidenceIds[0], 'artifact_todo_title_probe');
 assert.equal(doc.metadata.universalConversionPlan.dialects[0].projection.disposition, 'unsupported');
 assert.equal(doc.metadata.universalConversionPlan.dialects[0].projection.lossIds[0], 'loss_node_process_projection');
 assert.equal(doc.metadata.universalConversionPlan.externs[0].externKind, 'generatorArtifact');

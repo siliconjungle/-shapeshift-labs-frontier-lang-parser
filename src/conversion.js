@@ -77,6 +77,8 @@ function addRuntimeRequirement(plan, name, text) {
     sourceHost: readInlineWord('sourceHost', text),
     targetHost: readInlineWord('targetHost', text),
     reason: readInlineQuoted('reason', text) ?? readInlineWord('reason', text),
+    requiredSignals: readInlineList(text, 'requiredSignal', 'requiredSignals', 'signal', 'signals'),
+    proofEvidenceIds: readInlineList(text, 'proofEvidence', 'proofEvidenceIds'),
     evidenceIds: readInlineList(text, 'evidence', 'evidenceIds')
   })];
 }
