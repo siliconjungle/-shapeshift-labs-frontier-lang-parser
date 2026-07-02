@@ -367,7 +367,7 @@ target rust @id("target_rust") {
 }
 ```
 
-The parser stores these rows on the target node metadata as `projectionContracts` and `projectionLayers`. They are target-lowering evidence, not proof of equivalence: `autoMergeClaim` and `semanticEquivalenceClaim` remain false.
+The parser stores these rows on the target node metadata as `projectionContracts` and `projectionLayers`, then aggregates them into `metadata.targetProjections` and mirrors that aggregate under `metadata.universalAst.targetProjections` with target ids, target languages, emit paths, adapter ids, represented/missing layers, evidence ids, proof evidence ids, loss ids, and missing evidence. They are target-lowering evidence, not proof of equivalence: `autoMergeClaim` and `semanticEquivalenceClaim` remain false on rows and aggregates.
 
 ## Authored decision graph syntax
 

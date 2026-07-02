@@ -32,7 +32,7 @@ export function parseFrontierSource(source, options = {}) {
   const packageManifestBlocks = [];
   const canvasSurfaceBlocks = [];
   const applicationSurfaceBlocks = [];
-  const runtimeCapabilityBlocks = [];
+  const runtimeCapabilityBlocks = [], targetProjectionTargets = [];
   const documentId = options.id ?? readId(source) ?? 'mod_frontier';
   const documentName = options.name ?? readName(source) ?? 'FrontierModule';
   for (const block of readBlocks(source)) {
@@ -51,7 +51,7 @@ export function parseFrontierSource(source, options = {}) {
       nodes.push(parsed.node);
       nativeSourceBlocks.push(parsed);
     }
-    if (block.kind === 'target') nodes.push(parseTarget(block));
+    if (block.kind === 'target') { const parsed = parseTarget(block); nodes.push(parsed); if (parsed.metadata?.authoredTargetProjection) targetProjectionTargets.push(parsed); }
     if (block.kind === 'proof') proofBlocks.push(parseProofBlock(block));
     if (block.kind === 'paradigm' || block.kind === 'paradigmSemantics') paradigmBlocks.push(parseParadigmBlock(block));
     if (block.kind === 'operations' || block.kind === 'semanticOperations') operationBlocks.push(parseSemanticOperationsBlock(block));
@@ -66,7 +66,7 @@ export function parseFrontierSource(source, options = {}) {
     if (block.kind === 'applicationSurface' || block.kind === 'appHost' || block.kind === 'plugin' || block.kind === 'pluginSurface' || block.kind === 'pluginContract') applicationSurfaceBlocks.push(parseApplicationSurfaceBlock(block));
     if (block.kind === 'runtimeCapabilities' || block.kind === 'runtimeCapabilityMatrix' || block.kind === 'runtimeHosts') runtimeCapabilityBlocks.push(parseRuntimeCapabilityBlock(block));
   }
-  const metadata = createParsedMetadata({ proofBlocks, paradigmBlocks, operationBlocks, conversionBlocks, constraintSpaceBlocks, decisionGraphBlocks, dialectRegistryBlocks, interlinguaBlocks, resourceGraphBlocks, nativeSourceBlocks, packageManifestBlocks, canvasSurfaceBlocks, applicationSurfaceBlocks, runtimeCapabilityBlocks });
+  const metadata = createParsedMetadata({ proofBlocks, paradigmBlocks, operationBlocks, conversionBlocks, constraintSpaceBlocks, decisionGraphBlocks, dialectRegistryBlocks, interlinguaBlocks, resourceGraphBlocks, nativeSourceBlocks, packageManifestBlocks, canvasSurfaceBlocks, applicationSurfaceBlocks, runtimeCapabilityBlocks, targetProjectionTargets });
   return createDocument({ id: documentId, name: documentName, nodes, ...(metadata ? { metadata } : {}) });
 }
 

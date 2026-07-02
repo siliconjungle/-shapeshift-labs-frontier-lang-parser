@@ -1,6 +1,7 @@
 import { mergeDialectRegistryBlocks } from './dialect-registry.js';
 import { mergeApplicationSurfaceBlocks } from './application-surface.js';
 import { mergeRuntimeCapabilityBlocks } from './runtime-capability.js';
+import { mergeTargetProjectionTargets } from './target-projection-aggregate.js';
 
 const PROOF_GROUPS = ['contracts', 'refinements', 'invariants', 'termination', 'temporal', 'obligations', 'artifacts', 'assumptions'];
 const PARADIGM_GROUPS = [
@@ -9,7 +10,7 @@ const PARADIGM_GROUPS = [
   'clockModels', 'objectModels', 'macroExpansions', 'reflectionBoundaries', 'loweringRecords'
 ];
 
-export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], decisionGraphBlocks = [], dialectRegistryBlocks = [], interlinguaBlocks = [], resourceGraphBlocks = [], nativeSourceBlocks = [], packageManifestBlocks = [], canvasSurfaceBlocks = [], applicationSurfaceBlocks = [], runtimeCapabilityBlocks = [] } = {}) {
+export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], decisionGraphBlocks = [], dialectRegistryBlocks = [], interlinguaBlocks = [], resourceGraphBlocks = [], nativeSourceBlocks = [], packageManifestBlocks = [], canvasSurfaceBlocks = [], applicationSurfaceBlocks = [], runtimeCapabilityBlocks = [], targetProjectionTargets = [] } = {}) {
   const metadata = {};
   if (proofBlocks.length) metadata.proof = mergeProofBlocks(proofBlocks);
   if (paradigmBlocks.length) metadata.paradigmSemantics = mergeParadigmBlocks(paradigmBlocks);
@@ -27,8 +28,9 @@ export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], op
     metadata.runtimeCapabilities = mergeRuntimeCapabilityBlocks(runtimeCapabilityBlocks);
     metadata.runtimeCapabilityMatrix = metadata.runtimeCapabilities;
   }
-  if (nativeSourceBlocks.some((block) => block.sourceMaps.length || block.mergeCandidates.length || block.evidence.length) || packageManifestBlocks.length || canvasSurfaceBlocks.length || applicationSurfaceBlocks.length || runtimeCapabilityBlocks.length) {
-    metadata.universalAst = mergeUniversalAstBlocks(nativeSourceBlocks, packageManifestBlocks, canvasSurfaceBlocks, applicationSurfaceBlocks, runtimeCapabilityBlocks);
+  if (targetProjectionTargets.length) metadata.targetProjections = mergeTargetProjectionTargets(targetProjectionTargets);
+  if (nativeSourceBlocks.some((block) => block.sourceMaps.length || block.mergeCandidates.length || block.evidence.length) || packageManifestBlocks.length || canvasSurfaceBlocks.length || applicationSurfaceBlocks.length || runtimeCapabilityBlocks.length || targetProjectionTargets.length) {
+    metadata.universalAst = mergeUniversalAstBlocks(nativeSourceBlocks, packageManifestBlocks, canvasSurfaceBlocks, applicationSurfaceBlocks, runtimeCapabilityBlocks, metadata.targetProjections);
   }
   return Object.keys(metadata).length ? metadata : undefined;
 }
@@ -99,7 +101,7 @@ function mergeConstraintSpaceBlocks(blocks) {
   };
 }
 
-function mergeUniversalAstBlocks(blocks, packageManifestBlocks = [], canvasSurfaceBlocks = [], applicationSurfaceBlocks = [], runtimeCapabilityBlocks = []) {
+function mergeUniversalAstBlocks(blocks, packageManifestBlocks = [], canvasSurfaceBlocks = [], applicationSurfaceBlocks = [], runtimeCapabilityBlocks = [], targetProjections) {
   return {
     id: blocks.length === 1 ? `universalAst:${blocks[0].node.id}` : 'universalAst:source',
     nativeSourceIds: blocks.map((block) => block.node.id),
@@ -111,6 +113,7 @@ function mergeUniversalAstBlocks(blocks, packageManifestBlocks = [], canvasSurfa
     canvasSurfaces: canvasSurfaceBlocks,
     applicationSurfaces: applicationSurfaceBlocks,
     runtimeCapabilities: runtimeCapabilityBlocks,
+    ...(targetProjections ? { targetProjections, targetProjectionTargetIds: targetProjections.targetIds, targetProjectionContractIds: targetProjections.projectionContractIds, targetProjectionLayerIds: targetProjections.projectionLayerIds } : {}),
     packageManifestIds: ids(packageManifestBlocks),
     canvasSurfaceIds: ids(canvasSurfaceBlocks),
     applicationSurfaceIds: ids(applicationSurfaceBlocks),
@@ -120,7 +123,8 @@ function mergeUniversalAstBlocks(blocks, packageManifestBlocks = [], canvasSurfa
       authoredPackageManifestIds: ids(packageManifestBlocks),
       authoredCanvasSurfaceIds: ids(canvasSurfaceBlocks),
       authoredApplicationSurfaceIds: ids(applicationSurfaceBlocks),
-      authoredRuntimeCapabilityIds: ids(runtimeCapabilityBlocks)
+      authoredRuntimeCapabilityIds: ids(runtimeCapabilityBlocks),
+      ...(targetProjections ? { authoredTargetProjectionTargetIds: targetProjections.targetIds } : {})
     }
   };
 }
