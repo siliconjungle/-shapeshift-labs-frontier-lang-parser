@@ -93,6 +93,11 @@ operations TodoOperations @id("semantic_ops_todo") {
 conversion TodoJavascriptToRust @id("conversion_todo_js_rust") {
   sourceLanguage javascript
   target rust
+  sourceRuntime javascript node
+  targetRuntime rust cli
+  runtimeRequirement fetchRuntime @id("runtime_requirement_fetch") capability fetch sourceRuntime node targetRuntime cli evidence artifact_todo_title_probe
+  dialect nodeProcess @id("dialect_node_process") language javascript dialect node.runtime kind runtime target rust disposition unsupported readiness blocked loss loss_node_process_projection
+  extern viteRoutes @id("extern_vite_routes") language javascript dialect vite.plugin.virtual-module externKind generatorArtifact target rust disposition runtime-required evidence evidence_vite_routes_manifest bindingSymbol virtual:routes
   constraint type publicApi @id("type_constraint_public_api") role source kind public-function symbol symbol:addTodo signatureHash sig_add_todo evidence artifact_todo_title_probe
   constraint type rustApi @id("type_constraint_rust_api") role target kind public-function symbol symbol:addTodoRust signatureHash sig_add_todo evidence artifact_todo_title_probe
   constraint controlFlow saveFlow @id("control_flow_save") role source kind async-flow from action_add to effect_persist_todo evidence artifact_todo_title_probe async
@@ -149,6 +154,15 @@ assert.equal(doc.metadata.semanticOperations.operations[0].writes[0], 'TodoDb.to
 assert.equal(doc.metadata.semanticOperations.operations[1].nativeAstNodeIds[0], 'ts_node_title');
 assert.equal(doc.metadata.universalConversionPlan.id, 'conversion_todo_js_rust');
 assert.equal(doc.metadata.universalConversionPlan.targets[0], 'rust');
+assert.equal(doc.metadata.universalConversionPlan.sourceRuntimes.javascript, 'node');
+assert.equal(doc.metadata.universalConversionPlan.targetRuntimes.rust, 'cli');
+assert.equal(doc.metadata.universalConversionPlan.runtimeRequirements[0].capability, 'fetch');
+assert.equal(doc.metadata.universalConversionPlan.runtimeRequirements[0].sourceRuntime, 'node');
+assert.equal(doc.metadata.universalConversionPlan.runtimeRequirements[0].targetRuntime, 'cli');
+assert.equal(doc.metadata.universalConversionPlan.dialects[0].projection.disposition, 'unsupported');
+assert.equal(doc.metadata.universalConversionPlan.dialects[0].projection.lossIds[0], 'loss_node_process_projection');
+assert.equal(doc.metadata.universalConversionPlan.externs[0].externKind, 'generatorArtifact');
+assert.equal(doc.metadata.universalConversionPlan.externs[0].binding.symbol, 'virtual:routes');
 assert.equal(doc.metadata.universalConversionPlan.typeConstraints.length, 2);
 assert.equal(doc.metadata.universalConversionPlan.typeConstraints[0].sourceLanguage, 'javascript');
 assert.equal(doc.metadata.universalConversionPlan.typeConstraints[1].target, 'rust');

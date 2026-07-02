@@ -46,12 +46,73 @@ export function parseConversionBlock(block) {
     if (!line || line.startsWith('#')) continue;
     const target = /^target\s+([^\s,]+)/.exec(line)?.[1];
     const sourceLanguage = /^sourceLanguage\s+([^\s,]+)/.exec(line)?.[1] ?? /^source\s+([^\s,]+)/.exec(line)?.[1];
+    const sourceRuntime = /^sourceRuntime\s+([^\s,]+)\s+([^\s,]+)/.exec(line);
+    const targetRuntime = /^targetRuntime\s+([^\s,]+)\s+([^\s,]+)/.exec(line);
+    const runtimeRequirement = /^(?:runtimeRequirement|requiredRuntime|requiresRuntime)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
+    const dialect = /^dialect\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
+    const extern = /^extern\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
     const constraint = /^constraint\s+([A-Za-z_$][\w$-]*)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
     if (target) plan.targets.push(target);
     else if (sourceLanguage) plan.sourceLanguage = sourceLanguage;
+    else if (sourceRuntime) plan.sourceRuntimes = { ...(plan.sourceRuntimes ?? {}), [sourceRuntime[1]]: sourceRuntime[2] };
+    else if (targetRuntime) plan.targetRuntimes = { ...(plan.targetRuntimes ?? {}), [targetRuntime[1]]: targetRuntime[2] };
+    else if (runtimeRequirement) addRuntimeRequirement(plan, runtimeRequirement[1], runtimeRequirement[2]);
+    else if (dialect) addDialectRecord(plan, dialect[1], dialect[2], false);
+    else if (extern) addDialectRecord(plan, extern[1], extern[2], true);
     else if (constraint) addConstraint(plan, constraint[1], constraint[2], constraint[3]);
   }
   return cleanRecord({ ...plan, targets: unique(plan.targets) });
+}
+
+function addRuntimeRequirement(plan, name, text) {
+  plan.runtimeRequirements = [...(plan.runtimeRequirements ?? []), cleanRecord({
+    id: idFrom(text, `runtime_requirement_${name}`),
+    name,
+    sourceLanguage: readInlineWord('sourceLanguage', text) ?? plan.sourceLanguage,
+    target: readInlineWord('target', text) ?? readInlineWord('targetLanguage', text) ?? plan.targets[0],
+    capability: readInlineWord('capability', text) ?? readInlineWord('kind', text) ?? name,
+    kind: readInlineWord('kind', text),
+    sourceRuntime: readInlineWord('sourceRuntime', text) ?? readInlineWord('runtime', text),
+    targetRuntime: readInlineWord('targetRuntime', text),
+    sourceHost: readInlineWord('sourceHost', text),
+    targetHost: readInlineWord('targetHost', text),
+    reason: readInlineQuoted('reason', text) ?? readInlineWord('reason', text),
+    evidenceIds: readInlineList(text, 'evidence', 'evidenceIds')
+  })];
+}
+
+function addDialectRecord(plan, name, text, isExtern) {
+  const projection = cleanRecord({
+    disposition: readInlineWord('disposition', text),
+    readiness: readInlineWord('readiness', text),
+    targets: readInlineList(text, 'target', 'targets', 'targetLanguage') ?? plan.targets,
+    evidenceIds: readInlineList(text, 'projectionEvidence', 'projectionEvidenceIds', 'evidence', 'evidenceIds'),
+    lossIds: readInlineList(text, 'projectionLoss', 'projectionLossIds', 'loss', 'lossId', 'lossIds')
+  });
+  const record = cleanRecord({
+    id: idFrom(text, `${isExtern ? 'extern' : 'dialect'}_${name}`),
+    language: readInlineWord('language', text) ?? plan.sourceLanguage,
+    dialect: readInlineWord('dialect', text) ?? name,
+    name: readInlineWord('name', text) ?? name,
+    nativeKind: readInlineWord('nativeKind', text),
+    sourcePath: readInlineWord('sourcePath', text) ?? readInlineWord('path', text),
+    nativeSourceId: readInlineWord('nativeSource', text) ?? readInlineWord('nativeSourceId', text),
+    nativeAstId: readInlineWord('nativeAst', text) ?? readInlineWord('nativeAstId', text),
+    nativeAstNodeId: readInlineWord('nativeAstNode', text) ?? readInlineWord('nativeAstNodeId', text),
+    semanticNodeId: readInlineWord('semanticNode', text) ?? readInlineWord('semanticNodeId', text),
+    semanticSymbolId: readInlineWord('symbol', text) ?? readInlineWord('semanticSymbolId', text),
+    sourceMapId: readInlineWord('sourceMap', text) ?? readInlineWord('sourceMapId', text),
+    sourceMapMappingId: readInlineWord('sourceMapMapping', text) ?? readInlineWord('sourceMapMappingId', text),
+    lossIds: readInlineList(text, 'loss', 'lossId', 'lossIds'),
+    evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
+    projection
+  });
+  if (isExtern) {
+    const binding = cleanRecord({ module: readInlineWord('module', text), path: readInlineWord('bindingPath', text), symbol: readInlineWord('bindingSymbol', text) ?? readInlineWord('symbol', text), abi: readInlineWord('abi', text), version: readInlineWord('version', text) });
+    plan.externs = [...(plan.externs ?? []), cleanRecord({ ...record, externKind: readInlineWord('externKind', text) ?? readInlineWord('kind', text) ?? 'extern', ...(Object.keys(binding).length ? { binding } : {}) })];
+  } else {
+    plan.dialects = [...(plan.dialects ?? []), cleanRecord({ ...record, constructKind: readInlineWord('constructKind', text) ?? readInlineWord('kind', text) ?? 'runtime', externIds: readInlineList(text, 'extern', 'externIds') })];
+  }
 }
 
 function addConstraint(plan, family, name, text) {

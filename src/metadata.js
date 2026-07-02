@@ -66,6 +66,9 @@ function mergeConversionBlocks(blocks) {
     if (block.sourceLanguage && !plan.sourceLanguage) plan.sourceLanguage = block.sourceLanguage;
     for (const [key, value] of Object.entries(block)) {
       if (Array.isArray(value) && key !== 'targets') plan[key] = [...(plan[key] ?? []), ...value];
+      else if ((key === 'sourceRuntimes' || key === 'targetRuntimes') && value && typeof value === 'object') {
+        plan[key] = { ...(plan[key] ?? {}), ...value };
+      }
     }
   }
   return plan;

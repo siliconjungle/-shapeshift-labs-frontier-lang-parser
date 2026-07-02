@@ -220,6 +220,25 @@ npm install @shapeshift-labs/frontier-lang-parser
 
 The parser projects text into `@shapeshift-labs/frontier-lang-kernel` documents. The syntax is intentionally small and experimental.
 
+## Authored conversion syntax
+
+`.frontier` files can carry universal conversion evidence directly in `conversion` or `universalConversionPlan` blocks. The parser projects these records into `metadata.universalConversionPlan` for the compiler facade and downstream semantic merge tooling.
+
+```frontier
+conversion TodoJavascriptToRust @id("conversion_todo_js_rust") {
+  sourceLanguage javascript
+  target rust
+  sourceRuntime javascript node
+  targetRuntime rust cli
+  runtimeRequirement fetchRuntime @id("runtime_requirement_fetch") capability fetch sourceRuntime node targetRuntime cli evidence artifact_todo_title_probe
+  dialect nodeProcess @id("dialect_node_process") language javascript dialect node.runtime kind runtime target rust disposition unsupported readiness blocked loss loss_node_process_projection
+  extern viteRoutes @id("extern_vite_routes") language javascript dialect vite.plugin.virtual-module externKind generatorArtifact target rust disposition runtime-required evidence evidence_vite_routes_manifest bindingSymbol virtual:routes
+  constraint type publicApi @id("type_constraint_public_api") role source kind public-function symbol symbol:addTodo signatureHash sig_add_todo evidence artifact_todo_title_probe
+}
+```
+
+`sourceRuntime` and `targetRuntime` become runtime maps. `runtimeRequirement` rows become proof obligations for host/runtime capabilities. `dialect` and `extern` rows preserve dialect-specific constructs, projection readiness, loss/evidence ids, and binding metadata without requiring the authored Frontier file to drop down to raw JSON.
+
 ## Benchmarks
 
 Run the package-local benchmark with:
