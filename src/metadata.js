@@ -21,7 +21,7 @@ const PARADIGM_GROUPS = [
   'loweringRecords'
 ];
 
-export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], decisionGraphBlocks = [], resourceGraphBlocks = [], nativeSourceBlocks = [] } = {}) {
+export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], decisionGraphBlocks = [], interlinguaBlocks = [], resourceGraphBlocks = [], nativeSourceBlocks = [] } = {}) {
   const metadata = {};
   if (proofBlocks.length) metadata.proof = mergeProofBlocks(proofBlocks);
   if (paradigmBlocks.length) metadata.paradigmSemantics = mergeParadigmBlocks(paradigmBlocks);
@@ -29,6 +29,7 @@ export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], op
   if (conversionBlocks.length) metadata.universalConversionPlan = mergeConversionBlocks(conversionBlocks);
   if (constraintSpaceBlocks.length) metadata.constraintSpaces = mergeConstraintSpaceBlocks(constraintSpaceBlocks);
   if (decisionGraphBlocks.length) metadata.decisionGraph = mergeDecisionGraphBlocks(decisionGraphBlocks);
+  if (interlinguaBlocks.length) metadata.universalInterlingua = mergeInterlinguaBlocks(interlinguaBlocks);
   if (resourceGraphBlocks.length) metadata.semanticResourceGraphs = mergeResourceGraphBlocks(resourceGraphBlocks);
   if (nativeSourceBlocks.some((block) => block.sourceMaps.length || block.mergeCandidates.length || block.evidence.length)) {
     metadata.universalAst = mergeNativeSourceBlocks(nativeSourceBlocks);
@@ -150,6 +151,38 @@ function mergeDecisionGraphBlocks(blocks) {
       rsiLoopCount: sum(blocks, 'rsiLoopCount')
     },
     metadata: { authoredDecisionGraphBlockIds: blocks.map((block) => block.id) }
+  };
+}
+
+function mergeInterlinguaBlocks(blocks) {
+  const interlinguaRecords = blocks.map((block) => block.record).filter(Boolean);
+  const records = blocks.flatMap((block) => block.records ?? []);
+  return {
+    id: blocks.length === 1 ? blocks[0].id : 'universalInterlingua:source',
+    interlinguaRecords,
+    records,
+    recordIds: ids(records),
+    interlinguaRecordIds: ids(interlinguaRecords),
+    layerIds: blocks.flatMap((block) => ids(block.record?.layerRecords)),
+    constraintIds: blocks.flatMap((block) => ids(block.record?.constraintEdges)),
+    obligationIds: blocks.flatMap((block) => ids(block.record?.obligations)),
+    loweringIds: blocks.flatMap((block) => ids(block.record?.loweringRecords)),
+    liftIds: blocks.flatMap((block) => ids(block.record?.liftRecords)),
+    evidenceIds: [...new Set(blocks.flatMap((block) => block.record?.query?.proofEvidenceIds ?? []).concat(blocks.flatMap((block) => block.record?.query?.constraintEvidenceIds ?? [])))],
+    routeIds: [...new Set(interlinguaRecords.map((record) => record.routeId).filter(Boolean))],
+    summary: {
+      interlinguaCount: interlinguaRecords.length,
+      recordCount: records.length,
+      layerCount: sum(blocks, 'layerCount'),
+      constraintCount: sum(blocks, 'constraintCount'),
+      obligationCount: sum(blocks, 'obligationCount'),
+      loweringCount: sum(blocks, 'loweringCount'),
+      liftCount: sum(blocks, 'liftCount'),
+      evidenceCount: sum(blocks, 'evidenceCount'),
+      missingEvidenceCount: sum(blocks, 'missingEvidenceCount'),
+      blockerCount: sum(blocks, 'blockerCount')
+    },
+    metadata: { authoredInterlinguaBlockIds: blocks.map((block) => block.id) }
   };
 }
 

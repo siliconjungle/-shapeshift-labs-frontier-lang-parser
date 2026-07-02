@@ -271,6 +271,27 @@ resourceGraph TodoResources @id("resource_graph_todo") {
 
 The parser projects these rows into `metadata.semanticResourceGraphs`. Resource graphs are evidence, not proof: generated claims for borrow-checker soundness, alias safety, lifetime soundness, semantic equivalence, and auto-merge stay false. Compiler conversion routes can use these authored graphs as source-side resource, ownership, lifetime, and borrow-checker evidence while still requiring target proof before admission.
 
+## Authored interlingua syntax
+
+`.frontier` files can carry universal interlingua route evidence directly in `interlingua` or `universalInterlingua` blocks. These blocks describe the source lift, represented and missing semantic layers, constraint edges, proof obligations, and target lowering disposition for a route without claiming semantic equivalence.
+
+```frontier
+interlingua JsToRust @id("interlingua_js_rust") {
+  route conversion_route_javascript_to_rust
+  sourceLanguage javascript
+  target rust
+  mode target-adapter
+  lift source @id("lift_js") sourceImport native_import_js sourcePath src/public-api.js sourceHash sha256:source sourceMap source_map_js ownership symbol:displayName conflict symbol:displayName evidence evidence_translation proof proof_translation
+  layer symbols @id("layer_symbols") kind semantic-symbol status represented evidence evidence_translation
+  layer ownership @id("layer_ownership") kind semantic-ownership status missing missingEvidence translation-borrow-scope:borrow-across-await
+  constraint borrowAwait @id("constraint_borrow_await") family borrow-scope layer semantic-ownership status needs-evidence action collect-borrow-scope required shared-borrow-compatible|borrow-across-await represented shared-borrow-compatible missing borrow-across-await missingEvidence translation-borrow-scope:borrow-across-await evidence evidence_borrow_scope obligation obligation_borrow_await
+  obligation borrowAwait @id("obligation_borrow_await") edge constraint_borrow_await family borrow-scope kind borrow-across-await status missing missingEvidence translation-borrow-scope:borrow-across-await evidence evidence_borrow_scope
+  lowering rustAdapter @id("lowering_rust_adapter") disposition target-adapter adapter fixture-js-rust adapterKind targetProjection readiness needs-review lossClass targetAdapterProjection proofEvidence proof_translation missingEvidence host-target-adapter-review review adapter-review
+}
+```
+
+The parser projects these rows into `metadata.universalInterlingua`. Interlingua records are route evidence: they expose queryable layer kinds, constraint families, obligation kinds/statuses, lowering disposition, proof ids, and missing evidence while keeping `autoMergeClaim` and `semanticEquivalenceClaim` false. The compiler can merge matching authored records into generated conversion routes by route id or source/target.
+
 ## Authored conversion syntax
 
 `.frontier` files can carry universal conversion evidence directly in `conversion` or `universalConversionPlan` blocks. The parser projects these records into `metadata.universalConversionPlan` for the compiler facade and downstream semantic merge tooling.

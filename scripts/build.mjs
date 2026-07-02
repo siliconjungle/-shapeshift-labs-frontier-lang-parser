@@ -7,6 +7,7 @@ await copyFile("src/conversion.js", "dist/conversion.js");
 await copyFile("src/decision-graph.js", "dist/decision-graph.js");
 await copyFile("src/index.js", "dist/index.js");
 await copyFile("src/index.d.ts", "dist/index.d.ts");
+await copyFile("src/interlingua.js", "dist/interlingua.js");
 await copyFile("src/metadata.js", "dist/metadata.js");
 await copyFile("src/operations.js", "dist/operations.js");
 await copyFile("src/paradigm.js", "dist/paradigm.js");
