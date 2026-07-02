@@ -309,6 +309,49 @@ Runtime probes, package-manager solver output, lockfile proof, browser pixels,
 worker transfer evidence, and GPU validation must still be supplied by higher
 layers before admission.
 
+## Authored application and plugin syntax
+
+`.frontier` files can describe application composition boundaries directly.
+These blocks make host/plugin contracts source-level objects: mount points,
+provided surfaces, required capabilities, routes, events, assets, gates, and
+proof gaps can be queried by projection and merge tooling without collapsing
+them into a target-language implementation detail.
+
+```frontier
+appHost WorkbenchHost @id("app_surface_workbench") {
+  role host
+  sourcePath app.frontier
+  sourceHash sha256:host
+  evidence previewProbe @id("evidence_preview_probe") kind browser-probe status passed path reports/preview.json
+  mount dashboard @id("app_mount_dashboard") kind region path /dashboard view view_dashboard target react evidence evidence_preview_probe
+  provides shell @id("app_provide_shell") surface view view view_dashboard mount app_mount_dashboard capability host.fetch|host.storage evidence evidence_preview_probe
+  requires fetch @id("app_require_fetch") capability host.fetch category network permission network proofGap app-host-capability-adapter-boundary evidence evidence_preview_probe
+  route dashboard @id("app_route_dashboard") path /dashboard view view_dashboard action action_refresh mount app_mount_dashboard evidence evidence_preview_probe
+  gate preview @id("app_gate_preview") kind browser-probe command "npm run preview:probe" required subject view_dashboard evidence evidence_preview_probe
+  gap pluginAbi @id("app_gap_plugin_abi") code plugin-abi-compatibility-boundary summary "Plugin ABI requires host/runtime compatibility proof."
+}
+
+plugin WeatherWidget @id("plugin_weather_widget") {
+  role plugin
+  host app_surface_workbench
+  sourcePath plugins/weather.frontier
+  sourceHash sha256:plugin
+  evidence sandboxProbe @id("evidence_sandbox_probe") kind sandbox-probe status passed path reports/sandbox.json
+  provides weatherPanel @id("plugin_provide_weather") surface view view view_weather_panel mount app_mount_dashboard capability host.fetch proofGap plugin-projection-runtime-boundary evidence evidence_sandbox_probe
+  requires fetch @id("plugin_require_fetch") capability host.fetch category network permission network adapter host_fetch_adapter proofGap plugin-capability-grant-boundary evidence evidence_sandbox_probe
+  gate sandbox @id("plugin_gate_sandbox") kind sandbox command "npm run sandbox:probe" required subject view_weather_panel evidence evidence_sandbox_probe
+  gap sandbox @id("plugin_gap_sandbox") code plugin-sandbox-safety-boundary summary "Sandbox safety requires runtime proof."
+}
+```
+
+The parser stores these blocks in `metadata.applicationSurfaces` and mirrors
+them under `metadata.universalAst.applicationSurfaces`. They are composition
+contracts, not compatibility proof: `runtimeEquivalenceClaim`,
+`abiCompatibilityClaim`, `projectionEquivalenceClaim`,
+`pluginCompatibilityClaim`, and `sandboxSafetyClaim` remain false until a
+higher layer supplies source-bound runtime, ABI, projection, and sandbox
+evidence.
+
 ## Authored target projection syntax
 
 `.frontier` target blocks can carry projection contracts next to their emit settings. These rows describe what a target lowering claims to represent, what it still needs proof for, and which losses or missing evidence must stay visible to merge and translation tooling.

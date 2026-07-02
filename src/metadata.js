@@ -1,4 +1,5 @@
 import { mergeDialectRegistryBlocks } from './dialect-registry.js';
+import { mergeApplicationSurfaceBlocks } from './application-surface.js';
 
 const PROOF_GROUPS = ['contracts', 'refinements', 'invariants', 'termination', 'temporal', 'obligations', 'artifacts', 'assumptions'];
 const PARADIGM_GROUPS = [
@@ -23,7 +24,7 @@ const PARADIGM_GROUPS = [
   'loweringRecords'
 ];
 
-export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], decisionGraphBlocks = [], dialectRegistryBlocks = [], interlinguaBlocks = [], resourceGraphBlocks = [], nativeSourceBlocks = [], packageManifestBlocks = [], canvasSurfaceBlocks = [] } = {}) {
+export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], decisionGraphBlocks = [], dialectRegistryBlocks = [], interlinguaBlocks = [], resourceGraphBlocks = [], nativeSourceBlocks = [], packageManifestBlocks = [], canvasSurfaceBlocks = [], applicationSurfaceBlocks = [] } = {}) {
   const metadata = {};
   if (proofBlocks.length) metadata.proof = mergeProofBlocks(proofBlocks);
   if (paradigmBlocks.length) metadata.paradigmSemantics = mergeParadigmBlocks(paradigmBlocks);
@@ -36,8 +37,9 @@ export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], op
   if (resourceGraphBlocks.length) metadata.semanticResourceGraphs = mergeResourceGraphBlocks(resourceGraphBlocks);
   if (packageManifestBlocks.length) metadata.packageManifests = mergePackageManifestBlocks(packageManifestBlocks);
   if (canvasSurfaceBlocks.length) metadata.canvasSurfaces = mergeCanvasSurfaceBlocks(canvasSurfaceBlocks);
-  if (nativeSourceBlocks.some((block) => block.sourceMaps.length || block.mergeCandidates.length || block.evidence.length) || packageManifestBlocks.length || canvasSurfaceBlocks.length) {
-    metadata.universalAst = mergeUniversalAstBlocks(nativeSourceBlocks, packageManifestBlocks, canvasSurfaceBlocks);
+  if (applicationSurfaceBlocks.length) metadata.applicationSurfaces = mergeApplicationSurfaceBlocks(applicationSurfaceBlocks);
+  if (nativeSourceBlocks.some((block) => block.sourceMaps.length || block.mergeCandidates.length || block.evidence.length) || packageManifestBlocks.length || canvasSurfaceBlocks.length || applicationSurfaceBlocks.length) {
+    metadata.universalAst = mergeUniversalAstBlocks(nativeSourceBlocks, packageManifestBlocks, canvasSurfaceBlocks, applicationSurfaceBlocks);
   }
   return Object.keys(metadata).length ? metadata : undefined;
 }
@@ -108,7 +110,7 @@ function mergeConstraintSpaceBlocks(blocks) {
   };
 }
 
-function mergeUniversalAstBlocks(blocks, packageManifestBlocks = [], canvasSurfaceBlocks = []) {
+function mergeUniversalAstBlocks(blocks, packageManifestBlocks = [], canvasSurfaceBlocks = [], applicationSurfaceBlocks = []) {
   return {
     id: blocks.length === 1 ? `universalAst:${blocks[0].node.id}` : 'universalAst:source',
     nativeSourceIds: blocks.map((block) => block.node.id),
@@ -118,12 +120,15 @@ function mergeUniversalAstBlocks(blocks, packageManifestBlocks = [], canvasSurfa
     losses: blocks.flatMap((block) => block.losses ?? []),
     packageManifests: packageManifestBlocks,
     canvasSurfaces: canvasSurfaceBlocks,
+    applicationSurfaces: applicationSurfaceBlocks,
     packageManifestIds: ids(packageManifestBlocks),
     canvasSurfaceIds: ids(canvasSurfaceBlocks),
+    applicationSurfaceIds: ids(applicationSurfaceBlocks),
     metadata: {
       authoredNativeSourceIds: blocks.map((block) => block.node.id),
       authoredPackageManifestIds: ids(packageManifestBlocks),
-      authoredCanvasSurfaceIds: ids(canvasSurfaceBlocks)
+      authoredCanvasSurfaceIds: ids(canvasSurfaceBlocks),
+      authoredApplicationSurfaceIds: ids(applicationSurfaceBlocks)
     }
   };
 }
