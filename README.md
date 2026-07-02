@@ -363,10 +363,17 @@ conversion TodoJavascriptToRust @id("conversion_todo_js_rust") {
   dialect nodeProcess @id("dialect_node_process") language javascript dialect node.runtime kind runtime target rust disposition unsupported readiness blocked loss loss_node_process_projection
   extern viteRoutes @id("extern_vite_routes") language javascript dialect vite.plugin.virtual-module externKind generatorArtifact target rust disposition runtime-required evidence evidence_vite_routes_manifest bindingSymbol virtual:routes
   constraint type publicApi @id("type_constraint_public_api") role source kind public-function symbol symbol:addTodo signatureHash sig_add_todo evidence artifact_todo_title_probe
+  constraint module-constraint todoModule @id("module_constraint_todo") role source kind module-boundary specifier ./todo exportedName addTodo packageName @app/todo packageCondition import resolutionKind node16 evidence artifact_todo_title_probe
+  constraint scope-binding todoLocal @id("scope_binding_todo") role source kind lexical-binding bindingId binding:todo referenceId ref:todo scopeId scope:handler resolvedBindingId binding:todo evidence artifact_todo_title_probe
+  constraint memory-model todoMemory @id("memory_model_todo") role source kind stable-reference resource TodoDb.todos memoryKind shared-memory memoryOrder acquire lockId lock:todo shared evidence artifact_todo_title_probe
+  constraint effect-constraint todoWrite @id("effect_constraint_todo_write") role source kind storage-write capability storage.write resource TodoDb.todos adapterRequired evidence artifact_todo_title_probe
+  constraint host-environment browserFetch @id("host_environment_fetch") role source kind browser-api capability fetch apiName fetch globalName window permission network adapterRequired evidence artifact_todo_title_probe
 }
 ```
 
 `sourceRuntime` and `targetRuntime` become runtime maps. `runtimeRequirement` rows become proof obligations for host/runtime capabilities, including authored `requiredSignals` denominators such as source hashes, target hashes, probe ids, runtime commands, telemetry hashes, and capability-specific trace hashes. `proofEvidence` and `evidence` attach evidence ids, but the compiler still requires bound evidence records before a proof obligation is satisfied. `dialect` and `extern` rows preserve dialect-specific constructs, projection readiness, loss/evidence ids, and binding metadata without requiring the authored Frontier file to drop down to raw JSON.
+
+`constraint` rows accept every universal conversion constraint family used by route admission, including hyphenated spellings such as `module-constraint`, `scope-binding`, `memory-model`, `effect-constraint`, `control-flow`, `borrow-scope`, `borrow-checker`, `host-environment`, `data-layout`, and `object-model`. The parser preserves family-specific fields such as module specifiers, package conditions, binding/reference ids, memory ordering, locks, capabilities, host permissions, ABI/layout hints, and effect adapters as authored evidence inputs. Record-level targets use explicit labels such as `effectTarget` so `role target` rows cannot be mistaken for an authored target field. These rows do not prove translation equivalence; they make the required proof surface explicit for downstream gates and admission records.
 
 ## Authored dialect registry syntax
 

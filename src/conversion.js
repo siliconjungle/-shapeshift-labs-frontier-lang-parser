@@ -1,42 +1,4 @@
-const FAMILIES = {
-  type: { field: 'typeConstraints', sourceKey: 'sourceTypes', targetKey: 'targetTypes' },
-  typeConstraint: { field: 'typeConstraints', sourceKey: 'sourceTypes', targetKey: 'targetTypes' },
-  resourceTransfer: { field: 'resourceTransfers', sourceKey: 'sourceGraphs', targetKey: 'targetGraphs', graph: true },
-  resourceTransferConstraint: { field: 'resourceTransfers', sourceKey: 'sourceGraphs', targetKey: 'targetGraphs', graph: true },
-  'resource-transfer': { field: 'resourceTransfers', sourceKey: 'sourceGraphs', targetKey: 'targetGraphs', graph: true },
-  ownership: { field: 'resourceTransfers', sourceKey: 'sourceGraphs', targetKey: 'targetGraphs', graph: true },
-  controlFlow: { field: 'controlFlowConstraints', sourceKey: 'sourceControlFlows', targetKey: 'targetControlFlows' },
-  controlFlowConstraint: { field: 'controlFlowConstraints', sourceKey: 'sourceControlFlows', targetKey: 'targetControlFlows' },
-  lifetime: { field: 'lifetimeConstraints', sourceKey: 'sourceLifetimeConstraints', targetKey: 'targetLifetimeConstraints' },
-  lifetimeConstraint: { field: 'lifetimeConstraints', sourceKey: 'sourceLifetimeConstraints', targetKey: 'targetLifetimeConstraints' },
-  borrowScope: { field: 'borrowScopeConstraints', sourceKey: 'sourceBorrowScopes', targetKey: 'targetBorrowScopes' },
-  borrowScopeConstraint: { field: 'borrowScopeConstraints', sourceKey: 'sourceBorrowScopes', targetKey: 'targetBorrowScopes' },
-  'borrow-scope': { field: 'borrowScopeConstraints', sourceKey: 'sourceBorrowScopes', targetKey: 'targetBorrowScopes' },
-  'borrow-scope-constraint': { field: 'borrowScopeConstraints', sourceKey: 'sourceBorrowScopes', targetKey: 'targetBorrowScopes' },
-  borrowChecker: { field: 'borrowCheckerConstraints', sourceKey: 'sourceBorrowScopes', targetKey: 'targetBorrowScopes' },
-  borrowCheckerConstraint: { field: 'borrowCheckerConstraints', sourceKey: 'sourceBorrowScopes', targetKey: 'targetBorrowScopes' },
-  'borrow-checker': { field: 'borrowCheckerConstraints', sourceKey: 'sourceBorrowScopes', targetKey: 'targetBorrowScopes' },
-  'borrow-checker-constraint': { field: 'borrowCheckerConstraints', sourceKey: 'sourceBorrowScopes', targetKey: 'targetBorrowScopes' },
-  callableBoundary: { field: 'callableBoundaryConstraints', sourceKey: 'sourceCallables', targetKey: 'targetCallables' },
-  adtPattern: { field: 'adtPatternConstraints', sourceKey: 'sourcePatterns', targetKey: 'targetPatterns' },
-  dataLayout: { field: 'dataLayoutConstraints', sourceKey: 'sourceLayouts', targetKey: 'targetLayouts' },
-  effect: { field: 'effectConstraints', sourceKey: 'sourceEffects', targetKey: 'targetEffects' },
-  concurrencyModel: { field: 'concurrencyModelConstraints', sourceKey: 'sourceConcurrencyModels', targetKey: 'targetConcurrencyModels' },
-  errorModel: { field: 'errorModelConstraints', sourceKey: 'sourceErrors', targetKey: 'targetErrors' },
-  evaluationModel: { field: 'evaluationModelConstraints', sourceKey: 'sourceEvaluations', targetKey: 'targetEvaluations' },
-  hostEnvironment: { field: 'hostEnvironmentConstraints', sourceKey: 'sourceHosts', targetKey: 'targetHosts' },
-  memoryModel: { field: 'memoryModelConstraints', sourceKey: 'sourceMemoryModels', targetKey: 'targetMemoryModels' },
-  metaprogramming: { field: 'metaprogrammingConstraints', sourceKey: 'sourceMetaprograms', targetKey: 'targetMetaprograms' },
-  module: { field: 'moduleConstraints', sourceKey: 'sourceModules', targetKey: 'targetModules' },
-  scopeBinding: { field: 'scopeBindingConstraints', sourceKey: 'sourceBindings', targetKey: 'targetBindings' },
-  numericSemantics: { field: 'numericSemanticsConstraints', sourceKey: 'sourceNumerics', targetKey: 'targetNumerics' },
-  textSemantics: { field: 'textSemanticsConstraints', sourceKey: 'sourceTexts', targetKey: 'targetTexts' },
-  collectionSemantics: { field: 'collectionSemanticsConstraints', sourceKey: 'sourceCollections', targetKey: 'targetCollections' },
-  serializationSemantics: { field: 'serializationSemanticsConstraints', sourceKey: 'sourceSerializations', targetKey: 'targetSerializations' },
-  dependencySemantics: { field: 'dependencySemanticsConstraints', sourceKey: 'sourceDependencies', targetKey: 'targetDependencies' },
-  objectModel: { field: 'objectModelConstraints', sourceKey: 'sourceObjects', targetKey: 'targetObjects' },
-  protocol: { field: 'protocolConstraints', sourceKey: 'sourceProtocols', targetKey: 'targetProtocols' }
-};
+import { FAMILIES, parseConstraintRecord } from './conversion-constraint-record.js';
 
 export function parseConversionBlock(block) {
   const name = nameFrom(block.header);
@@ -133,60 +95,11 @@ function addConstraint(plan, family, name, text) {
     metadata: { name, family, authoredConversionBlockId: plan.id }
   });
   const recordKey = role === 'target' ? config.targetKey : config.sourceKey;
-  entry[recordKey] = [config.graph ? resourceGraphFromRecord(record, entry) : record];
+  const recordValue = config.graph ? resourceGraphFromRecord(record, entry) : record;
+  for (const key of unique([recordKey, ...(role === 'target' ? config.extraTargetKeys ?? [] : config.extraSourceKeys ?? [])])) {
+    entry[key] = [recordValue];
+  }
   plan[config.field] = [...(plan[config.field] ?? []), entry];
-}
-
-function parseConstraintRecord(name, text, role) {
-  const kind = readInlineWord('kind', text) ?? readInlineWord('constraintKind', text);
-  return cleanRecord({
-    id: readInlineWord('recordId', text) ?? idFrom(text, `constraint_record_${name}`),
-    role,
-    kind,
-    name: readInlineWord('name', text) ?? name,
-    constraintKind: readInlineWord('constraintKind', text),
-    constraintKinds: readInlineList(text, 'constraint', 'constraints', 'constraintKind', 'constraintKinds') ?? (kind ? [kind] : undefined),
-    factKinds: readInlineList(text, 'fact', 'facts', 'factKind', 'factKinds'),
-    symbolId: readInlineWord('symbol', text) ?? readInlineWord('symbolId', text),
-    symbolName: readInlineWord('symbolName', text),
-    localName: readInlineWord('localName', text),
-    ownerId: readInlineWord('owner', text) ?? readInlineWord('ownerId', text),
-    ownerKind: readInlineWord('ownerKind', text),
-    mode: readInlineWord('mode', text) ?? readInlineWord('loanMode', text),
-    aliasKind: readInlineWord('aliasKind', text),
-    moveKind: readInlineWord('moveKind', text),
-    dropKind: readInlineWord('dropKind', text),
-    resourceKind: readInlineWord('resourceKind', text),
-    scopeKind: readInlineWord('scopeKind', text),
-    typeKind: readInlineWord('typeKind', text),
-    signatureHash: readInlineWord('signatureHash', text),
-    contractHash: readInlineWord('contractHash', text),
-    typeHash: readInlineWord('typeHash', text),
-    flowKind: readInlineWord('flowKind', text),
-    controlFlowKind: readInlineWord('controlFlowKind', text),
-    sourceControlFlowId: readInlineWord('sourceControlFlowId', text),
-    sourceId: readInlineWord('from', text) ?? readInlineWord('sourceId', text),
-    targetId: readInlineWord('to', text) ?? readInlineWord('targetId', text),
-    label: readInlineWord('label', text),
-    conditionHash: readInlineWord('conditionHash', text),
-    orderingKey: readInlineWord('orderingKey', text) ?? readInlineWord('orderKey', text),
-    lifetimeKind: readInlineWord('lifetimeKind', text),
-    lifetimeRegionId: readInlineWord('lifetimeRegion', text) ?? readInlineWord('lifetimeRegionId', text),
-    regionKind: readInlineWord('regionKind', text),
-    predicate: readInlineQuoted('predicate', text) ?? readInlineWord('predicate', text),
-    resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text),
-    sourcePath: readInlineWord('sourcePath', text) ?? readInlineWord('path', text),
-    sourceHash: readInlineWord('sourceHash', text),
-    evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
-    nullable: readInlineFlag('nullable', text),
-    optional: readInlineFlag('optional', text),
-    publicContract: readInlineFlag('publicContract', text),
-    async: readInlineFlag('async', text),
-    generator: readInlineFlag('generator', text),
-    exceptional: readInlineFlag('exceptional', text),
-    cancellable: readInlineFlag('cancellable', text),
-    metadata: { name }
-  });
 }
 
 function resourceGraphFromRecord(record, entry) {

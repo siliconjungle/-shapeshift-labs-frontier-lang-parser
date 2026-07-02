@@ -3,6 +3,7 @@ import { copyFile, mkdir, rm } from "node:fs/promises";
 await rm("dist", { recursive: true, force: true });
 await mkdir("dist", { recursive: true });
 await copyFile("src/constraint-space.js", "dist/constraint-space.js");
+await copyFile("src/conversion-constraint-record.js", "dist/conversion-constraint-record.js");
 await copyFile("src/conversion.js", "dist/conversion.js");
 await copyFile("src/decision-graph.js", "dist/decision-graph.js");
 await copyFile("src/dialect-registry.js", "dist/dialect-registry.js");
