@@ -97,6 +97,13 @@ conversion TodoJavascriptToRust @id("conversion_todo_js_rust") {
   constraint type rustApi @id("type_constraint_rust_api") role target kind public-function symbol symbol:addTodoRust signatureHash sig_add_todo evidence artifact_todo_title_probe
   constraint controlFlow saveFlow @id("control_flow_save") role source kind async-flow from action_add to effect_persist_todo evidence artifact_todo_title_probe async
   constraint lifetime todoBorrow @id("lifetime_todo_borrow") role source kind borrowed-region resource TodoDb.todos evidence artifact_todo_title_probe
+  constraint resourceTransfer todoResource @id("resource_transfer_todo") role source kind resource-identity resource TodoDb.todos owner symbol:todoStore constraint owner|shared-borrow|drop-order evidence artifact_todo_title_probe
+  constraint borrowScope todoScope @id("borrow_scope_todo") role source kind shared-borrow-compatible resource TodoDb.todos flowKind async lifetimeKind lexical evidence artifact_todo_title_probe
+  constraint borrowChecker todoChecker @id("borrow_checker_todo") role source kind borrow-checker-boundary resource TodoDb.todos constraint shared-borrow-compatible|drop-cleanup-order evidence artifact_todo_title_probe
+  constraint module todoModule @id("module_constraint_todo") role source kind module-boundary sourcePath src/todo.ts symbol module:todo publicContract evidence artifact_todo_title_probe
+  constraint scopeBinding todoLocal @id("scope_binding_todo") role source kind lexical-binding symbol symbol:todo localName todo from scope:handler to symbol:todo evidence artifact_todo_title_probe
+  constraint memoryModel todoMemory @id("memory_model_todo") role source kind stable-reference resource TodoDb.todos lifetimeKind lexical regionKind heap evidence artifact_todo_title_probe
+  constraint effect todoWrite @id("effect_constraint_todo_write") role source kind storage-write resource TodoDb.todos fact writes|deterministic evidence artifact_todo_title_probe
 }
 action addTodo @id("action_add") {
   input TodoInput
@@ -149,6 +156,14 @@ assert.equal(doc.metadata.universalConversionPlan.typeConstraints[0].sourceTypes
 assert.equal(doc.metadata.universalConversionPlan.typeConstraints[1].targetTypes[0].symbolId, 'symbol:addTodoRust');
 assert.equal(doc.metadata.universalConversionPlan.controlFlowConstraints[0].sourceControlFlows[0].async, true);
 assert.equal(doc.metadata.universalConversionPlan.lifetimeConstraints[0].sourceLifetimeConstraints[0].resourceId, 'TodoDb.todos');
+assert.equal(doc.metadata.universalConversionPlan.resourceTransfers[0].sourceGraphs[0].resources[0].id, 'TodoDb.todos');
+assert.equal(doc.metadata.universalConversionPlan.resourceTransfers[0].sourceGraphs[0].owners[0].ownerId, 'symbol:todoStore');
+assert.equal(doc.metadata.universalConversionPlan.borrowScopeConstraints[0].sourceBorrowScopes[0].constraintKinds[0], 'shared-borrow-compatible');
+assert.equal(doc.metadata.universalConversionPlan.borrowCheckerConstraints[0].sourceBorrowScopes[0].resourceId, 'TodoDb.todos');
+assert.equal(doc.metadata.universalConversionPlan.moduleConstraints[0].sourceModules[0].publicContract, true);
+assert.equal(doc.metadata.universalConversionPlan.scopeBindingConstraints[0].sourceBindings[0].localName, 'todo');
+assert.equal(doc.metadata.universalConversionPlan.memoryModelConstraints[0].sourceMemoryModels[0].lifetimeKind, 'lexical');
+assert.deepEqual(doc.metadata.universalConversionPlan.effectConstraints[0].sourceEffects[0].factKinds, ['writes', 'deterministic']);
 assert.equal(doc.nodes.state_todo.collections[0].merge.law, 'commutative');
 assert.equal(doc.nodes.view_todo_list.kind, 'view');
 assert.equal(doc.nodes.view_todo_list.reads[0], 'TodoDb.todos');

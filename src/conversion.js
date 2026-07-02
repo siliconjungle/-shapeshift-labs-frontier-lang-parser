@@ -1,10 +1,22 @@
 const FAMILIES = {
   type: { field: 'typeConstraints', sourceKey: 'sourceTypes', targetKey: 'targetTypes' },
   typeConstraint: { field: 'typeConstraints', sourceKey: 'sourceTypes', targetKey: 'targetTypes' },
+  resourceTransfer: { field: 'resourceTransfers', sourceKey: 'sourceGraphs', targetKey: 'targetGraphs', graph: true },
+  resourceTransferConstraint: { field: 'resourceTransfers', sourceKey: 'sourceGraphs', targetKey: 'targetGraphs', graph: true },
+  'resource-transfer': { field: 'resourceTransfers', sourceKey: 'sourceGraphs', targetKey: 'targetGraphs', graph: true },
+  ownership: { field: 'resourceTransfers', sourceKey: 'sourceGraphs', targetKey: 'targetGraphs', graph: true },
   controlFlow: { field: 'controlFlowConstraints', sourceKey: 'sourceControlFlows', targetKey: 'targetControlFlows' },
   controlFlowConstraint: { field: 'controlFlowConstraints', sourceKey: 'sourceControlFlows', targetKey: 'targetControlFlows' },
   lifetime: { field: 'lifetimeConstraints', sourceKey: 'sourceLifetimeConstraints', targetKey: 'targetLifetimeConstraints' },
   lifetimeConstraint: { field: 'lifetimeConstraints', sourceKey: 'sourceLifetimeConstraints', targetKey: 'targetLifetimeConstraints' },
+  borrowScope: { field: 'borrowScopeConstraints', sourceKey: 'sourceBorrowScopes', targetKey: 'targetBorrowScopes' },
+  borrowScopeConstraint: { field: 'borrowScopeConstraints', sourceKey: 'sourceBorrowScopes', targetKey: 'targetBorrowScopes' },
+  'borrow-scope': { field: 'borrowScopeConstraints', sourceKey: 'sourceBorrowScopes', targetKey: 'targetBorrowScopes' },
+  'borrow-scope-constraint': { field: 'borrowScopeConstraints', sourceKey: 'sourceBorrowScopes', targetKey: 'targetBorrowScopes' },
+  borrowChecker: { field: 'borrowCheckerConstraints', sourceKey: 'sourceBorrowScopes', targetKey: 'targetBorrowScopes' },
+  borrowCheckerConstraint: { field: 'borrowCheckerConstraints', sourceKey: 'sourceBorrowScopes', targetKey: 'targetBorrowScopes' },
+  'borrow-checker': { field: 'borrowCheckerConstraints', sourceKey: 'sourceBorrowScopes', targetKey: 'targetBorrowScopes' },
+  'borrow-checker-constraint': { field: 'borrowCheckerConstraints', sourceKey: 'sourceBorrowScopes', targetKey: 'targetBorrowScopes' },
   callableBoundary: { field: 'callableBoundaryConstraints', sourceKey: 'sourceCallables', targetKey: 'targetCallables' },
   adtPattern: { field: 'adtPatternConstraints', sourceKey: 'sourcePatterns', targetKey: 'targetPatterns' },
   dataLayout: { field: 'dataLayoutConstraints', sourceKey: 'sourceLayouts', targetKey: 'targetLayouts' },
@@ -58,7 +70,7 @@ function addConstraint(plan, family, name, text) {
     metadata: { name, family, authoredConversionBlockId: plan.id }
   });
   const recordKey = role === 'target' ? config.targetKey : config.sourceKey;
-  entry[recordKey] = [record];
+  entry[recordKey] = [config.graph ? resourceGraphFromRecord(record, entry) : record];
   plan[config.field] = [...(plan[config.field] ?? []), entry];
 }
 
@@ -75,17 +87,28 @@ function parseConstraintRecord(name, text, role) {
     symbolId: readInlineWord('symbol', text) ?? readInlineWord('symbolId', text),
     symbolName: readInlineWord('symbolName', text),
     localName: readInlineWord('localName', text),
+    ownerId: readInlineWord('owner', text) ?? readInlineWord('ownerId', text),
+    ownerKind: readInlineWord('ownerKind', text),
+    mode: readInlineWord('mode', text) ?? readInlineWord('loanMode', text),
+    aliasKind: readInlineWord('aliasKind', text),
+    moveKind: readInlineWord('moveKind', text),
+    dropKind: readInlineWord('dropKind', text),
+    resourceKind: readInlineWord('resourceKind', text),
+    scopeKind: readInlineWord('scopeKind', text),
     typeKind: readInlineWord('typeKind', text),
     signatureHash: readInlineWord('signatureHash', text),
     contractHash: readInlineWord('contractHash', text),
     typeHash: readInlineWord('typeHash', text),
     flowKind: readInlineWord('flowKind', text),
+    controlFlowKind: readInlineWord('controlFlowKind', text),
+    sourceControlFlowId: readInlineWord('sourceControlFlowId', text),
     sourceId: readInlineWord('from', text) ?? readInlineWord('sourceId', text),
     targetId: readInlineWord('to', text) ?? readInlineWord('targetId', text),
     label: readInlineWord('label', text),
     conditionHash: readInlineWord('conditionHash', text),
     orderingKey: readInlineWord('orderingKey', text) ?? readInlineWord('orderKey', text),
     lifetimeKind: readInlineWord('lifetimeKind', text),
+    lifetimeRegionId: readInlineWord('lifetimeRegion', text) ?? readInlineWord('lifetimeRegionId', text),
     regionKind: readInlineWord('regionKind', text),
     predicate: readInlineQuoted('predicate', text) ?? readInlineWord('predicate', text),
     resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text),
@@ -103,6 +126,94 @@ function parseConstraintRecord(name, text, role) {
   });
 }
 
+function resourceGraphFromRecord(record, entry) {
+  const tokens = lowerTokens(record);
+  const resourceId = record.resourceId ?? record.symbolId ?? `${record.id}_resource`;
+  const evidenceIds = record.evidenceIds ?? entry.evidenceIds;
+  return cleanRecord({
+    id: `${record.id}_resource_graph`,
+    sourceLanguage: entry.sourceLanguage,
+    target: entry.target,
+    sourcePath: record.sourcePath,
+    sourceHash: record.sourceHash,
+    evidenceIds,
+    resources: [{
+      id: resourceId,
+      resourceKind: record.resourceKind ?? record.kind ?? record.constraintKind,
+      sourcePath: record.sourcePath,
+      sourceHash: record.sourceHash,
+      evidenceIds,
+      metadata: { factKinds: record.factKinds, constraintKinds: record.constraintKinds }
+    }],
+    owners: needsOwner(tokens, record) ? [{
+      id: `${record.id}_owner`,
+      resourceId,
+      ownerId: record.ownerId ?? record.symbolId ?? `${resourceId}:owner`,
+      ownerKind: record.ownerKind ?? tokenKind(tokens, /owner|single-owner/) ?? 'owner',
+      evidenceIds
+    }] : undefined,
+    loans: needsLoan(tokens, record) ? [{
+      id: `${record.id}_loan`,
+      resourceId,
+      mode: record.mode ?? loanMode(tokens),
+      lifetimeRegionId: record.lifetimeRegionId,
+      evidenceIds
+    }] : undefined,
+    aliases: tokenMatches(tokens, /alias/) ? [{
+      id: `${record.id}_alias`,
+      resourceId,
+      aliasKind: record.aliasKind ?? tokenKind(tokens, /alias/) ?? 'alias',
+      evidenceIds
+    }] : undefined,
+    moves: tokenMatches(tokens, /move|transfer/) ? [{
+      id: `${record.id}_move`,
+      resourceId,
+      moveKind: record.moveKind ?? tokenKind(tokens, /move|transfer/) ?? 'move',
+      evidenceIds
+    }] : undefined,
+    drops: tokenMatches(tokens, /drop/) ? [{
+      id: `${record.id}_drop`,
+      resourceId,
+      dropKind: record.dropKind ?? tokenKind(tokens, /drop/) ?? 'drop',
+      evidenceIds
+    }] : undefined,
+    lifetimeRegions: record.lifetimeKind || record.lifetimeRegionId || tokenMatches(tokens, /lifetime/) ? [{
+      id: record.lifetimeRegionId ?? `${record.id}_lifetime`,
+      resourceId,
+      lifetimeKind: record.lifetimeKind ?? tokenKind(tokens, /lifetime/) ?? record.regionKind,
+      evidenceIds
+    }] : undefined,
+    borrowScopes: needsLoan(tokens, record) || record.scopeKind ? [{
+      id: `${record.id}_borrow_scope`,
+      resourceId,
+      scopeKind: record.scopeKind ?? record.kind,
+      lifetimeRegionId: record.lifetimeRegionId,
+      constraintKinds: record.constraintKinds,
+      evidenceIds
+    }] : undefined,
+    unsafeBoundaries: tokenMatches(tokens, /unsafe|raw/) ? [{
+      id: `${record.id}_unsafe`,
+      resourceId,
+      kind: tokenKind(tokens, /unsafe|raw/) ?? 'unsafe-boundary',
+      evidenceIds
+    }] : undefined
+  });
+}
+
+function lowerTokens(record) {
+  return unique([record.kind, record.constraintKind, record.scopeKind, record.resourceKind, record.ownerKind, record.mode, record.aliasKind, record.moveKind, record.dropKind, record.lifetimeKind, record.regionKind, record.flowKind, record.controlFlowKind, ...(record.constraintKinds ?? []), ...(record.factKinds ?? [])].filter(Boolean).map((value) => String(value).toLowerCase()));
+}
+function needsOwner(tokens, record) { return record.ownerId || record.ownerKind || tokenMatches(tokens, /owner|single-owner/); }
+function needsLoan(tokens, record) { return record.mode || tokenMatches(tokens, /borrow|loan|raw/); }
+function loanMode(tokens) {
+  if (tokens.includes('shared-borrow') || tokens.includes('shared')) return 'shared';
+  if (tokens.includes('exclusive-borrow') || tokens.includes('mutable') || tokens.includes('exclusive')) return 'exclusive';
+  if (tokens.includes('raw-access-boundary') || tokens.includes('raw')) return 'raw';
+  if (tokens.includes('move')) return 'move';
+  return 'unknown';
+}
+function tokenMatches(tokens, pattern) { return tokens.some((token) => pattern.test(token)); }
+function tokenKind(tokens, pattern) { return tokens.find((token) => pattern.test(token)); }
 function idFrom(text, fallback) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(text)?.[1] ?? fallback; }
 function nameFrom(header) { return /^([A-Za-z_$][\w$]*)/.exec(header)?.[1] ?? 'Conversion'; }
 function readInlineWord(label, text) { return new RegExp('(?:^|\\s)' + label + '\\s+([^\\s,]+)').exec(text)?.[1]?.trim(); }
