@@ -40,16 +40,29 @@ assert.equal(doc.metadata.applicationSurfaces.summary.routeCount, 1);
 assert.equal(doc.metadata.applicationSurfaces.summary.eventCount, 1);
 assert.equal(doc.metadata.applicationSurfaces.summary.assetCount, 1);
 assert.equal(doc.metadata.applicationSurfaces.summary.gateCount, 2);
+assert.equal(doc.metadata.applicationSurfaces.claims.autoMergeClaim, false);
+assert.equal(doc.metadata.applicationSurfaces.claims.semanticEquivalenceClaim, false);
+assert.equal(doc.metadata.applicationSurfaces.claims.runtimeEquivalenceClaim, false);
+assert.equal(doc.metadata.applicationSurfaces.claims.abiCompatibilityClaim, false);
+assert.equal(doc.metadata.applicationSurfaces.claims.projectionEquivalenceClaim, false);
 assert.equal(doc.metadata.applicationSurfaces.claims.pluginCompatibilityClaim, false);
 assert.equal(doc.metadata.applicationSurfaces.claims.sandboxSafetyClaim, false);
+assert.equal(doc.metadata.applicationSurfaces.evidenceIds.includes('evidence_preview_probe'), true);
+assert.equal(doc.metadata.applicationSurfaces.evidenceIds.includes('evidence_sandbox_probe'), true);
 assert.equal(doc.metadata.applicationSurfaces.proofGapCodes.includes('plugin-sandbox-safety-boundary'), true);
 
 const host = doc.metadata.applicationSurfaces.surfaces.find((surface) => surface.id === 'app_surface_workbench');
 assert.equal(host.kind, 'frontier.lang.applicationSurface');
 assert.equal(host.surfaceKind, 'host');
 assert.equal(host.role, 'host');
+assert.equal(host.claims.autoMergeClaim, false);
+assert.equal(host.claims.semanticEquivalenceClaim, false);
+assert.equal(host.claims.runtimeEquivalenceClaim, false);
 assert.equal(host.claims.abiCompatibilityClaim, false);
 assert.equal(host.records.find((record) => record.id === 'app_mount_dashboard').path, '/dashboard');
+assert.equal(host.records.find((record) => record.id === 'app_mount_dashboard').sourcePath, 'app.frontier');
+assert.equal(host.records.find((record) => record.id === 'app_route_dashboard').sourcePath, 'app.frontier');
+assert.equal(host.records.find((record) => record.id === 'app_asset_logo').sourcePath, 'app.frontier');
 assert.deepEqual(host.records.find((record) => record.id === 'app_provide_shell').capabilityIds, ['host.fetch', 'host.storage']);
 assert.equal(host.records.find((record) => record.id === 'app_gate_preview').command, 'npm run preview:probe');
 
@@ -57,6 +70,9 @@ const plugin = doc.metadata.applicationSurfaces.surfaces.find((surface) => surfa
 assert.equal(plugin.surfaceKind, 'plugin');
 assert.equal(plugin.hostId, 'app_surface_workbench');
 assert.equal(plugin.claims.runtimeEquivalenceClaim, false);
+assert.equal(plugin.claims.projectionEquivalenceClaim, false);
+assert.equal(plugin.claims.pluginCompatibilityClaim, false);
+assert.equal(plugin.claims.sandboxSafetyClaim, false);
 assert.equal(plugin.records.find((record) => record.id === 'plugin_require_fetch').adapterId, 'host_fetch_adapter');
 assert.equal(plugin.records.find((record) => record.id === 'plugin_provide_weather').proofGaps[0].projectionEquivalenceClaim, false);
 

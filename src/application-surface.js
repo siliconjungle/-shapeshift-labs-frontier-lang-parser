@@ -57,6 +57,11 @@ export function parseApplicationSurfaceBlock(block) {
 
 export function mergeApplicationSurfaceBlocks(blocks) {
   const records = blocks.flatMap((block) => block.records ?? []);
+  const evidenceIds = [
+    ...blocks.flatMap((block) => ids(block.evidence)),
+    ...records.flatMap((record) => record.evidenceIds ?? []),
+    ...records.flatMap((record) => record.proofEvidenceIds ?? [])
+  ];
   return {
     id: blocks.length === 1 ? blocks[0].id : 'applicationSurfaces:source',
     surfaces: blocks,
@@ -69,7 +74,7 @@ export function mergeApplicationSurfaceBlocks(blocks) {
     eventIds: idsByRecordKind(records, 'event'),
     assetIds: idsByRecordKind(records, 'asset'),
     gateIds: idsByRecordKind(records, 'gate'),
-    evidenceIds: blocks.flatMap((block) => ids(block.evidence)),
+    evidenceIds: [...new Set(evidenceIds.filter(Boolean))],
     proofGapCodes: [...new Set(blocks.flatMap((block) => (block.proofGaps ?? []).map((gap) => gap.code).filter(Boolean)))],
     summary: {
       surfaceCount: blocks.length,
@@ -100,7 +105,7 @@ function applicationRecord(kind, name, text, context) {
     surfaceName: context.surfaceName,
     role: context.role,
     identityKey: readInlineWord('identity', text) ?? readInlineWord('identityKey', text) ?? `${kind}:${context.role}:${recordName}`,
-    sourcePath: readInlineWord('sourcePath', text) ?? readInlineWord('path', text) ?? context.sourcePath,
+    sourcePath: readInlineWord('sourcePath', text) ?? context.sourcePath,
     sourceHash: readInlineWord('sourceHash', text) ?? context.sourceHash,
     sourceSpan: parseSpan(readInlineWord('sourceSpan', text)),
     evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),

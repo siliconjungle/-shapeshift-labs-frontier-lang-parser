@@ -347,10 +347,10 @@ plugin WeatherWidget @id("plugin_weather_widget") {
 The parser stores these blocks in `metadata.applicationSurfaces` and mirrors
 them under `metadata.universalAst.applicationSurfaces`. They are composition
 contracts, not compatibility proof: `runtimeEquivalenceClaim`,
-`abiCompatibilityClaim`, `projectionEquivalenceClaim`,
-`pluginCompatibilityClaim`, and `sandboxSafetyClaim` remain false until a
-higher layer supplies source-bound runtime, ABI, projection, and sandbox
-evidence.
+`autoMergeClaim`, `semanticEquivalenceClaim`, `abiCompatibilityClaim`,
+`projectionEquivalenceClaim`, `pluginCompatibilityClaim`, and
+`sandboxSafetyClaim` remain false until a higher layer supplies source-bound
+runtime, ABI, projection, sandbox, and admission evidence.
 
 ## Authored target projection syntax
 
