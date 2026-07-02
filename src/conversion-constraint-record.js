@@ -47,14 +47,75 @@ const WORD_FIELDS = [
   ['dropKind'], ['resourceKind'], ['scopeKind'], ['typeKind'], ['signatureHash'], ['contractHash'], ['typeHash'], ['flowKind'],
   ['controlFlowKind'], ['sourceControlFlowId'], ['sourceId', 'from', 'sourceId'], ['targetId', 'to', 'targetId'], ['label'],
   ['conditionHash'], ['orderingKey', 'orderingKey', 'orderKey'], ['lifetimeKind'], ['lifetimeRegionId', 'lifetimeRegion', 'lifetimeRegionId'],
-  ['regionKind'], ['resourceId', 'resource', 'resourceId'], ['sourcePath', 'sourcePath', 'path'], ['sourceHash'], ['target', 'effectTarget', 'targetResource']
+  ['regionKind'], ['resourceId', 'resource', 'resourceId'],
+  ['functionName'], ['methodName'], ['callableName'], ['callableKind'], ['callSignatureHash'],
+  ['receiverKind', 'receiverKind', 'receiver'], ['thisBinding'], ['selfBinding'], ['returnKind', 'returnKind', 'returnType'],
+  ['asyncKind', 'asyncKind', 'asyncMode'], ['generatorKind', 'generatorKind', 'yieldKind'], ['callbackKind'],
+  ['closureCapture', 'closureCapture', 'captureKind'], ['overloadSet', 'overloadSet', 'overloads'],
+  ['dispatchKind', 'dispatchKind', 'dispatchMode'], ['constructorKind'], ['abiKind'], ['ffiBoundary', 'ffiBoundary', 'foreignFunction'],
+  ['exceptionModel'], ['adtKind'], ['patternKind', 'patternKind', 'matchKind', 'caseKind'], ['typeName'], ['enumName'], ['unionName'],
+  ['symbolKind'], ['relationKind'], ['representationKind'], ['typeId', 'typeId', 'nodeId'], ['nodeId'], ['structId'], ['unionId'],
+  ['enumId'], ['fieldId'], ['bitfieldId'], ['endianness', 'endianness', 'endian'], ['repr', 'repr', 'reprAttribute'],
+  ['numericKind', 'numericKind', 'numberKind'], ['numberKind'], ['numericTypeName'], ['signedness'], ['overflowMode', 'overflowMode', 'overflowBehavior'],
+  ['divisionMode', 'divisionMode', 'integerDivisionMode'], ['moduloMode', 'moduloMode', 'remainderMode'], ['floatPrecision'], ['roundingMode'],
+  ['separatorPolicy'], ['coercionKind', 'coercionKind', 'conversionKind'], ['conversionKind'], ['literalKind'],
+  ['textKind', 'textKind', 'stringKind'], ['stringKind'], ['stringTypeName'], ['encoding', 'encoding', 'charset', 'codepage'],
+  ['charset'], ['codepage'], ['codeUnit', 'codeUnit', 'codeUnitWidth'], ['indexingUnit', 'indexingUnit', 'indexUnit'],
+  ['normalizationForm', 'normalizationForm', 'normalization'], ['locale', 'locale', 'localePolicy'], ['collation', 'collation', 'collationPolicy'],
+  ['caseMapping', 'caseMapping', 'caseFolding'], ['regexEngine', 'regexEngine', 'regexFlavor'], ['escapeMode', 'escapeMode', 'escaping'],
+  ['interpolationMode', 'interpolationMode', 'interpolation'], ['termination', 'termination', 'nullTermination'], ['boundaryKind', 'boundaryKind', 'byteBoundary'],
+  ['collectionKind', 'collectionKind', 'containerKind'], ['containerKind'], ['collectionTypeName'], ['elementKind', 'elementKind', 'elementType'],
+  ['keyKind', 'keyKind', 'keyType'], ['valueKind', 'valueKind', 'valueType'], ['orderKind'], ['iterationOrder', 'iterationOrder', 'traversalOrder'],
+  ['duplicatePolicy', 'duplicatePolicy', 'duplicates'], ['equality', 'equality', 'equalitySemantics'], ['hash', 'hash', 'hashSemantics'],
+  ['comparator', 'comparator', 'comparison'], ['boundsBehavior', 'boundsBehavior', 'bounds'], ['lengthSemantics', 'lengthSemantics', 'sizeSemantics'],
+  ['sparseSemantics', 'sparseSemantics', 'holes'], ['mutability', 'mutability', 'collectionMutability', 'stringMutability'],
+  ['persistence', 'persistence', 'persistent'], ['iteratorInvalidation', 'iteratorInvalidation', 'invalidation'],
+  ['traversal', 'traversal', 'laziness'], ['capacityGrowth', 'capacityGrowth', 'growth'], ['concurrency', 'concurrency', 'threadSafety'],
+  ['format', 'format', 'wireFormat', 'serializationFormat'], ['wireFormat'], ['serializationFormat'], ['codec', 'codec', 'runtimeCodec'],
+  ['schemaName', 'schemaName', 'schemaId', 'schema'], ['schemaId'], ['fieldNaming', 'fieldNaming', 'naming'], ['fieldOrder', 'fieldOrder', 'order'],
+  ['omissionPolicy'], ['defaultValueSemantics'], ['nullSemantics', 'nullSemantics', 'nullability'], ['unknownFieldPolicy'],
+  ['enumEncoding', 'enumEncoding', 'tagEncoding'], ['varint', 'varint', 'varintEncoding'], ['schemaVersion', 'schemaVersion', 'version'],
+  ['compatibility'], ['canonicalization'], ['precision', 'precision', 'precisionLoss'], ['roundtrip', 'roundtrip', 'roundtripStability'],
+  ['validation'], ['securityEscaping'], ['packageManager', 'packageManager', 'manager'], ['manager'], ['manifestSchema', 'manifestSchema', 'manifestKind'],
+  ['manifestKind'], ['versionRange', 'versionRange', 'range'], ['resolvedVersion', 'resolvedVersion', 'version'], ['lockfile', 'lockfile', 'lockfilePath'],
+  ['integrity', 'integrity', 'lockfileIntegrity'], ['dependencyClass', 'dependencyClass', 'dependencyType'], ['dependencyType'],
+  ['workspace', 'workspace', 'workspaceBoundary'], ['registry', 'registry', 'registrySource'], ['sourceUrl'], ['nativeAbi', 'nativeAbi', 'abi'],
+  ['buildTool', 'buildTool', 'builder'], ['packageManagerVersion', 'packageManagerVersion', 'managerVersion'],
+  ['offlineCache', 'offlineCache', 'cachePolicy'], ['dedupeHoist', 'dedupeHoist', 'hoistPolicy'], ['provenance', 'provenance', 'sourceProvenance'],
+  ['trust', 'trust', 'supplyChainTrust'], ['concurrencyKind'], ['constructId', 'constructId', 'taskId', 'threadId', 'actorId', 'channelId'],
+  ['taskId'], ['threadId'], ['executor', 'executor', 'queue', 'runtime'], ['executorId'], ['isolationKey'], ['cancellationKey', 'cancellationKey', 'signalId', 'contextId'],
+  ['signalId'], ['contextId'], ['errorKind'], ['errorType', 'errorType', 'exceptionType', 'resultType'], ['exceptionType'], ['resultType'],
+  ['boundaryId', 'boundaryId', 'catchId', 'handlerId'], ['catchId'], ['handlerId'], ['evaluationKind', 'evaluationKind', 'expressionKind'],
+  ['expressionKind'], ['expressionId', 'expressionId', 'nodeId'], ['operator'], ['evaluationOrder', 'evaluationOrder', 'order'],
+  ['expansionKind', 'expansionKind', 'macroKind', 'templateKind', 'decoratorKind', 'generatorKind'], ['macroKind'], ['templateKind'],
+  ['decoratorKind'], ['expansionId'], ['generatorId'], ['generatedSourcePath'], ['expandedHash', 'expandedHash', 'generatedHash'],
+  ['generatedHash'], ['classId'], ['classKind'], ['prototypeId'], ['mixinId'], ['constructorId'], ['inheritanceKind'], ['referenceSemantics'],
+  ['valueSemantics'], ['protocolKind'], ['protocolName'], ['traitName'], ['interfaceName'], ['subjectName', 'subjectName', 'receiverName', 'implementedFor'],
+  ['implementedFor'], ['sourcePath', 'sourcePath', 'path'], ['sourceHash'], ['target', 'effectTarget', 'targetResource']
 ];
 const LIST_FIELDS = [
   ['factKinds', 'fact', 'facts', 'factKind', 'factKinds'], ['importAttributes', 'importAttribute', 'importAttributes', 'assertion', 'assertions'],
-  ['reads', 'read', 'reads'], ['writes', 'write', 'writes'], ['evidenceIds', 'evidence', 'evidenceIds']
+  ['reads', 'read', 'reads'], ['writes', 'write', 'writes'],
+  ['requiredParameters'], ['optionalParameters'], ['parameterOrder', 'parameterOrder', 'orderedParameters'], ['defaultParameters', 'defaultParameters', 'defaults'],
+  ['namedArguments', 'namedArguments', 'keywordArguments'], ['effects'], ['variantNames', 'variantNames', 'variants', 'caseNames', 'cases', 'members'],
+  ['constructorNames', 'constructorNames', 'constructors', 'caseConstructors'], ['payloadFieldNames', 'payloadFieldNames', 'payloadFields', 'fields', 'tupleFields', 'recordFields'],
+  ['tagFieldNames', 'tagFieldNames', 'tagFields', 'discriminatorFields', 'discriminants'], ['matchArmNames', 'matchArmNames', 'matchArms', 'arms', 'switchCases'],
+  ['guardKinds', 'guardKinds', 'guards', 'whereClauses', 'conditions'], ['destructuringKinds', 'destructuringKinds', 'destructuring', 'bindingPatterns', 'deconstruction'],
+  ['exhaustivenessKinds', 'exhaustivenessKinds', 'exhaustiveness', 'coverageKinds'], ['fallbackKinds', 'fallbackKinds', 'fallbacks', 'defaultCases', 'wildcards'],
+  ['genericParameterNames', 'genericParameterNames', 'typeParameters', 'genericParameters'], ['specialValues', 'specialValues', 'floatSpecialValues'],
+  ['coercionKinds', 'coercionKinds', 'coercions'], ['literalKinds'], ['boundaryKinds', 'boundaryKinds', 'boundaries'],
+  ['omittedFields', 'omittedFields', 'unknownFields'], ['defaultValues'], ['peerDependencies', 'peerDependencies', 'peers'], ['optionalDependencies'],
+  ['devDependencies'], ['features', 'features', 'extras', 'flags'], ['lifecycleScripts', 'lifecycleScripts', 'scripts'],
+  ['requirementNames', 'requirementNames', 'requirements', 'methods', 'members'], ['associatedTypeNames', 'associatedTypeNames', 'associatedTypes'],
+  ['boundNames', 'boundNames', 'bounds', 'traitBounds', 'protocolBounds', 'whereBounds'], ['implementationKinds', 'implementationKinds', 'implKinds', 'implementations'],
+  ['dispatchKinds', 'dispatchKinds', 'dispatchModes'], ['coherenceKinds', 'coherenceKinds', 'coherenceRules'], ['evidenceIds', 'evidence', 'evidenceIds']
 ];
-const NUMBER_FIELDS = [['arity'], ['size'], ['alignment']];
-const FLAG_FIELDS = ['nullable', 'optional', 'publicContract', 'closure', 'captured', 'writeExpr', 'mutable', 'shadowed', 'hoisted', 'typeOnly', 'isTypeReference', 'isValueReference', 'shared', 'volatile', 'atomic', 'adapterRequired', 'async', 'generator', 'exceptional', 'cancellable'];
+const NUMBER_FIELDS = [
+  ['arity'], ['size'], ['alignment'], ['parameterCount'], ['requiredParameterCount'], ['optionalParameterCount'],
+  ['sizeBytes'], ['alignmentBytes'], ['offsetBytes'], ['pointerWidth'], ['integerWidth'], ['bitWidth'], ['width'],
+  ['codeUnitWidth'], ['indexBase']
+];
+const FLAG_FIELDS = ['nullable', 'optional', 'publicContract', 'closure', 'captured', 'writeExpr', 'mutable', 'shadowed', 'hoisted', 'typeOnly', 'isTypeReference', 'isValueReference', 'shared', 'volatile', 'atomic', 'adapterRequired', 'async', 'generator', 'exceptional', 'cancellable', 'variadic', 'signed', 'nan', 'infinity', 'deterministic', 'streaming', 'framing', 'copyOnWrite', 'multipleInheritance', 'reflection', 'staticDispatch', 'virtual', 'spawn', 'await', 'structured', 'reentrant', 'cancelable'];
 
 export const FAMILIES = Object.freeze(Object.fromEntries(FAMILY_ROWS.flatMap(([name, field, sourceKey, targetKey, aliases = [], extra = {}]) => {
   const config = { field, sourceKey, targetKey, ...extra };
