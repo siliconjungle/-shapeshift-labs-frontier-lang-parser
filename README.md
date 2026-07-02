@@ -220,6 +220,29 @@ npm install @shapeshift-labs/frontier-lang-parser
 
 The parser projects text into `@shapeshift-labs/frontier-lang-kernel` documents. The syntax is intentionally small and experimental.
 
+## Authored decision graph syntax
+
+`.frontier` files can carry semantic merge admission evidence directly in `decisionGraph` or `admissionGraph` blocks. These blocks preserve the causal review shape around a candidate edit: semantic changes, gates, evidence records, patch events, admission decisions, merge decisions, graph nodes, and graph edges.
+
+```frontier
+decisionGraph TodoAdmission @id("decision_graph_todo") {
+  graphKind semantic-merge-admission
+  scope mod_todo
+  root merge_decision_title
+  subject action_add,field_title
+  node change @id("decision_node_change") kind semantic-change record semantic_change_title label "Title change" status passed
+  edge changeToGate @id("decision_edge_change_gate") from semantic_change_title to gate_typecheck kind gates status passed
+  change title @id("semantic_change_title") kind source-edit language typescript sourcePath src/todo.ts semanticNode field_title semanticSymbol symbol:Todo.title evidence evidence_typecheck
+  gate typecheck @id("gate_typecheck") kind typecheck status passed required command "npm run typecheck" semanticChange semantic_change_title evidence evidence_typecheck
+  evidence typecheck @id("evidence_typecheck") kind test status passed path reports/typecheck.json gate gate_typecheck semanticChange semantic_change_title
+  patchEvent workerPatch @id("patch_event_worker") patch patch_worker status passed baseHash h_base targetHash h_worker semanticChange semantic_change_title gate gate_typecheck evidence evidence_typecheck deterministic
+  admission titleSafe @id("admission_title_safe") candidate candidate_todo_title semanticChange semantic_change_title classification safe decision merge autoMergeable gate gate_typecheck evidence evidence_typecheck
+  merge titleMerge @id("merge_decision_title") candidate candidate_todo_title semanticChange semantic_change_title admissionDecision admission_title_safe decision merge autoMergeable gate gate_typecheck evidence evidence_typecheck
+}
+```
+
+The parser projects these rows into `metadata.decisionGraph`. Decision graph records are normalized by the kernel helpers, so authored files can describe why a merge is admissible without embedding raw JSON. This is intentionally evidence-first: a safe merge can be represented as a graph of changes, gates, evidence, and decisions, while missing proof can remain explicit as blocked or review-required records.
+
 ## Authored conversion syntax
 
 `.frontier` files can carry universal conversion evidence directly in `conversion` or `universalConversionPlan` blocks. The parser projects these records into `metadata.universalConversionPlan` for the compiler facade and downstream semantic merge tooling.

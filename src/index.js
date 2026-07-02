@@ -1,6 +1,7 @@
 import { actionNode, capabilityNode, createDocument, effectNode, entityNode, externNode, latticeNode, migrationNode, stateNode, targetNode, typeNode } from '@shapeshift-labs/frontier-lang-kernel';
 import { parseConstraintSpaceBlock } from './constraint-space.js';
 import { parseConversionBlock } from './conversion.js';
+import { parseDecisionGraphBlock } from './decision-graph.js';
 import { createParsedMetadata } from './metadata.js';
 import { parseSemanticOperationsBlock } from './operations.js';
 import { parseParadigmBlock } from './paradigm.js';
@@ -15,6 +16,7 @@ export function parseFrontierSource(source, options = {}) {
   const operationBlocks = [];
   const conversionBlocks = [];
   const constraintSpaceBlocks = [];
+  const decisionGraphBlocks = [];
   const nativeSourceBlocks = [];
   const documentId = options.id ?? readId(source) ?? 'mod_frontier';
   const documentName = options.name ?? readName(source) ?? 'FrontierModule';
@@ -40,8 +42,9 @@ export function parseFrontierSource(source, options = {}) {
     if (block.kind === 'operations' || block.kind === 'semanticOperations') operationBlocks.push(parseSemanticOperationsBlock(block));
     if (block.kind === 'conversion' || block.kind === 'universalConversionPlan') conversionBlocks.push(parseConversionBlock(block));
     if (block.kind === 'constraintSpace' || block.kind === 'possibilitySpace') constraintSpaceBlocks.push(parseConstraintSpaceBlock(block));
+    if (block.kind === 'decisionGraph' || block.kind === 'admissionGraph') decisionGraphBlocks.push(parseDecisionGraphBlock(block));
   }
-  const metadata = createParsedMetadata({ proofBlocks, paradigmBlocks, operationBlocks, conversionBlocks, constraintSpaceBlocks, nativeSourceBlocks });
+  const metadata = createParsedMetadata({ proofBlocks, paradigmBlocks, operationBlocks, conversionBlocks, constraintSpaceBlocks, decisionGraphBlocks, nativeSourceBlocks });
   return createDocument({ id: documentId, name: documentName, nodes, ...(metadata ? { metadata } : {}) });
 }
 
@@ -51,7 +54,7 @@ function readName(source) { return /module\s+([A-Za-z_$][\w$]*)/.exec(source)?.[
 function readId(source) { return /module\s+[A-Za-z_$][\w$]*\s+@id\(\s*["']([^"']+)["']\s*\)/.exec(source)?.[1]; }
 function readBlocks(source) {
   const blocks = [];
-  const header = /\b(entity|state|action|view|migration|capability|effect|type|extern|lattice|nativeSource|target|proof|paradigm|paradigmSemantics|operations|semanticOperations|conversion|universalConversionPlan|constraintSpace|possibilitySpace)\s+([^{}]+)\{/g;
+  const header = /\b(entity|state|action|view|migration|capability|effect|type|extern|lattice|nativeSource|target|proof|paradigm|paradigmSemantics|operations|semanticOperations|conversion|universalConversionPlan|constraintSpace|possibilitySpace|decisionGraph|admissionGraph)\s+([^{}]+)\{/g;
   let match;
   while ((match = header.exec(source))) {
     let depth = 1; let index = header.lastIndex;

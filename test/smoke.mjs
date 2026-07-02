@@ -94,6 +94,22 @@ operations TodoOperations @id("semantic_ops_todo") {
   operation addTodoWrite @id("op_add_todo_write") op effect language frontier semanticNode action_add semanticSymbol symbol:addTodo write TodoDb.todos effect effect_persist_todo ownerKey action:addTodo conflictKey state:TodoDb.todos readiness ready evidence artifact_todo_title_probe summary "Add todo writes the todos collection."
   operation titleProjection @id("op_title_projection") op projection language typescript semanticNode ent_todo semanticSymbol symbol:Todo nativeAstNode ts_node_title readiness needs-review evidence contract_todo_title
 }
+decisionGraph TodoAdmission @id("decision_graph_todo") {
+  graphKind semantic-merge-admission
+  scope mod_todo
+  root merge_decision_title
+  status open
+  subject action_add,field_title
+  node change @id("decision_node_change") kind semantic-change record semantic_change_title label "Title change" status passed
+  node gate @id("decision_node_gate") kind gate record gate_typecheck label "Type gate" status passed
+  edge changeToGate @id("decision_edge_change_gate") from semantic_change_title to gate_typecheck kind gates status passed
+  change title @id("semantic_change_title") kind source-edit language typescript sourcePath src/todo.ts baseHash h_base targetHash h_worker semanticNode field_title semanticSymbol symbol:Todo.title region src/todo.ts#Todo.title evidence evidence_typecheck risk low summary "Worker changes Todo title projection."
+  gate typecheck @id("gate_typecheck") kind typecheck status passed required command "npm run typecheck" subject field_title semanticChange semantic_change_title evidence evidence_typecheck
+  evidence typecheck @id("evidence_typecheck") kind test status passed path reports/typecheck.json gate gate_typecheck semanticChange semantic_change_title summary "Type gate passed."
+  patchEvent workerPatch @id("patch_event_worker") patch patch_worker status passed actor agent:worker baseHash h_base targetHash h_worker semanticChange semantic_change_title gate gate_typecheck evidence evidence_typecheck deterministic
+  admission titleSafe @id("admission_title_safe") candidate candidate_todo_title semanticChange semantic_change_title classification safe decision merge autoMergeable conflictKey symbol:Todo.title gate gate_typecheck evidence evidence_typecheck patchEvent patch_event_worker reason independent-symbol
+  merge titleMerge @id("merge_decision_title") candidate candidate_todo_title semanticChange semantic_change_title admissionDecision admission_title_safe decision merge autoMergeable baseHash h_base targetHash h_worker gate gate_typecheck evidence evidence_typecheck patchEvent patch_event_worker reason gates-passed
+}
 conversion TodoJavascriptToRust @id("conversion_todo_js_rust") {
   sourceLanguage javascript
   target rust
@@ -177,6 +193,24 @@ assert.equal(doc.metadata.semanticOperations.id, 'semantic_ops_todo');
 assert.equal(doc.metadata.semanticOperations.operations[0].operationKind, 'effect');
 assert.equal(doc.metadata.semanticOperations.operations[0].writes[0], 'TodoDb.todos');
 assert.equal(doc.metadata.semanticOperations.operations[1].nativeAstNodeIds[0], 'ts_node_title');
+assert.equal(doc.metadata.decisionGraph.id, 'decision_graph_todo');
+assert.equal(doc.metadata.decisionGraph.summary.graphCount, 1);
+assert.equal(doc.metadata.decisionGraph.summary.semanticChangeCount, 1);
+assert.equal(doc.metadata.decisionGraph.summary.gateCount, 1);
+assert.equal(doc.metadata.decisionGraph.summary.admissionDecisionCount, 1);
+assert.equal(doc.metadata.decisionGraph.summary.decisionCount, 1);
+assert.equal(doc.metadata.decisionGraph.graphs[0].rootId, 'merge_decision_title');
+assert.equal(doc.metadata.decisionGraph.graphs[0].gateIds[0], 'gate_typecheck');
+assert.equal(doc.metadata.decisionGraph.graphs[0].nodes[0].recordId, 'semantic_change_title');
+assert.equal(doc.metadata.decisionGraph.graphs[0].edges[0].toId, 'gate_typecheck');
+assert.equal(doc.metadata.decisionGraph.semanticChangeIds[0], 'semantic_change_title');
+assert.equal(doc.metadata.decisionGraph.gateIds[0], 'gate_typecheck');
+assert.equal(doc.metadata.decisionGraph.evidenceIds[0], 'evidence_typecheck');
+assert.equal(doc.metadata.decisionGraph.admissionDecisionIds[0], 'admission_title_safe');
+assert.equal(doc.metadata.decisionGraph.decisionIds[0], 'merge_decision_title');
+assert.equal(doc.metadata.decisionGraph.records.find((record) => record.id === 'gate_typecheck').command, 'npm run typecheck');
+assert.equal(doc.metadata.decisionGraph.records.find((record) => record.id === 'admission_title_safe').autoMergeable, true);
+assert.equal(doc.metadata.decisionGraph.records.find((record) => record.id === 'merge_decision_title').decision, 'merge');
 assert.equal(doc.metadata.universalConversionPlan.id, 'conversion_todo_js_rust');
 assert.equal(doc.metadata.universalConversionPlan.targets[0], 'rust');
 assert.equal(doc.metadata.universalConversionPlan.sourceRuntimes.javascript, 'node');

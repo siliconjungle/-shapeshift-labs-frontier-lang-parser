@@ -21,13 +21,14 @@ const PARADIGM_GROUPS = [
   'loweringRecords'
 ];
 
-export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], nativeSourceBlocks = [] } = {}) {
+export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], decisionGraphBlocks = [], nativeSourceBlocks = [] } = {}) {
   const metadata = {};
   if (proofBlocks.length) metadata.proof = mergeProofBlocks(proofBlocks);
   if (paradigmBlocks.length) metadata.paradigmSemantics = mergeParadigmBlocks(paradigmBlocks);
   if (operationBlocks.length) metadata.semanticOperations = mergeOperationBlocks(operationBlocks);
   if (conversionBlocks.length) metadata.universalConversionPlan = mergeConversionBlocks(conversionBlocks);
   if (constraintSpaceBlocks.length) metadata.constraintSpaces = mergeConstraintSpaceBlocks(constraintSpaceBlocks);
+  if (decisionGraphBlocks.length) metadata.decisionGraph = mergeDecisionGraphBlocks(decisionGraphBlocks);
   if (nativeSourceBlocks.some((block) => block.sourceMaps.length || block.mergeCandidates.length || block.evidence.length)) {
     metadata.universalAst = mergeNativeSourceBlocks(nativeSourceBlocks);
   }
@@ -112,8 +113,51 @@ function mergeNativeSourceBlocks(blocks) {
   };
 }
 
+function mergeDecisionGraphBlocks(blocks) {
+  const records = blocks.flatMap((block) => block.records ?? []);
+  const graphs = blocks.map((block) => block.graph).filter(Boolean);
+  return {
+    id: blocks.length === 1 ? blocks[0].id : 'decisionGraph:source',
+    graphs,
+    records,
+    nodes: blocks.flatMap((block) => block.nodes ?? []),
+    edges: blocks.flatMap((block) => block.edges ?? []),
+    graphIds: ids(graphs),
+    recordIds: ids(records),
+    gateIds: idsByKind(records, 'frontier.lang.decisionGraph.gate'),
+    evidenceIds: idsByKind(records, 'frontier.lang.decisionGraph.evidence'),
+    semanticChangeIds: idsByKind(records, 'frontier.lang.decisionGraph.semanticChange'),
+    patchEventIds: idsByKind(records, 'frontier.lang.decisionGraph.patchEvent'),
+    admissionDecisionIds: idsByKind(records, 'frontier.lang.decisionGraph.admissionDecision'),
+    decisionIds: idsByKind(records, 'frontier.lang.decisionGraph.candidateDecision').concat(idsByKind(records, 'frontier.lang.decisionGraph.mergeDecision')),
+    replayRecordIds: idsByKind(records, 'frontier.lang.decisionGraph.replay'),
+    tournamentRecordIds: idsByKind(records, 'frontier.lang.decisionGraph.tournament').concat(idsByKind(records, 'frontier.lang.decisionGraph.tournamentCandidate')),
+    rsiLoopIds: idsByKind(records, 'frontier.lang.decisionGraph.rsiLoop'),
+    summary: {
+      graphCount: blocks.length,
+      recordCount: records.length,
+      nodeCount: sum(blocks, 'nodeCount'),
+      edgeCount: sum(blocks, 'edgeCount'),
+      semanticChangeCount: sum(blocks, 'semanticChangeCount'),
+      gateCount: sum(blocks, 'gateCount'),
+      evidenceCount: sum(blocks, 'evidenceCount'),
+      admissionDecisionCount: sum(blocks, 'admissionDecisionCount'),
+      decisionCount: sum(blocks, 'decisionCount'),
+      patchEventCount: sum(blocks, 'patchEventCount'),
+      replayCount: sum(blocks, 'replayCount'),
+      tournamentCount: sum(blocks, 'tournamentCount'),
+      rsiLoopCount: sum(blocks, 'rsiLoopCount')
+    },
+    metadata: { authoredDecisionGraphBlockIds: blocks.map((block) => block.id) }
+  };
+}
+
 function ids(records = []) {
   return records.map((record) => record?.id).filter(Boolean);
+}
+
+function idsByKind(records = [], kind) {
+  return ids(records.filter((record) => record?.recordKind === kind || record?.kind === kind));
 }
 
 function sum(blocks, key) {
