@@ -243,6 +243,34 @@ decisionGraph TodoAdmission @id("decision_graph_todo") {
 
 The parser projects these rows into `metadata.decisionGraph`. Decision graph records are normalized by the kernel helpers, so authored files can describe why a merge is admissible without embedding raw JSON. This is intentionally evidence-first: a safe merge can be represented as a graph of changes, gates, evidence, and decisions, while missing proof can remain explicit as blocked or review-required records.
 
+## Authored resource graph syntax
+
+`.frontier` files can carry semantic resource graph evidence directly in `resourceGraph` or `semanticResourceGraph` blocks. These blocks make ownership, aliases, loans, moves, drops, lifetimes, unsafe boundaries, conflicts, and proof obligations explicit for translation and semantic merge admission.
+
+```frontier
+resourceGraph TodoResources @id("resource_graph_todo") {
+  sourceLanguage javascript
+  sourcePath src/todo.ts
+  sourceHash sha256:example
+  evidence artifact_todo_title_probe
+  resource todos @id("resource_todos") kind collection owner owner_todo_store
+  owner todoStore @id("owner_todo_store") kind store
+  lifetime request @id("life_request") kind lexical startLine 1 endLine 80
+  loan readTodos @id("loan_read_todos") resource resource_todos owner owner_todo_store lifetime life_request mode shared access read
+  alias todosAlias @id("alias_todos") resource resource_todos owner owner_todo_store alias alias:todos kind local
+  move todoMove @id("move_todos") resource resource_todos fromOwner owner_todo_store toOwner owner_worker kind transfer
+  drop todoDrop @id("drop_todos") resource resource_todos owner owner_worker lifetime life_request kind lexical-drop order 1
+  escape todoEscape @id("escape_todos") resource resource_todos loan loan_read_todos lifetime life_request kind returned-borrow status needs-proof
+  outlives requestModule @id("life_request_outlives_module") from life_module to life_request kind contains
+  borrow readScope @id("borrow_scope_todos") resource resource_todos lifetime life_request kind shared-borrow constraint shared|read-only
+  unsafe ffiBoundary @id("unsafe_todos_ffi") resource resource_todos kind ffi proofStatus missing
+  conflict aliasConflict @id("conflict_todos_alias") resource resource_todos loan loan_read_todos alias alias_todos reasonCode exclusive-resource-alias-overlap-requires-proof status open severity error
+  proof aliasProof @id("proof_obligation_alias") resource resource_todos conflict conflict_todos_alias kind alias-safety status open statement "Prove the alias cannot mutate during the shared loan."
+}
+```
+
+The parser projects these rows into `metadata.semanticResourceGraphs`. Resource graphs are evidence, not proof: generated claims for borrow-checker soundness, alias safety, lifetime soundness, semantic equivalence, and auto-merge stay false. Compiler conversion routes can use these authored graphs as source-side resource, ownership, lifetime, and borrow-checker evidence while still requiring target proof before admission.
+
 ## Authored conversion syntax
 
 `.frontier` files can carry universal conversion evidence directly in `conversion` or `universalConversionPlan` blocks. The parser projects these records into `metadata.universalConversionPlan` for the compiler facade and downstream semantic merge tooling.

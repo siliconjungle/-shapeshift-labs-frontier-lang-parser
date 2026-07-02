@@ -21,7 +21,7 @@ const PARADIGM_GROUPS = [
   'loweringRecords'
 ];
 
-export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], decisionGraphBlocks = [], nativeSourceBlocks = [] } = {}) {
+export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], decisionGraphBlocks = [], resourceGraphBlocks = [], nativeSourceBlocks = [] } = {}) {
   const metadata = {};
   if (proofBlocks.length) metadata.proof = mergeProofBlocks(proofBlocks);
   if (paradigmBlocks.length) metadata.paradigmSemantics = mergeParadigmBlocks(paradigmBlocks);
@@ -29,6 +29,7 @@ export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], op
   if (conversionBlocks.length) metadata.universalConversionPlan = mergeConversionBlocks(conversionBlocks);
   if (constraintSpaceBlocks.length) metadata.constraintSpaces = mergeConstraintSpaceBlocks(constraintSpaceBlocks);
   if (decisionGraphBlocks.length) metadata.decisionGraph = mergeDecisionGraphBlocks(decisionGraphBlocks);
+  if (resourceGraphBlocks.length) metadata.semanticResourceGraphs = mergeResourceGraphBlocks(resourceGraphBlocks);
   if (nativeSourceBlocks.some((block) => block.sourceMaps.length || block.mergeCandidates.length || block.evidence.length)) {
     metadata.universalAst = mergeNativeSourceBlocks(nativeSourceBlocks);
   }
@@ -149,6 +150,51 @@ function mergeDecisionGraphBlocks(blocks) {
       rsiLoopCount: sum(blocks, 'rsiLoopCount')
     },
     metadata: { authoredDecisionGraphBlockIds: blocks.map((block) => block.id) }
+  };
+}
+
+function mergeResourceGraphBlocks(blocks) {
+  const graphs = blocks.map((block) => block.graph).filter(Boolean);
+  const records = blocks.flatMap((block) => block.records ?? []);
+  return {
+    id: blocks.length === 1 ? blocks[0].id : 'semanticResourceGraphs:source',
+    graphs,
+    resourceGraphs: graphs,
+    records,
+    graphIds: ids(graphs),
+    recordIds: ids(records),
+    resourceIds: blocks.flatMap((block) => ids(block.graph?.resources)),
+    ownerIds: blocks.flatMap((block) => ids(block.graph?.owners)),
+    loanIds: blocks.flatMap((block) => ids(block.graph?.loans)),
+    aliasIds: blocks.flatMap((block) => ids(block.graph?.aliases)),
+    moveIds: blocks.flatMap((block) => ids(block.graph?.moves)),
+    dropIds: blocks.flatMap((block) => ids(block.graph?.drops)),
+    escapeIds: blocks.flatMap((block) => ids(block.graph?.escapes)),
+    lifetimeRegionIds: blocks.flatMap((block) => ids(block.graph?.lifetimeRegions)),
+    lifetimeRelationIds: blocks.flatMap((block) => ids(block.graph?.lifetimeRelations)),
+    borrowScopeIds: blocks.flatMap((block) => ids(block.graph?.borrowScopes)),
+    unsafeBoundaryIds: blocks.flatMap((block) => ids(block.graph?.unsafeBoundaries)),
+    conflictIds: blocks.flatMap((block) => ids(block.graph?.conflicts)),
+    proofObligationIds: blocks.flatMap((block) => ids(block.graph?.proofObligations)),
+    summary: {
+      graphCount: blocks.length,
+      recordCount: records.length,
+      resourceCount: sum(blocks, 'resources'),
+      ownerCount: sum(blocks, 'owners'),
+      loanCount: sum(blocks, 'loans'),
+      aliasCount: sum(blocks, 'aliases'),
+      moveCount: sum(blocks, 'moves'),
+      dropCount: sum(blocks, 'drops'),
+      escapeCount: sum(blocks, 'escapes'),
+      lifetimeRegionCount: sum(blocks, 'lifetimeRegions'),
+      lifetimeRelationCount: sum(blocks, 'lifetimeRelations'),
+      borrowScopeCount: sum(blocks, 'borrowScopes'),
+      unsafeBoundaryCount: sum(blocks, 'unsafeBoundaries'),
+      conflictCount: sum(blocks, 'conflicts'),
+      proofObligationCount: sum(blocks, 'proofObligations'),
+      unsafeBoundariesWithoutProof: sum(blocks, 'unsafeBoundariesWithoutProof')
+    },
+    metadata: { authoredResourceGraphBlockIds: blocks.map((block) => block.id) }
   };
 }
 
