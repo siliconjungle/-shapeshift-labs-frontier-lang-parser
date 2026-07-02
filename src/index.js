@@ -6,10 +6,12 @@ import {
   entityNode,
   externNode,
   latticeNode,
+  migrationNode,
   nativeSourceNode,
   stateNode,
   targetNode,
-  typeNode
+  typeNode,
+  viewNode
 } from '@shapeshift-labs/frontier-lang-kernel';
 
 export function parseFrontierSource(source, options = {}) {
@@ -20,6 +22,8 @@ export function parseFrontierSource(source, options = {}) {
     if (block.kind === 'entity') nodes.push(parseEntity(block));
     if (block.kind === 'state') nodes.push(parseState(block));
     if (block.kind === 'action') nodes.push(parseAction(block));
+    if (block.kind === 'view') nodes.push(parseView(block));
+    if (block.kind === 'migration') nodes.push(parseMigration(block));
     if (block.kind === 'capability') nodes.push(parseCapability(block));
     if (block.kind === 'effect') nodes.push(parseEffect(block));
     if (block.kind === 'type') nodes.push(parseType(block));
@@ -39,7 +43,7 @@ function readName(source) { return /module\s+([A-Za-z_$][\w$]*)/.exec(source)?.[
 function readId(source) { return /module\s+[A-Za-z_$][\w$]*\s+@id\(\s*["']([^"']+)["']\s*\)/.exec(source)?.[1]; }
 function readBlocks(source) {
   const blocks = [];
-  const header = /\b(entity|state|action|capability|effect|type|extern|lattice|nativeSource|target)\s+([^{}]+)\{/g;
+  const header = /\b(entity|state|action|view|migration|capability|effect|type|extern|lattice|nativeSource|target)\s+([^{}]+)\{/g;
   let match;
   while ((match = header.exec(source))) {
     let depth = 1; let index = header.lastIndex;
@@ -96,6 +100,14 @@ function parseAction(block) {
     writes: readList('writes', block.body),
     uses: readList('uses', block.body)
   });
+}
+function parseView(block) {
+  const name = nameFrom(block.header);
+  return viewNode({ id: idFrom(block.header, `view_${name}`), name, reads: readList('reads', block.body), dispatches: readList('dispatches', block.body) ?? readList('dispatch', block.body) });
+}
+function parseMigration(block) {
+  const name = nameFrom(block.header);
+  return migrationNode({ id: idFrom(block.header, `migration_${name}`), name, fromVersion: readWord('fromVersion', block.body) ?? readWord('from', block.body) ?? 'unknown', toVersion: readWord('toVersion', block.body) ?? readWord('to', block.body) ?? 'unknown', changes: readChangeRecords(block.body), invariants: readList('invariants', block.body) });
 }
 function parseEffect(block) {
   const name = nameFrom(block.header);
@@ -245,6 +257,16 @@ function readUnsupportedTargets(body) {
     });
   }
   return unsupported.length ? unsupported : undefined;
+}
+function readChangeRecords(body) {
+  const changes = [];
+  const re = /^\s*change\s+([A-Za-z][\w-]*)(?:\s+([^\n]+))?/gm;
+  let match;
+  while ((match = re.exec(body))) {
+    const statement = match[2]?.trim();
+    changes.push({ id: `change_${changes.length}`, kind: match[1], ...(statement ? { statement, target: statement.split(/\s+/)[0] } : {}) });
+  }
+  return changes;
 }
 function parseMerge(text) {
   const kind = /merge\s+([A-Za-z][\w-]*)/.exec(text)?.[1];

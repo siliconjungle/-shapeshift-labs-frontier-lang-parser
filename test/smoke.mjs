@@ -18,6 +18,16 @@ entity Todo @id("ent_todo") {
 state TodoDb @id("state_todo") {
   todos @id("collection_todos"): Map<TodoId, Todo> { merge byKey law commutative }
 }
+view TodoList @id("view_todo_list") {
+  reads TodoDb.todos
+  dispatches action_add
+}
+migration TodoV1ToV2 @id("migration_todo_v1_v2") {
+  fromVersion 1
+  toVersion 2
+  change addField Todo.title
+  invariants title_present
+}
 extern persistTodo @id("extern_persist") {
   language typescript
   symbol persistTodo
@@ -74,5 +84,15 @@ assert.equal(doc.nodes.native_todo_ts.kind, 'nativeSource');
 assert.equal(doc.nodes.native_todo_ts.frontierNodeIds[1], 'action_add');
 assert.equal(doc.nodes.native_todo_ts.losses[0].kind, 'unsupportedSyntax');
 assert.equal(doc.nodes.state_todo.collections[0].merge.law, 'commutative');
+assert.equal(doc.nodes.view_todo_list.kind, 'view');
+assert.equal(doc.nodes.view_todo_list.reads[0], 'TodoDb.todos');
+assert.equal(doc.nodes.view_todo_list.dispatches[0], 'action_add');
+assert.equal(doc.nodes.migration_todo_v1_v2.kind, 'migration');
+assert.equal(doc.nodes.migration_todo_v1_v2.fromVersion, '1');
+assert.equal(doc.nodes.migration_todo_v1_v2.toVersion, '2');
+assert.equal(doc.nodes.migration_todo_v1_v2.changes[0].kind, 'addField');
+assert.equal(doc.nodes.migration_todo_v1_v2.changes[0].target, 'Todo.title');
+assert.equal(doc.nodes.migration_todo_v1_v2.changes[0].statement, 'Todo.title');
+assert.equal(doc.nodes.migration_todo_v1_v2.invariants[0], 'title_present');
 assert.equal(doc.nodes.action_add.uses[0], 'Clock');
 assert.equal(doc.nodes.action_add.input, 'TodoInput');
