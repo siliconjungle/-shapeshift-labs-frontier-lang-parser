@@ -63,6 +63,8 @@ target typescript @id("target_ts") {
   package @example/todo
   emitPath src/generated/todo.ts
   moduleFormat esm
+  projection typescriptProjection @id("target_projection_ts") disposition exact-source readiness ready represented semantic-symbol|source-map missing semantic-ownership evidence artifact_todo_title_probe proof artifact_todo_title_probe loss loss_borrow_scope missingEvidence translation-borrow-scope:borrow-across-await review projection-review
+  layer ownership @id("target_layer_ts_ownership") kind semantic-ownership status missing missingEvidence translation-borrow-scope:borrow-across-await
 }
 nativeSource TodoTs @id("native_todo_ts") {
   language typescript
@@ -167,6 +169,11 @@ assert.equal(doc.nodes.effect_persist_todo.capability, 'storage.write');
 assert.equal(doc.nodes.effect_persist_todo.input, 'TodoInput');
 assert.equal(doc.nodes.effect_persist_todo.resources[0], 'TodoDb.todos');
 assert.equal(doc.nodes.target_ts.target.emitPath, 'src/generated/todo.ts');
+assert.equal(doc.nodes.target_ts.metadata.projectionContracts[0].id, 'target_projection_ts');
+assert.equal(doc.nodes.target_ts.metadata.projectionContracts[0].semanticEquivalenceClaim, false);
+assert.equal(doc.nodes.target_ts.metadata.projectionContracts[0].missingLayerKinds[0], 'semantic-ownership');
+assert.equal(doc.nodes.target_ts.metadata.projectionLayers[0].layerKind, 'semantic-ownership');
+assert.equal(doc.nodes.target_ts.metadata.missingEvidence[0], 'translation-borrow-scope:borrow-across-await');
 assert.equal(doc.nodes.native_todo_ts.kind, 'nativeSource');
 assert.equal(doc.nodes.native_todo_ts.frontierNodeIds[1], 'action_add');
 assert.equal(doc.nodes.native_todo_ts.sourceMapIds[0], 'sourcemap_todo_ts');

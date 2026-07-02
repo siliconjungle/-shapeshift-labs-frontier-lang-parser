@@ -9,6 +9,7 @@ import { parseParadigmBlock } from './paradigm.js';
 import { parseProofBlock } from './proof.js';
 import { parseResourceGraphBlock } from './resource-graph.js';
 import { parseNativeSourceBlock } from './source-evidence.js';
+import { parseTargetProjectionMetadata } from './target-projection.js';
 import { parseViewBlock } from './view.js';
 
 export function parseFrontierSource(source, options = {}) {
@@ -193,6 +194,7 @@ function parseLattice(block) {
 }
 function parseTarget(block) {
   const name = nameFrom(block.header);
+  const metadata = parseTargetProjectionMetadata(block.body, name);
   return targetNode({
     id: idFrom(block.header, `target_${name}`),
     name,
@@ -201,7 +203,8 @@ function parseTarget(block) {
       packageName: readWord('package', block.body),
       emitPath: readWord('emitPath', block.body),
       moduleFormat: readWord('moduleFormat', block.body)
-    }
+    },
+    ...(metadata ? { metadata } : {})
   });
 }
 function readList(label, body) { const line = new RegExp('^\\s*' + label + '\\s+([^\\n]+)', 'm').exec(body)?.[1]; return line ? line.split(',').map((item) => item.trim()).filter(Boolean) : undefined; }

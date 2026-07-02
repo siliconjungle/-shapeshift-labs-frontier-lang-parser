@@ -220,6 +220,23 @@ npm install @shapeshift-labs/frontier-lang-parser
 
 The parser projects text into `@shapeshift-labs/frontier-lang-kernel` documents. The syntax is intentionally small and experimental.
 
+## Authored target projection syntax
+
+`.frontier` target blocks can carry projection contracts next to their emit settings. These rows describe what a target lowering claims to represent, what it still needs proof for, and which losses or missing evidence must stay visible to merge and translation tooling.
+
+```frontier
+target rust @id("target_rust") {
+  language rust
+  package example_todo
+  emitPath src/generated/todo.rs
+  moduleFormat crate
+  projection rustAdapter @id("target_projection_rust") disposition target-adapter readiness needs-review represented semantic-symbol|source-map missing semantic-ownership evidence artifact_todo_title_probe proof artifact_todo_title_probe loss loss_borrow_scope missingEvidence translation-borrow-scope:borrow-across-await
+  layer ownership @id("target_layer_rust_ownership") kind semantic-ownership status missing missingEvidence translation-borrow-scope:borrow-across-await
+}
+```
+
+The parser stores these rows on the target node metadata as `projectionContracts` and `projectionLayers`. They are target-lowering evidence, not proof of equivalence: `autoMergeClaim` and `semanticEquivalenceClaim` remain false.
+
 ## Authored decision graph syntax
 
 `.frontier` files can carry semantic merge admission evidence directly in `decisionGraph` or `admissionGraph` blocks. These blocks preserve the causal review shape around a candidate edit: semantic changes, gates, evidence records, patch events, admission decisions, merge decisions, graph nodes, and graph edges.
