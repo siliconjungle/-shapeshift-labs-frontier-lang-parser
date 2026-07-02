@@ -220,6 +220,46 @@ npm install @shapeshift-labs/frontier-lang-parser
 
 The parser projects text into `@shapeshift-labs/frontier-lang-kernel` documents. The syntax is intentionally small and experimental.
 
+## Authored view render graph syntax
+
+`.frontier` view blocks can describe UI render graphs directly. Nested `render`
+blocks are flattened into `view.renders`, and each parent stores stable child
+render IDs in `children`. This keeps authored UI structural and target-neutral:
+HTML, JSX, SwiftUI, or another target can lower the same semantic graph without
+the parser claiming browser or runtime equivalence.
+
+```frontier
+view TodoList @id("view_todo_list") {
+  reads TodoDb.todos
+  dispatches action_add
+  prop disabled @id("view_prop_disabled"): Boolean
+  event save @id("view_event_save") action action_add input TodoInput
+
+  render Article @id("render_todo_root") {
+    key todo-list-root
+
+    render Button @id("render_save_button") {
+      identity save
+      text "Save"
+      prop disabled disabled
+      on press save
+    }
+
+    render SaveIcon kind component @id("render_save_icon") {
+      component Icon
+      key save-icon
+      prop name "check"
+    }
+  }
+}
+```
+
+The root render becomes a graph node whose `children` reference
+`render_save_button` and `render_save_icon` in source order. Child props, text,
+and events stay attached to the child render node instead of leaking onto the
+parent. `kind component` records `component` instead of a literal HTML tag, so
+target adapters can decide how to project it.
+
 ## Authored target projection syntax
 
 `.frontier` target blocks can carry projection contracts next to their emit settings. These rows describe what a target lowering claims to represent, what it still needs proof for, and which losses or missing evidence must stay visible to merge and translation tooling.

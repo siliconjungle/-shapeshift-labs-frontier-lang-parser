@@ -34,20 +34,32 @@ function readViewEvents(body) {
 }
 
 function readRenderNodes(body) {
-  return readNestedBlocks('render', body).map((block) => {
-    const tagName = nameFrom(block.header);
-    const props = readRenderProps(block.body);
-    const events = readRenderEvents(block.body);
-    return {
-      id: idFrom(block.header, `render_${tagName}`),
-      kind: readInlineWord('kind', block.header) ?? 'element',
-      tagName,
-      identityKey: readLine('identity', block.body) ?? readLine('key', block.body),
-      text: readQuotedLine('text', block.body),
-      props: props.length ? props : undefined,
-      events: events.length ? events : undefined
-    };
-  });
+  const renders = [];
+  for (const block of readNestedBlocks('render', body)) pushRenderNode(block, renders);
+  return renders;
+}
+
+function pushRenderNode(block, renders) {
+  const headerName = nameFrom(block.header);
+  const ownBody = stripNestedBlocks('render', block.body);
+  const kind = readInlineWord('kind', block.header) ?? readLine('kind', ownBody) ?? 'element';
+  const props = readRenderProps(ownBody);
+  const events = readRenderEvents(ownBody);
+  const childBlocks = readNestedBlocks('render', block.body);
+  const explicitChildren = readList('children', ownBody) ?? readList('child', ownBody);
+  const nestedChildren = childBlocks.map((child) => idFrom(child.header, `render_${nameFrom(child.header)}`));
+  renders.push(compactRecord({
+    id: idFrom(block.header, `render_${headerName}`),
+    kind,
+    tagName: readLine('tag', ownBody) ?? readLine('tagName', ownBody) ?? (kind === 'component' || kind === 'text' ? undefined : headerName),
+    component: readLine('component', ownBody) ?? (kind === 'component' ? headerName : undefined),
+    identityKey: readLine('identity', ownBody) ?? readLine('key', ownBody),
+    text: readQuotedLine('text', ownBody),
+    props: props.length ? props : undefined,
+    events: events.length ? events : undefined,
+    children: uniqueStrings([...(explicitChildren ?? []), ...nestedChildren])
+  }));
+  for (const child of childBlocks) pushRenderNode(child, renders);
 }
 
 function readRenderProps(body) {
@@ -92,6 +104,8 @@ function readLine(label, body) { return new RegExp('^\\s*' + label + '\\s+([^\\n
 function readQuotedLine(label, body) { return new RegExp(`^\\s*${label}\\s+["']([^"']+)["']`, 'm').exec(body)?.[1]; }
 function readInlineWord(label, text = '') { return new RegExp('(?:^|\\s)' + label + '\\s+([^\\s,]+)').exec(text)?.[1]?.trim(); }
 function readRenderValue(value) { const quoted = /^["']([^"']+)["']$/.exec(value.trim()); return quoted ? { value: quoted[1] } : { expression: value.trim() }; }
+function compactRecord(record) { return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined)); }
+function uniqueStrings(values) { const result = []; for (const value of values) if (value && !result.includes(value)) result.push(value); return result.length ? result : undefined; }
 function parseOptionalTypeExpression(value) { return value ? parseTypeExpression(value.trim()) : undefined; }
 function parseTypeExpression(value) {
   const text = value.trim();
