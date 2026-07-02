@@ -52,6 +52,12 @@ capability HttpRequest @id("cap_http_request") {
   adapter rust symbol reqwest::Client::execute platform native package reqwest kind library
   unsupported c platform embedded reason "requires a host socket adapter"
 }
+effect PersistTodo @id("effect_persist_todo") {
+  capability storage.write
+  input TodoInput
+  returns Json
+  resources TodoDb.todos
+}
 target typescript @id("target_ts") {
   language typescript
   package @example/todo
@@ -87,6 +93,10 @@ assert.equal(doc.nodes.cap_http_request.capability, 'http.request');
 assert.equal(doc.nodes.cap_http_request.adapters[0].target.platform, 'node');
 assert.equal(doc.nodes.cap_http_request.adapters[1].target.language, 'rust');
 assert.match(doc.nodes.cap_http_request.unsupportedTargets[0].reason, /host socket/);
+assert.equal(doc.nodes.effect_persist_todo.kind, 'effect');
+assert.equal(doc.nodes.effect_persist_todo.capability, 'storage.write');
+assert.equal(doc.nodes.effect_persist_todo.input, 'TodoInput');
+assert.equal(doc.nodes.effect_persist_todo.resources[0], 'TodoDb.todos');
 assert.equal(doc.nodes.target_ts.target.emitPath, 'src/generated/todo.ts');
 assert.equal(doc.nodes.native_todo_ts.kind, 'nativeSource');
 assert.equal(doc.nodes.native_todo_ts.frontierNodeIds[1], 'action_add');
