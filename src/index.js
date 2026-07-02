@@ -1,9 +1,10 @@
-import { actionNode, capabilityNode, createDocument, effectNode, entityNode, externNode, latticeNode, migrationNode, nativeSourceNode, stateNode, targetNode, typeNode } from '@shapeshift-labs/frontier-lang-kernel';
+import { actionNode, capabilityNode, createDocument, effectNode, entityNode, externNode, latticeNode, migrationNode, stateNode, targetNode, typeNode } from '@shapeshift-labs/frontier-lang-kernel';
 import { parseConversionBlock } from './conversion.js';
 import { createParsedMetadata } from './metadata.js';
 import { parseSemanticOperationsBlock } from './operations.js';
 import { parseParadigmBlock } from './paradigm.js';
 import { parseProofBlock } from './proof.js';
+import { parseNativeSourceBlock } from './source-evidence.js';
 import { parseViewBlock } from './view.js';
 
 export function parseFrontierSource(source, options = {}) {
@@ -12,6 +13,7 @@ export function parseFrontierSource(source, options = {}) {
   const paradigmBlocks = [];
   const operationBlocks = [];
   const conversionBlocks = [];
+  const nativeSourceBlocks = [];
   const documentId = options.id ?? readId(source) ?? 'mod_frontier';
   const documentName = options.name ?? readName(source) ?? 'FrontierModule';
   for (const block of readBlocks(source)) {
@@ -25,14 +27,18 @@ export function parseFrontierSource(source, options = {}) {
     if (block.kind === 'type') nodes.push(parseType(block));
     if (block.kind === 'extern') nodes.push(parseExtern(block));
     if (block.kind === 'lattice') nodes.push(parseLattice(block));
-    if (block.kind === 'nativeSource') nodes.push(parseNativeSource(block));
+    if (block.kind === 'nativeSource') {
+      const parsed = parseNativeSourceBlock(block);
+      nodes.push(parsed.node);
+      nativeSourceBlocks.push(parsed);
+    }
     if (block.kind === 'target') nodes.push(parseTarget(block));
     if (block.kind === 'proof') proofBlocks.push(parseProofBlock(block));
     if (block.kind === 'paradigm' || block.kind === 'paradigmSemantics') paradigmBlocks.push(parseParadigmBlock(block));
     if (block.kind === 'operations' || block.kind === 'semanticOperations') operationBlocks.push(parseSemanticOperationsBlock(block));
     if (block.kind === 'conversion' || block.kind === 'universalConversionPlan') conversionBlocks.push(parseConversionBlock(block));
   }
-  const metadata = createParsedMetadata({ proofBlocks, paradigmBlocks, operationBlocks, conversionBlocks });
+  const metadata = createParsedMetadata({ proofBlocks, paradigmBlocks, operationBlocks, conversionBlocks, nativeSourceBlocks });
   return createDocument({ id: documentId, name: documentName, nodes, ...(metadata ? { metadata } : {}) });
 }
 
@@ -171,32 +177,6 @@ function parseLattice(block) {
       exportName,
       lawChecker: readWord('lawChecker', block.body)
     } : undefined
-  });
-}
-function parseNativeSource(block) {
-  const name = nameFrom(block.header);
-  const losses = [];
-  const lossRe = /^\s*loss\s+([A-Za-z][\w-]*)\s+["']([^"']+)["'](?:\s+severity\s+([A-Za-z][\w-]*))?/gm;
-  let match;
-  while ((match = lossRe.exec(block.body))) {
-    losses.push({
-      id: `loss_${name}_${losses.length}`,
-      kind: match[1],
-      message: match[2],
-      severity: match[3] ?? 'warning'
-    });
-  }
-  return nativeSourceNode({
-    id: idFrom(block.header, `native_${name}`),
-    name,
-    language: readWord('language', block.body) ?? name,
-    parser: readWord('parser', block.body),
-    parserVersion: readWord('parserVersion', block.body),
-    sourcePath: readWord('sourcePath', block.body) ?? readWord('path', block.body),
-    sourceHash: readWord('sourceHash', block.body),
-    symbol: readWord('symbol', block.body),
-    frontierNodeIds: readList('frontierNodes', block.body),
-    losses: losses.length ? losses : undefined
   });
 }
 function parseTarget(block) {

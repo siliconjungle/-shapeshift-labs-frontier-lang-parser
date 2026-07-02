@@ -239,6 +239,26 @@ conversion TodoJavascriptToRust @id("conversion_todo_js_rust") {
 
 `sourceRuntime` and `targetRuntime` become runtime maps. `runtimeRequirement` rows become proof obligations for host/runtime capabilities. `dialect` and `extern` rows preserve dialect-specific constructs, projection readiness, loss/evidence ids, and binding metadata without requiring the authored Frontier file to drop down to raw JSON.
 
+## Authored native source evidence
+
+`nativeSource` blocks can also carry source-bound merge evidence. This keeps parser/source-map/merge-candidate facts in `.frontier` text instead of requiring a raw JSON sidecar for the first authored program slice.
+
+```frontier
+nativeSource TodoTs @id("native_todo_ts") {
+  language typescript
+  parser typescript
+  sourcePath src/todo.ts
+  sourceHash sha256:example
+  frontierNodes ent_todo, action_add
+  evidence todoTitleProbe @id("artifact_todo_title_probe") kind test status passed path reports/todo-title.json
+  sourceMap todoProjection @id("sourcemap_todo_ts") target typescript targetPath src/generated/todo.ts evidence artifact_todo_title_probe
+  mapping todoTitle @id("map_todo_title") sourceMap sourcemap_todo_ts semanticNode field_title sourceSpan src/todo.ts:1:1-1:12 generatedSpan src/generated/todo.ts:1:1-1:20 precision exact evidence artifact_todo_title_probe
+  mergeCandidate todoTitle @id("candidate_todo_title") symbol symbol:Todo.title semanticNode field_title conflictKey symbol:Todo.title readiness ready sourceMap sourcemap_todo_ts sourceMapMapping map_todo_title
+}
+```
+
+The parser projects these rows into `metadata.universalAst.sourceMaps`, `metadata.universalAst.mergeCandidates`, and `metadata.universalAst.evidence`. `nativeSource` nodes keep id links through `sourceMapIds`, `mergeCandidateIds`, and `evidenceIds`. Runtime/browser equivalence still requires separate proof artifacts.
+
 ## Benchmarks
 
 Run the package-local benchmark with:

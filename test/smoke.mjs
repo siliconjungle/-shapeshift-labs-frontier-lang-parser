@@ -71,6 +71,10 @@ nativeSource TodoTs @id("native_todo_ts") {
   sourceHash sha256:example
   symbol Todo
   frontierNodes ent_todo, action_add
+  evidence todoTitleProbe @id("artifact_todo_title_probe") kind test status passed path reports/todo-title.json summary "Todo title source map is exact."
+  sourceMap todoProjection @id("sourcemap_todo_ts") target typescript targetPath src/generated/todo.ts evidence artifact_todo_title_probe
+  mapping todoTitle @id("map_todo_title") sourceMap sourcemap_todo_ts semanticNode field_title nativeSource native_todo_ts semanticSymbol symbol:Todo.title sourceSpan src/todo.ts:1:1-1:12 generatedSpan src/generated/todo.ts:1:1-1:20 precision exact evidence artifact_todo_title_probe
+  mergeCandidate todoTitle @id("candidate_todo_title") symbol symbol:Todo.title semanticNode field_title conflictKey symbol:Todo.title readiness ready evidence artifact_todo_title_probe sourceMap sourcemap_todo_ts sourceMapMapping map_todo_title reason "exact source map"
   loss unsupportedSyntax "decorator retained in native AST" severity warning
 }
 proof TodoProofs @id("proof_todo") {
@@ -137,7 +141,16 @@ assert.equal(doc.nodes.effect_persist_todo.resources[0], 'TodoDb.todos');
 assert.equal(doc.nodes.target_ts.target.emitPath, 'src/generated/todo.ts');
 assert.equal(doc.nodes.native_todo_ts.kind, 'nativeSource');
 assert.equal(doc.nodes.native_todo_ts.frontierNodeIds[1], 'action_add');
+assert.equal(doc.nodes.native_todo_ts.sourceMapIds[0], 'sourcemap_todo_ts');
+assert.equal(doc.nodes.native_todo_ts.mergeCandidateIds[0], 'candidate_todo_title');
+assert.equal(doc.nodes.native_todo_ts.evidenceIds[0], 'artifact_todo_title_probe');
 assert.equal(doc.nodes.native_todo_ts.losses[0].kind, 'unsupportedSyntax');
+assert.equal(doc.metadata.universalAst.sourceMaps[0].id, 'sourcemap_todo_ts');
+assert.equal(doc.metadata.universalAst.sourceMaps[0].mappings[0].semanticNodeId, 'field_title');
+assert.equal(doc.metadata.universalAst.sourceMaps[0].mappings[0].sourceSpan.startLine, 1);
+assert.equal(doc.metadata.universalAst.mergeCandidates[0].readiness, 'ready');
+assert.equal(doc.metadata.universalAst.mergeCandidates[0].conflictKeys[0], 'symbol:Todo.title');
+assert.equal(doc.metadata.universalAst.evidence[0].status, 'passed');
 assert.equal(doc.metadata.proof.id, 'proof_todo');
 assert.equal(doc.metadata.proof.contracts[0].subjectId, 'ent_todo');
 assert.equal(doc.metadata.proof.obligations[0].contractIds[0], 'contract_todo_title');

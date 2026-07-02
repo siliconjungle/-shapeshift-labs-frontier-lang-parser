@@ -9,4 +9,5 @@ await copyFile("src/metadata.js", "dist/metadata.js");
 await copyFile("src/operations.js", "dist/operations.js");
 await copyFile("src/paradigm.js", "dist/paradigm.js");
 await copyFile("src/proof.js", "dist/proof.js");
+await copyFile("src/source-evidence.js", "dist/source-evidence.js");
 await copyFile("src/view.js", "dist/view.js");

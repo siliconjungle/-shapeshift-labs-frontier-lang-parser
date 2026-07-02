@@ -21,12 +21,15 @@ const PARADIGM_GROUPS = [
   'loweringRecords'
 ];
 
-export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], conversionBlocks = [] } = {}) {
+export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], conversionBlocks = [], nativeSourceBlocks = [] } = {}) {
   const metadata = {};
   if (proofBlocks.length) metadata.proof = mergeProofBlocks(proofBlocks);
   if (paradigmBlocks.length) metadata.paradigmSemantics = mergeParadigmBlocks(paradigmBlocks);
   if (operationBlocks.length) metadata.semanticOperations = mergeOperationBlocks(operationBlocks);
   if (conversionBlocks.length) metadata.universalConversionPlan = mergeConversionBlocks(conversionBlocks);
+  if (nativeSourceBlocks.some((block) => block.sourceMaps.length || block.mergeCandidates.length || block.evidence.length)) {
+    metadata.universalAst = mergeNativeSourceBlocks(nativeSourceBlocks);
+  }
   return Object.keys(metadata).length ? metadata : undefined;
 }
 
@@ -72,4 +75,16 @@ function mergeConversionBlocks(blocks) {
     }
   }
   return plan;
+}
+
+function mergeNativeSourceBlocks(blocks) {
+  return {
+    id: blocks.length === 1 ? `universalAst:${blocks[0].node.id}` : 'universalAst:source',
+    nativeSourceIds: blocks.map((block) => block.node.id),
+    sourceMaps: blocks.flatMap((block) => block.sourceMaps ?? []),
+    mergeCandidates: blocks.flatMap((block) => block.mergeCandidates ?? []),
+    evidence: blocks.flatMap((block) => block.evidence ?? []),
+    losses: blocks.flatMap((block) => block.losses ?? []),
+    metadata: { authoredNativeSourceIds: blocks.map((block) => block.node.id) }
+  };
 }
