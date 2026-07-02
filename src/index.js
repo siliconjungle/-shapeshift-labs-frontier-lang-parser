@@ -12,10 +12,12 @@ import {
   targetNode,
   typeNode
 } from '@shapeshift-labs/frontier-lang-kernel';
+import { parseProofBlock } from './proof.js';
 import { parseViewBlock } from './view.js';
 
 export function parseFrontierSource(source, options = {}) {
   const nodes = [];
+  const proofBlocks = [];
   const documentId = options.id ?? readId(source) ?? 'mod_frontier';
   const documentName = options.name ?? readName(source) ?? 'FrontierModule';
   for (const block of readBlocks(source)) {
@@ -31,19 +33,18 @@ export function parseFrontierSource(source, options = {}) {
     if (block.kind === 'lattice') nodes.push(parseLattice(block));
     if (block.kind === 'nativeSource') nodes.push(parseNativeSource(block));
     if (block.kind === 'target') nodes.push(parseTarget(block));
+    if (block.kind === 'proof') proofBlocks.push(parseProofBlock(block));
   }
-  return createDocument({ id: documentId, name: documentName, nodes });
+  return createDocument({ id: documentId, name: documentName, nodes, ...(proofBlocks.length ? { metadata: { proof: mergeProofBlocks(proofBlocks) } } : {}) });
 }
 
-export function parseFrontierFile(name, source) {
-  return parseFrontierSource(source, { name: name.replace(/\.frontier$/, '') });
-}
+export function parseFrontierFile(name, source) { return parseFrontierSource(source, { name: name.replace(/\.frontier$/, '') }); }
 
 function readName(source) { return /module\s+([A-Za-z_$][\w$]*)/.exec(source)?.[1]; }
 function readId(source) { return /module\s+[A-Za-z_$][\w$]*\s+@id\(\s*["']([^"']+)["']\s*\)/.exec(source)?.[1]; }
 function readBlocks(source) {
   const blocks = [];
-  const header = /\b(entity|state|action|view|migration|capability|effect|type|extern|lattice|nativeSource|target)\s+([^{}]+)\{/g;
+  const header = /\b(entity|state|action|view|migration|capability|effect|type|extern|lattice|nativeSource|target|proof)\s+([^{}]+)\{/g;
   let match;
   while ((match = header.exec(source))) {
     let depth = 1; let index = header.lastIndex;
@@ -52,6 +53,15 @@ function readBlocks(source) {
     header.lastIndex = index;
   }
   return blocks;
+}
+const PROOF_GROUPS = ['contracts', 'refinements', 'invariants', 'termination', 'temporal', 'obligations', 'artifacts', 'assumptions'];
+function mergeProofBlocks(blocks) {
+  const proof = {
+    id: blocks.length === 1 ? blocks[0].id : 'proof:source',
+    metadata: { authoredProofBlockIds: blocks.map((block) => block.id) }
+  };
+  for (const group of PROOF_GROUPS) proof[group] = blocks.flatMap((block) => block[group] ?? []);
+  return proof;
 }
 function idFrom(header, fallback) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(header)?.[1] ?? fallback; }
 function nameFrom(header) { return /^([A-Za-z_$][\w$]*)/.exec(header)?.[1] ?? 'Unnamed'; }

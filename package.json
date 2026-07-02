@@ -1,6 +1,6 @@
 {
   "name": "@shapeshift-labs/frontier-lang-parser",
-  "version": "0.3.8",
+  "version": "0.3.9",
   "description": "Parser for the first Frontier Lang .frontier syntax slice.",
   "type": "module",
   "main": "./dist/index.js",
@@ -44,7 +44,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/siliconjungle/-shapeshift-labs-frontier-lang-parser.git"
+    "url": "git+ssh://git@github.com/siliconjungle/-shapeshift-labs-frontier-lang-parser.git"
   },
   "bugs": {
     "url": "https://github.com/siliconjungle/-shapeshift-labs-frontier-lang-parser/issues"

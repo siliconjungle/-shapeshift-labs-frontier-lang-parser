@@ -73,6 +73,12 @@ nativeSource TodoTs @id("native_todo_ts") {
   frontierNodes ent_todo, action_add
   loss unsupportedSyntax "decorator retained in native AST" severity warning
 }
+proof TodoProofs @id("proof_todo") {
+  contract todoTitle @id("contract_todo_title") kind invariant subject ent_todo statement "Todo title remains renderable."
+  obligation todoTitleRuntime @id("obligation_todo_title_runtime") kind runtime status open subject ent_todo contract contract_todo_title statement "A runtime probe covers title rendering."
+  artifact todoTitleProbe @id("artifact_todo_title_probe") kind test status passed path reports/todo-title.json obligation obligation_todo_title_runtime command "npm test -- todo-title"
+  assumption hostFetch @id("assumption_host_fetch") scope host subject cap_http_request description "The host fetch adapter preserves request semantics."
+}
 action addTodo @id("action_add") {
   input TodoInput
   returns Patch
@@ -101,6 +107,11 @@ assert.equal(doc.nodes.target_ts.target.emitPath, 'src/generated/todo.ts');
 assert.equal(doc.nodes.native_todo_ts.kind, 'nativeSource');
 assert.equal(doc.nodes.native_todo_ts.frontierNodeIds[1], 'action_add');
 assert.equal(doc.nodes.native_todo_ts.losses[0].kind, 'unsupportedSyntax');
+assert.equal(doc.metadata.proof.id, 'proof_todo');
+assert.equal(doc.metadata.proof.contracts[0].subjectId, 'ent_todo');
+assert.equal(doc.metadata.proof.obligations[0].contractIds[0], 'contract_todo_title');
+assert.equal(doc.metadata.proof.artifacts[0].command, 'npm test -- todo-title');
+assert.equal(doc.metadata.proof.assumptions[0].scope, 'host');
 assert.equal(doc.nodes.state_todo.collections[0].merge.law, 'commutative');
 assert.equal(doc.nodes.view_todo_list.kind, 'view');
 assert.equal(doc.nodes.view_todo_list.reads[0], 'TodoDb.todos');
