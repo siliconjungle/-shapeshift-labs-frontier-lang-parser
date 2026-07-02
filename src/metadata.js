@@ -21,11 +21,12 @@ const PARADIGM_GROUPS = [
   'loweringRecords'
 ];
 
-export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [] } = {}) {
+export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], conversionBlocks = [] } = {}) {
   const metadata = {};
   if (proofBlocks.length) metadata.proof = mergeProofBlocks(proofBlocks);
   if (paradigmBlocks.length) metadata.paradigmSemantics = mergeParadigmBlocks(paradigmBlocks);
   if (operationBlocks.length) metadata.semanticOperations = mergeOperationBlocks(operationBlocks);
+  if (conversionBlocks.length) metadata.universalConversionPlan = mergeConversionBlocks(conversionBlocks);
   return Object.keys(metadata).length ? metadata : undefined;
 }
 
@@ -53,4 +54,19 @@ function mergeOperationBlocks(blocks) {
     operations: blocks.flatMap((block) => block.operations ?? []),
     metadata: { authoredSemanticOperationBlockIds: blocks.map((block) => block.id) }
   };
+}
+
+function mergeConversionBlocks(blocks) {
+  const plan = {
+    id: blocks.length === 1 ? blocks[0].id : 'universalConversionPlan:source',
+    targets: [...new Set(blocks.flatMap((block) => block.targets ?? []))],
+    metadata: { authoredConversionBlockIds: blocks.map((block) => block.id) }
+  };
+  for (const block of blocks) {
+    if (block.sourceLanguage && !plan.sourceLanguage) plan.sourceLanguage = block.sourceLanguage;
+    for (const [key, value] of Object.entries(block)) {
+      if (Array.isArray(value) && key !== 'targets') plan[key] = [...(plan[key] ?? []), ...value];
+    }
+  }
+  return plan;
 }

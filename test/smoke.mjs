@@ -90,6 +90,14 @@ operations TodoOperations @id("semantic_ops_todo") {
   operation addTodoWrite @id("op_add_todo_write") op effect language frontier semanticNode action_add semanticSymbol symbol:addTodo write TodoDb.todos effect effect_persist_todo ownerKey action:addTodo conflictKey state:TodoDb.todos readiness ready evidence artifact_todo_title_probe summary "Add todo writes the todos collection."
   operation titleProjection @id("op_title_projection") op projection language typescript semanticNode ent_todo semanticSymbol symbol:Todo nativeAstNode ts_node_title readiness needs-review evidence contract_todo_title
 }
+conversion TodoJavascriptToRust @id("conversion_todo_js_rust") {
+  sourceLanguage javascript
+  target rust
+  constraint type publicApi @id("type_constraint_public_api") role source kind public-function symbol symbol:addTodo signatureHash sig_add_todo evidence artifact_todo_title_probe
+  constraint type rustApi @id("type_constraint_rust_api") role target kind public-function symbol symbol:addTodoRust signatureHash sig_add_todo evidence artifact_todo_title_probe
+  constraint controlFlow saveFlow @id("control_flow_save") role source kind async-flow from action_add to effect_persist_todo evidence artifact_todo_title_probe async
+  constraint lifetime todoBorrow @id("lifetime_todo_borrow") role source kind borrowed-region resource TodoDb.todos evidence artifact_todo_title_probe
+}
 action addTodo @id("action_add") {
   input TodoInput
   returns Patch
@@ -132,6 +140,13 @@ assert.equal(doc.metadata.semanticOperations.id, 'semantic_ops_todo');
 assert.equal(doc.metadata.semanticOperations.operations[0].operationKind, 'effect');
 assert.equal(doc.metadata.semanticOperations.operations[0].writes[0], 'TodoDb.todos');
 assert.equal(doc.metadata.semanticOperations.operations[1].nativeAstNodeIds[0], 'ts_node_title');
+assert.equal(doc.metadata.universalConversionPlan.id, 'conversion_todo_js_rust');
+assert.equal(doc.metadata.universalConversionPlan.targets[0], 'rust');
+assert.equal(doc.metadata.universalConversionPlan.typeConstraints.length, 2);
+assert.equal(doc.metadata.universalConversionPlan.typeConstraints[0].sourceTypes[0].signatureHash, 'sig_add_todo');
+assert.equal(doc.metadata.universalConversionPlan.typeConstraints[1].targetTypes[0].symbolId, 'symbol:addTodoRust');
+assert.equal(doc.metadata.universalConversionPlan.controlFlowConstraints[0].sourceControlFlows[0].async, true);
+assert.equal(doc.metadata.universalConversionPlan.lifetimeConstraints[0].sourceLifetimeConstraints[0].resourceId, 'TodoDb.todos');
 assert.equal(doc.nodes.state_todo.collections[0].merge.law, 'commutative');
 assert.equal(doc.nodes.view_todo_list.kind, 'view');
 assert.equal(doc.nodes.view_todo_list.reads[0], 'TodoDb.todos');
