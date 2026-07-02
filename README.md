@@ -475,6 +475,26 @@ conversion TodoJavascriptToRust @id("conversion_todo_js_rust") {
 
 `constraint` rows accept every universal conversion constraint family used by route admission, including hyphenated spellings such as `module-constraint`, `scope-binding`, `memory-model`, `effect-constraint`, `control-flow`, `borrow-scope`, `borrow-checker`, `host-environment`, `callable-boundary`, `adt-pattern`, `data-layout`, `numeric-semantics`, `text-semantics`, `collection-semantics`, `serialization-semantics`, `dependency-semantics`, `object-model`, and `protocol`. The parser preserves family-specific fields such as module specifiers, package conditions, binding/reference ids, memory ordering, locks, capabilities, host permissions, callable signatures, pattern exhaustiveness, ABI/layout hints, numeric/text/collection behavior, wire formats, dependency lockfile evidence, and effect adapters as authored evidence inputs. Record-level targets use explicit labels such as `effectTarget` so `role target` rows cannot be mistaken for an authored target field. These rows do not prove translation equivalence; they make the required proof surface explicit for downstream gates and admission records.
 
+## Authored runtime capability syntax
+
+`.frontier` files can describe runtime host profiles and proof evidence directly with `runtimeCapabilities`, `runtimeCapabilityMatrix`, or `runtimeHosts` blocks. These blocks are the file-authored shape of the runtime capability matrix input used by conversion planning: they name source hosts, target hosts, host capability support, adapter requirements, and runtime proof signals without claiming that the runtime behavior is equivalent.
+
+```frontier
+runtimeCapabilities WebToRust @id("runtime_caps_web_rust") {
+  sourceHost web @id("runtime_host_js_web") language javascript runtime web host browser target javascript alias js|jsx evidence evidence_runtime_fetch
+  targetHost rust @id("runtime_host_rust_cli") language rust runtime cli host native-cli target rust alias rs evidence evidence_runtime_fetch
+  hostBinding webFetchBinding @id("runtime_binding_web_fetch") host runtime_host_js_web capability fetch kind native-api apiName fetch globalName window.fetch evidence evidence_runtime_fetch
+  hostBinding rustFetchBinding @id("runtime_binding_rust_fetch") host runtime_host_rust_cli capability fetch kind package package reqwest symbol Client evidence evidence_runtime_fetch
+  hostCapability webFetch @id("runtime_cap_web_fetch") host runtime_host_js_web capability fetch support native binding runtime_binding_web_fetch evidence evidence_runtime_fetch
+  hostCapability rustFetch @id("runtime_cap_rust_fetch") host runtime_host_rust_cli capability fetch support adapter binding runtime_binding_rust_fetch evidence evidence_runtime_fetch
+  requirement fetchAdapter @id("runtime_requirement_fetch_adapter") sourceHost runtime_host_js_web targetHost runtime_host_rust_cli capability fetch hostCapability runtime_cap_rust_fetch binding runtime_binding_rust_fetch requiredSignals source-hash|target-hash|runtime-command|probe-id|telemetry-hash|network-trace-hash proofEvidence evidence_runtime_fetch evidence evidence_runtime_fetch missingEvidence target-adapter-fixture proofGap rust-fetch-adapter-boundary readiness needs-review reason "Fetch adapter needs replay proof."
+  evidence fetchProbe @id("evidence_runtime_fetch") kind runtime-adapter-proof status passed capability fetch sourceHost runtime_host_js_web targetHost runtime_host_rust_cli runtimeProofSignals source-hash|target-hash|runtime-command|probe-id|telemetry-hash|network-trace-hash command "npm run probe:fetch" probeId fetch-probe telemetryHash hash_telemetry networkTraceHash hash_network
+  gap domProbe @id("runtime_gap_dom_probe") code runtime-dom-proof status missing summary "DOM proof is not provided."
+}
+```
+
+The parser projects these rows into `metadata.runtimeCapabilities` and `metadata.runtimeCapabilityMatrix` as `frontier.lang.authoredRuntimeCapabilityMatrixInput`. `sourceHost` and `targetHost` rows become host profiles and selectors, `hostCapability` rows attach support facts to a host, `hostBinding` rows preserve concrete native/package/API binding evidence, `requirement` rows become fail-closed runtime proof obligations, and `evidence` rows carry source-bound proof signals such as commands, probe ids, telemetry hashes, network traces, layout snapshots, bitmap hashes, sandbox policies, and adapter binding hashes. The compiler can use this authored input when building a `universalRuntimeCapabilityMatrix`, but the authored file still keeps `runtimeEquivalenceClaim`, `semanticEquivalenceClaim`, `renderEquivalenceClaim`, and `autoMergeClaim` false.
+
 ## Authored dialect registry syntax
 
 `.frontier` files can carry reusable dialect registries with `dialectRegistry` or `universalDialectRegistry` blocks. These blocks describe language-specific constructs that should stay visible during translation instead of being silently collapsed into generic stubs.

@@ -12,6 +12,7 @@ import { parsePackageManifestBlock } from './package-manifest.js';
 import { parseParadigmBlock } from './paradigm.js';
 import { parseProofBlock } from './proof.js';
 import { parseResourceGraphBlock } from './resource-graph.js';
+import { parseRuntimeCapabilityBlock } from './runtime-capability.js';
 import { parseNativeSourceBlock } from './source-evidence.js';
 import { parseTargetProjectionMetadata } from './target-projection.js';
 import { parseViewBlock } from './view.js';
@@ -31,6 +32,7 @@ export function parseFrontierSource(source, options = {}) {
   const packageManifestBlocks = [];
   const canvasSurfaceBlocks = [];
   const applicationSurfaceBlocks = [];
+  const runtimeCapabilityBlocks = [];
   const documentId = options.id ?? readId(source) ?? 'mod_frontier';
   const documentName = options.name ?? readName(source) ?? 'FrontierModule';
   for (const block of readBlocks(source)) {
@@ -62,8 +64,9 @@ export function parseFrontierSource(source, options = {}) {
     if (block.kind === 'packageManifest' || block.kind === 'packageGraph' || block.kind === 'packageSurface') packageManifestBlocks.push(parsePackageManifestBlock(block));
     if (block.kind === 'canvasSurface' || block.kind === 'canvasGraph') canvasSurfaceBlocks.push(parseCanvasSurfaceBlock(block));
     if (block.kind === 'applicationSurface' || block.kind === 'appHost' || block.kind === 'plugin' || block.kind === 'pluginSurface' || block.kind === 'pluginContract') applicationSurfaceBlocks.push(parseApplicationSurfaceBlock(block));
+    if (block.kind === 'runtimeCapabilities' || block.kind === 'runtimeCapabilityMatrix' || block.kind === 'runtimeHosts') runtimeCapabilityBlocks.push(parseRuntimeCapabilityBlock(block));
   }
-  const metadata = createParsedMetadata({ proofBlocks, paradigmBlocks, operationBlocks, conversionBlocks, constraintSpaceBlocks, decisionGraphBlocks, dialectRegistryBlocks, interlinguaBlocks, resourceGraphBlocks, nativeSourceBlocks, packageManifestBlocks, canvasSurfaceBlocks, applicationSurfaceBlocks });
+  const metadata = createParsedMetadata({ proofBlocks, paradigmBlocks, operationBlocks, conversionBlocks, constraintSpaceBlocks, decisionGraphBlocks, dialectRegistryBlocks, interlinguaBlocks, resourceGraphBlocks, nativeSourceBlocks, packageManifestBlocks, canvasSurfaceBlocks, applicationSurfaceBlocks, runtimeCapabilityBlocks });
   return createDocument({ id: documentId, name: documentName, nodes, ...(metadata ? { metadata } : {}) });
 }
 
@@ -73,7 +76,7 @@ function readName(source) { return /module\s+([A-Za-z_$][\w$]*)/.exec(source)?.[
 function readId(source) { return /module\s+[A-Za-z_$][\w$]*\s+@id\(\s*["']([^"']+)["']\s*\)/.exec(source)?.[1]; }
 function readBlocks(source) {
   const blocks = [];
-  const header = /\b(entity|state|action|view|migration|capability|effect|type|extern|lattice|nativeSource|target|proof|paradigm|paradigmSemantics|operations|semanticOperations|conversion|universalConversionPlan|constraintSpace|possibilitySpace|decisionGraph|admissionGraph|dialectRegistry|universalDialectRegistry|interlingua|universalInterlingua|resourceGraph|semanticResourceGraph|packageManifest|packageGraph|packageSurface|canvasSurface|canvasGraph|applicationSurface|appHost|plugin|pluginSurface|pluginContract)\s+([^{}]+)\{/g;
+  const header = /\b(entity|state|action|view|migration|capability|effect|type|extern|lattice|nativeSource|target|proof|paradigm|paradigmSemantics|operations|semanticOperations|conversion|universalConversionPlan|constraintSpace|possibilitySpace|decisionGraph|admissionGraph|dialectRegistry|universalDialectRegistry|interlingua|universalInterlingua|resourceGraph|semanticResourceGraph|packageManifest|packageGraph|packageSurface|canvasSurface|canvasGraph|applicationSurface|appHost|plugin|pluginSurface|pluginContract|runtimeCapabilities|runtimeCapabilityMatrix|runtimeHosts)\s+([^{}]+)\{/g;
   let match;
   while ((match = header.exec(source))) {
     let depth = 1; let index = header.lastIndex;

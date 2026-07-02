@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { parseFrontierSource } from '../dist/index.js';
 import './application-surface-smoke.mjs';
+import './runtime-capability-smoke.mjs';
 const doc = parseFrontierSource(`module TodoApp @id("mod_todo") {
 type TodoInput @id("type_todo_input") {
   title: Text
