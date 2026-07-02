@@ -11,11 +11,14 @@ conversion JsToRust @id("conversion_js_rust") {
   constraint module-constraint todoModule @id("module_constraint_todo") role source kind module-boundary sourcePath src/todo.ts specifier ./todo importedName addTodo exportedName addTodo packageName @app/todo packageSubpath ./todo packageCondition import resolutionKind node16 resolvedPath src/todo.ts packageExportKey ./todo importAttributes type-json publicContract evidence evidence_module
   constraint scope-binding todoLocal @id("scope_binding_todo") role source kind lexical-binding localName todo bindingId binding:todo referenceId ref:todo scopeId scope:handler resolvedBindingId binding:todo lookupKind lexical namespace value closure captured typeOnly evidence evidence_scope
   constraint memory-model todoMemory @id("memory_model_todo") role source kind stable-reference resource TodoDb.todos memoryKind shared-memory operationKind atomic-load memoryOrder acquire lockId lock:todo synchronizationKey todo-lock lifetimeKind lexical regionKind heap shared atomic evidence evidence_memory
-  constraint effect-constraint todoWrite @id("effect_constraint_todo_write") role source kind storage-write effectKind storage-write capability storage.write resource TodoDb.todos reads TodoDb.todos writes TodoDb.todos effectTarget TodoDb.todos fact writes|deterministic adapterRequired evidence evidence_effect
+  constraint effect-constraint todoWrite @id("effect_constraint_todo_write") role source kind storage-write effectKind storage-write capability storage.write resource TodoDb.todos reads TodoDb.todos writes TodoDb.todos effectTarget TodoDb.todos fact writes|deterministic adapterRequired sourceMap source_map_effect sourceMapMapping map_effect_write proofObligation proof_effect_write proofEvidence proof_evidence_effect missingEvidence effect-proof-missing failClosed evidence evidence_effect
   constraint host-environment browserFetch @id("host_environment_fetch") role source kind browser-api hostKind browser-api capability fetch apiName fetch globalName window permission network resource https://api.example.test adapterRequired evidence evidence_host
-  constraint callable-boundary saveUserCall @id("callable_boundary_save_user") role source kind method-call callableKind function functionName saveUser signatureHash sig_save_user parameterCount 2 requiredParameterCount 1 optionalParameterCount 1 parameterOrder user|options receiverKind module thisBinding this:return returnKind promise asyncKind async dispatchKind dynamic callingConvention js exceptionModel throws effectKind network variadic evidence evidence_callable
+  constraint callable-boundary saveUserCall @id("callable_boundary_save_user") role source kind method-call callableKind function functionName saveUser signatureHash sig_save_user parameterCount 2 requiredParameterCount 1 optionalParameterCount 1 parameterOrder user|options restParameter rest receiverKind module thisBinding this:return returnKind promise asyncKind async dispatchKind dynamic callingConvention js exceptionModel throws effectKind network variadic evidence evidence_callable
   constraint adt-pattern userResult @id("adt_pattern_user_result") role source kind tagged-union adtKind union typeName UserResult variantNames Ok|Err payloadFieldNames value|error tagFieldNames kind matchArmNames ok|err guardKinds predicate destructuringKinds object exhaustivenessKinds total fallbackKinds wildcard genericParameterNames T evidence evidence_adt
   constraint data-layout userStruct @id("data_layout_user_struct") role target kind repr-c layoutKind struct representationKind repr-c typeId type:User structId struct:User fieldId field:name sizeBytes 24 alignmentBytes 8 offsetBytes 16 endian little pointerWidth 64 integerWidth 32 floatFormat ieee754 repr c evidence evidence_layout
+  constraint layout-style buttonStyle @id("layout_style_button") role source kind css-rule selector .button property color value red cascadeLayer components specificity 0-1-0 mediaQuery mobile containerQuery card layoutKind block display flex position sticky zIndex 10 writingMode horizontal-tb direction ltr viewport mobile renderTreeId render:button styleRuleId rule:button computedStyleHash hash_style layoutSnapshotHash hash_layout bitmapHash hash_bitmap accessibilityTreeHash hash_a11y focusOrderHash hash_focus sourceMap source_map_style sourceMapMapping map_style_button proofObligation proof_style proofEvidence proof_evidence_style failClosed evidence evidence_style
+  constraint style nativeButton @id("style_native_button") role target kind swiftui-modifier selector Button property foregroundStyle value red sourceMap source_map_target_style proofObligation proof_target_style failClosed evidence evidence_target_style
+  constraint layout heroLayout @id("layout_hero_grid") role source kind visual-layout layoutKind grid selector .hero display grid sourceMap source_map_layout evidence evidence_layout_style
   constraint numeric-semantics userAge @id("numeric_semantics_user_age") role source kind integer numericKind int numericTypeName number width 53 signedness signed overflowMode safe-integer divisionMode trunc moduloMode remainder floatFormat ieee754 floatPrecision double roundingMode nearest specialValues nan|infinity coercionKinds string-to-number literalKinds decimal|separator signed nan infinity evidence evidence_numeric
   constraint text-semantics userName @id("text_semantics_user_name") role source kind string textKind string stringTypeName string encoding utf-16 codeUnit 16 indexingUnit code-unit normalizationForm nfc locale en-AU collation locale caseMapping unicode regexEngine ecmascript escapeMode js interpolationMode template termination none boundaryKinds grapheme|word mutability immutable evidence evidence_text
   constraint collection-semantics userList @id("collection_semantics_user_list") role source kind array collectionKind array collectionTypeName UserList elementKind User keyKind index valueKind User ordering insertion iterationOrder insertion duplicatePolicy allow equality same-value-zero hash identity comparator none indexBase 0 boundsBehavior checked lengthSemantics dynamic sparseSemantics holes mutability mutable persistence ephemeral copyOnWrite iteratorInvalidation mutation traversal eager capacityGrowth dynamic concurrency single-thread evidence evidence_collection
@@ -66,12 +69,25 @@ assert.equal(memoryRecord.shared, true);
 assert.equal(memoryRecord.atomic, true);
 
 const effectRecord = plan.effectConstraints[0].sourceEffects[0];
+const effectEntry = plan.effectConstraints[0];
 assert.equal(effectRecord.effectKind, 'storage-write');
 assert.equal(effectRecord.capability, 'storage.write');
 assert.deepEqual(effectRecord.reads, ['TodoDb.todos']);
 assert.deepEqual(effectRecord.writes, ['TodoDb.todos']);
 assert.equal(effectRecord.target, 'TodoDb.todos');
 assert.equal(effectRecord.adapterRequired, true);
+assert.deepEqual(effectEntry.sourceMapIds, ['source_map_effect']);
+assert.deepEqual(effectEntry.sourceMapMappingIds, ['map_effect_write']);
+assert.deepEqual(effectEntry.proofObligationIds, ['proof_effect_write']);
+assert.deepEqual(effectEntry.proofEvidenceIds, ['proof_evidence_effect']);
+assert.deepEqual(effectEntry.missingEvidence, ['effect-proof-missing']);
+assert.equal(effectEntry.failClosed, true);
+assert.deepEqual(effectRecord.sourceMapIds, ['source_map_effect']);
+assert.deepEqual(effectRecord.sourceMapMappingIds, ['map_effect_write']);
+assert.deepEqual(effectRecord.proofObligationIds, ['proof_effect_write']);
+assert.deepEqual(effectRecord.proofEvidenceIds, ['proof_evidence_effect']);
+assert.deepEqual(effectRecord.missingEvidence, ['effect-proof-missing']);
+assert.equal(effectRecord.failClosed, true);
 
 const hostRecord = plan.hostEnvironmentConstraints[0].sourceHosts[0];
 assert.equal(plan.hostEnvironmentConstraints[0].sourceHostEnvironmentRecords[0], hostRecord);
@@ -88,6 +104,7 @@ assert.equal(plan.callableBoundaryConstraints[0].sourceCallableBoundaryRecords[0
 assert.equal(callableRecord.functionName, 'saveUser');
 assert.equal(callableRecord.parameterCount, 2);
 assert.deepEqual(callableRecord.parameterOrder, ['user', 'options']);
+assert.equal(callableRecord.restParameter, 'rest');
 assert.equal(callableRecord.receiverKind, 'module');
 assert.equal(callableRecord.asyncKind, 'async');
 assert.equal(callableRecord.variadic, true);
@@ -104,6 +121,41 @@ assert.equal(layoutRecord.layoutKind, 'struct');
 assert.equal(layoutRecord.typeId, 'type:User');
 assert.equal(layoutRecord.sizeBytes, 24);
 assert.equal(layoutRecord.pointerWidth, 64);
+assert.equal(layoutRecord.floatFormat, 'ieee754');
+
+const layoutStyleRecord = plan.layoutStyleConstraints[0].sourceLayoutStyles[0];
+assert.equal(plan.layoutStyleConstraints[0].sourceLayoutStyleRecords[0], layoutStyleRecord);
+assert.equal(layoutStyleRecord.selector, '.button');
+assert.equal(layoutStyleRecord.styleProperty, 'color');
+assert.equal(layoutStyleRecord.value, 'red');
+assert.equal(layoutStyleRecord.cascadeLayer, 'components');
+assert.equal(layoutStyleRecord.specificity, '0-1-0');
+assert.equal(layoutStyleRecord.mediaQuery, 'mobile');
+assert.equal(layoutStyleRecord.containerQuery, 'card');
+assert.equal(layoutStyleRecord.display, 'flex');
+assert.equal(layoutStyleRecord.position, 'sticky');
+assert.equal(layoutStyleRecord.zIndex, '10');
+assert.equal(layoutStyleRecord.computedStyleHash, 'hash_style');
+assert.equal(layoutStyleRecord.layoutSnapshotHash, 'hash_layout');
+assert.deepEqual(plan.layoutStyleConstraints[0].sourceMapIds, ['source_map_style']);
+assert.deepEqual(layoutStyleRecord.sourceMapIds, ['source_map_style']);
+assert.deepEqual(layoutStyleRecord.sourceMapMappingIds, ['map_style_button']);
+assert.deepEqual(layoutStyleRecord.proofObligationIds, ['proof_style']);
+assert.deepEqual(layoutStyleRecord.proofEvidenceIds, ['proof_evidence_style']);
+assert.equal(layoutStyleRecord.failClosed, true);
+assert.equal(plan.styleConstraints, undefined);
+assert.equal(plan.layoutConstraints, undefined);
+const targetStyleRecord = plan.layoutStyleConstraints[1].targetLayoutStyles[0];
+assert.equal(plan.layoutStyleConstraints[1].targetLayoutStyleRecords[0], targetStyleRecord);
+assert.equal(targetStyleRecord.selector, 'Button');
+assert.equal(targetStyleRecord.styleProperty, 'foregroundStyle');
+assert.deepEqual(plan.layoutStyleConstraints[1].sourceMapIds, ['source_map_target_style']);
+assert.deepEqual(targetStyleRecord.proofObligationIds, ['proof_target_style']);
+assert.equal(targetStyleRecord.failClosed, true);
+const layoutAliasRecord = plan.layoutStyleConstraints[2].sourceLayoutStyles[0];
+assert.equal(layoutAliasRecord.layoutKind, 'grid');
+assert.equal(layoutAliasRecord.display, 'grid');
+assert.deepEqual(layoutAliasRecord.sourceMapIds, ['source_map_layout']);
 
 const numericRecord = plan.numericSemanticsConstraints[0].sourceNumerics[0];
 assert.equal(plan.numericSemanticsConstraints[0].sourceNumericSemanticsRecords[0], numericRecord);
@@ -161,6 +213,7 @@ const objectRecord = plan.objectModelConstraints[0].sourceObjects[0];
 assert.equal(plan.objectModelConstraints[0].sourceObjectModelRecords[0], objectRecord);
 assert.equal(objectRecord.objectKind, 'class');
 assert.equal(objectRecord.classId, 'class:User');
+assert.equal(objectRecord.methodId, 'method:save');
 assert.equal(objectRecord.virtual, true);
 
 const protocolRecord = plan.protocolConstraints[0].targetProtocols[0];

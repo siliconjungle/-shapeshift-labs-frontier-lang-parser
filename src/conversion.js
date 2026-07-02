@@ -88,10 +88,15 @@ function addConstraint(plan, family, name, text) {
     sourceLanguage: readInlineWord('sourceLanguage', text) ?? plan.sourceLanguage,
     target: readInlineWord('targetLanguage', text) ?? plan.targets[0],
     mode: readInlineWord('mode', text),
+    sourceMapIds: readInlineList(text, 'sourceMap', 'sourceMaps', 'sourceMapId', 'sourceMapIds'),
+    sourceMapMappingIds: readInlineList(text, 'sourceMapMapping', 'sourceMapMappings', 'sourceMapMappingId', 'sourceMapMappingIds'),
+    proofObligationIds: readInlineList(text, 'proofObligation', 'proofObligations', 'proofObligationId', 'proofObligationIds', 'obligation', 'obligations'),
+    proofEvidenceIds: readInlineList(text, 'proofEvidence', 'proofEvidenceId', 'proofEvidenceIds'),
     evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
     missingEvidence: readInlineList(text, 'missingEvidence'),
     blockers: readInlineList(text, 'blocker', 'blockers'),
     review: readInlineList(text, 'review'),
+    failClosed: readInlineFlag('failClosed', text),
     metadata: { name, family, authoredConversionBlockId: plan.id }
   });
   const recordKey = role === 'target' ? config.targetKey : config.sourceKey;
@@ -113,6 +118,12 @@ function resourceGraphFromRecord(record, entry) {
     sourcePath: record.sourcePath,
     sourceHash: record.sourceHash,
     evidenceIds,
+    sourceMapIds: record.sourceMapIds ?? entry.sourceMapIds,
+    sourceMapMappingIds: record.sourceMapMappingIds ?? entry.sourceMapMappingIds,
+    proofObligationIds: record.proofObligationIds ?? entry.proofObligationIds,
+    proofEvidenceIds: record.proofEvidenceIds ?? entry.proofEvidenceIds,
+    missingEvidence: record.missingEvidence ?? entry.missingEvidence,
+    failClosed: record.failClosed ?? entry.failClosed,
     resources: [{
       id: resourceId,
       resourceKind: record.resourceKind ?? record.kind ?? record.constraintKind,

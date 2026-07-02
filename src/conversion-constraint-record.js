@@ -8,6 +8,7 @@ const FAMILY_ROWS = [
   ['callableBoundary', 'callableBoundaryConstraints', 'sourceCallables', 'targetCallables', ['callableBoundaryConstraint', 'callable-boundary', 'callable-boundary-constraint'], { extraSourceKeys: ['sourceCallableBoundaryRecords'], extraTargetKeys: ['targetCallableBoundaryRecords'] }],
   ['adtPattern', 'adtPatternConstraints', 'sourcePatterns', 'targetPatterns', ['adtPatternConstraint', 'adt-pattern', 'adt-pattern-constraint'], { extraSourceKeys: ['sourceAdtPatternRecords'], extraTargetKeys: ['targetAdtPatternRecords'] }],
   ['dataLayout', 'dataLayoutConstraints', 'sourceLayouts', 'targetLayouts', ['dataLayoutConstraint', 'data-layout', 'data-layout-constraint'], { extraSourceKeys: ['sourceDataLayoutRecords'], extraTargetKeys: ['targetDataLayoutRecords'] }],
+  ['layoutStyle', 'layoutStyleConstraints', 'sourceLayoutStyles', 'targetLayoutStyles', ['layoutStyleConstraint', 'layout-style', 'layout-style-constraint', 'layout', 'layoutConstraint', 'layout-constraint', 'style', 'styleConstraint', 'style-constraint', 'css-style', 'css-rule', 'style-layout', 'render-layout'], { extraSourceKeys: ['sourceLayoutStyleRecords'], extraTargetKeys: ['targetLayoutStyleRecords'] }],
   ['effect', 'effectConstraints', 'sourceEffects', 'targetEffects', ['effectConstraint', 'effect-constraint']],
   ['concurrencyModel', 'concurrencyModelConstraints', 'sourceConcurrencyModels', 'targetConcurrencyModels', ['concurrencyModelConstraint', 'concurrency-model', 'concurrency-model-constraint'], { extraSourceKeys: ['sourceConcurrencyModelRecords'], extraTargetKeys: ['targetConcurrencyModelRecords'] }],
   ['errorModel', 'errorModelConstraints', 'sourceErrors', 'targetErrors', ['errorModelConstraint', 'error-model', 'error-model-constraint'], { extraSourceKeys: ['sourceErrorModelRecords'], extraTargetKeys: ['targetErrorModelRecords'] }],
@@ -48,7 +49,7 @@ const WORD_FIELDS = [
   ['controlFlowKind'], ['sourceControlFlowId'], ['sourceId', 'from', 'sourceId'], ['targetId', 'to', 'targetId'], ['label'],
   ['conditionHash'], ['orderingKey', 'orderingKey', 'orderKey'], ['lifetimeKind'], ['lifetimeRegionId', 'lifetimeRegion', 'lifetimeRegionId'],
   ['regionKind'], ['resourceId', 'resource', 'resourceId'],
-  ['functionName'], ['methodName'], ['callableName'], ['callableKind'], ['callSignatureHash'],
+  ['functionName'], ['methodName'], ['callableName'], ['callableKind'], ['callSignatureHash'], ['restParameter', 'restParameter', 'rest'],
   ['receiverKind', 'receiverKind', 'receiver'], ['thisBinding'], ['selfBinding'], ['returnKind', 'returnKind', 'returnType'],
   ['asyncKind', 'asyncKind', 'asyncMode'], ['generatorKind', 'generatorKind', 'yieldKind'], ['callbackKind'],
   ['closureCapture', 'closureCapture', 'captureKind'], ['overloadSet', 'overloadSet', 'overloads'],
@@ -57,7 +58,7 @@ const WORD_FIELDS = [
   ['symbolKind'], ['relationKind'], ['representationKind'], ['typeId', 'typeId', 'nodeId'], ['nodeId'], ['structId'], ['unionId'],
   ['enumId'], ['fieldId'], ['bitfieldId'], ['endianness', 'endianness', 'endian'], ['repr', 'repr', 'reprAttribute'],
   ['numericKind', 'numericKind', 'numberKind'], ['numberKind'], ['numericTypeName'], ['signedness'], ['overflowMode', 'overflowMode', 'overflowBehavior'],
-  ['divisionMode', 'divisionMode', 'integerDivisionMode'], ['moduloMode', 'moduloMode', 'remainderMode'], ['floatPrecision'], ['roundingMode'],
+  ['divisionMode', 'divisionMode', 'integerDivisionMode'], ['moduloMode', 'moduloMode', 'remainderMode'], ['floatFormat'], ['floatPrecision'], ['roundingMode'],
   ['separatorPolicy'], ['coercionKind', 'coercionKind', 'conversionKind'], ['conversionKind'], ['literalKind'],
   ['textKind', 'textKind', 'stringKind'], ['stringKind'], ['stringTypeName'], ['encoding', 'encoding', 'charset', 'codepage'],
   ['charset'], ['codepage'], ['codeUnit', 'codeUnit', 'codeUnitWidth'], ['indexingUnit', 'indexingUnit', 'indexUnit'],
@@ -83,15 +84,19 @@ const WORD_FIELDS = [
   ['buildTool', 'buildTool', 'builder'], ['packageManagerVersion', 'packageManagerVersion', 'managerVersion'],
   ['offlineCache', 'offlineCache', 'cachePolicy'], ['dedupeHoist', 'dedupeHoist', 'hoistPolicy'], ['provenance', 'provenance', 'sourceProvenance'],
   ['trust', 'trust', 'supplyChainTrust'], ['concurrencyKind'], ['constructId', 'constructId', 'taskId', 'threadId', 'actorId', 'channelId'],
-  ['taskId'], ['threadId'], ['executor', 'executor', 'queue', 'runtime'], ['executorId'], ['isolationKey'], ['cancellationKey', 'cancellationKey', 'signalId', 'contextId'],
+  ['taskId'], ['threadId'], ['scheduler'], ['executor', 'executor', 'queue', 'runtime'], ['executorId'], ['isolationKey'], ['cancellationKey', 'cancellationKey', 'signalId', 'contextId'],
   ['signalId'], ['contextId'], ['errorKind'], ['errorType', 'errorType', 'exceptionType', 'resultType'], ['exceptionType'], ['resultType'],
   ['boundaryId', 'boundaryId', 'catchId', 'handlerId'], ['catchId'], ['handlerId'], ['evaluationKind', 'evaluationKind', 'expressionKind'],
   ['expressionKind'], ['expressionId', 'expressionId', 'nodeId'], ['operator'], ['evaluationOrder', 'evaluationOrder', 'order'],
   ['expansionKind', 'expansionKind', 'macroKind', 'templateKind', 'decoratorKind', 'generatorKind'], ['macroKind'], ['templateKind'],
   ['decoratorKind'], ['expansionId'], ['generatorId'], ['generatedSourcePath'], ['expandedHash', 'expandedHash', 'generatedHash'],
-  ['generatedHash'], ['classId'], ['classKind'], ['prototypeId'], ['mixinId'], ['constructorId'], ['inheritanceKind'], ['referenceSemantics'],
+  ['generatedHash'], ['classId'], ['classKind'], ['prototypeId'], ['mixinId'], ['methodId'], ['constructorId'], ['inheritanceKind'], ['referenceSemantics'],
   ['valueSemantics'], ['protocolKind'], ['protocolName'], ['traitName'], ['interfaceName'], ['subjectName', 'subjectName', 'receiverName', 'implementedFor'],
-  ['implementedFor'], ['sourcePath', 'sourcePath', 'path'], ['sourceHash'], ['target', 'effectTarget', 'targetResource']
+  ['implementedFor'], ['sourcePath', 'sourcePath', 'path'], ['sourceHash'], ['selector'], ['value'], ['styleProperty', 'styleProperty', 'property', 'cssProperty'],
+  ['cssProperty', 'cssProperty', 'styleProperty', 'property'], ['computedValue'], ['cascadeLayer'], ['specificity'], ['mediaQuery'],
+  ['containerQuery'], ['boxModel'], ['display'], ['position'], ['zIndex'], ['writingMode'], ['direction'], ['viewport'], ['renderTreeId'],
+  ['styleRuleId'], ['computedStyleHash'], ['layoutSnapshotHash'], ['bitmapHash'], ['accessibilityTreeHash'], ['focusOrderHash'],
+  ['target', 'effectTarget', 'targetResource']
 ];
 const LIST_FIELDS = [
   ['factKinds', 'fact', 'facts', 'factKind', 'factKinds'], ['importAttributes', 'importAttribute', 'importAttributes', 'assertion', 'assertions'],
@@ -108,14 +113,20 @@ const LIST_FIELDS = [
   ['devDependencies'], ['features', 'features', 'extras', 'flags'], ['lifecycleScripts', 'lifecycleScripts', 'scripts'],
   ['requirementNames', 'requirementNames', 'requirements', 'methods', 'members'], ['associatedTypeNames', 'associatedTypeNames', 'associatedTypes'],
   ['boundNames', 'boundNames', 'bounds', 'traitBounds', 'protocolBounds', 'whereBounds'], ['implementationKinds', 'implementationKinds', 'implKinds', 'implementations'],
-  ['dispatchKinds', 'dispatchKinds', 'dispatchModes'], ['coherenceKinds', 'coherenceKinds', 'coherenceRules'], ['evidenceIds', 'evidence', 'evidenceIds']
+  ['dispatchKinds', 'dispatchKinds', 'dispatchModes'], ['coherenceKinds', 'coherenceKinds', 'coherenceRules'],
+  ['sourceMapIds', 'sourceMap', 'sourceMaps', 'sourceMapId', 'sourceMapIds'],
+  ['sourceMapMappingIds', 'sourceMapMapping', 'sourceMapMappings', 'sourceMapMappingId', 'sourceMapMappingIds'],
+  ['proofObligationIds', 'proofObligation', 'proofObligations', 'proofObligationId', 'proofObligationIds', 'obligation', 'obligations'],
+  ['proofEvidenceIds', 'proofEvidence', 'proofEvidenceId', 'proofEvidenceIds'],
+  ['missingEvidence', 'missingEvidence', 'missingEvidenceIds'],
+  ['evidenceIds', 'evidence', 'evidenceIds']
 ];
 const NUMBER_FIELDS = [
   ['arity'], ['size'], ['alignment'], ['parameterCount'], ['requiredParameterCount'], ['optionalParameterCount'],
   ['sizeBytes'], ['alignmentBytes'], ['offsetBytes'], ['pointerWidth'], ['integerWidth'], ['bitWidth'], ['width'],
   ['codeUnitWidth'], ['indexBase']
 ];
-const FLAG_FIELDS = ['nullable', 'optional', 'publicContract', 'closure', 'captured', 'writeExpr', 'mutable', 'shadowed', 'hoisted', 'typeOnly', 'isTypeReference', 'isValueReference', 'shared', 'volatile', 'atomic', 'adapterRequired', 'async', 'generator', 'exceptional', 'cancellable', 'variadic', 'signed', 'nan', 'infinity', 'deterministic', 'streaming', 'framing', 'copyOnWrite', 'multipleInheritance', 'reflection', 'staticDispatch', 'virtual', 'spawn', 'await', 'structured', 'reentrant', 'cancelable'];
+const FLAG_FIELDS = ['nullable', 'optional', 'publicContract', 'closure', 'captured', 'writeExpr', 'mutable', 'shadowed', 'hoisted', 'typeOnly', 'isTypeReference', 'isValueReference', 'shared', 'volatile', 'atomic', 'adapterRequired', 'async', 'generator', 'exceptional', 'cancellable', 'variadic', 'signed', 'nan', 'infinity', 'deterministic', 'streaming', 'framing', 'copyOnWrite', 'multipleInheritance', 'reflection', 'staticDispatch', 'virtual', 'spawn', 'await', 'structured', 'reentrant', 'cancelable', 'failClosed'];
 
 export const FAMILIES = Object.freeze(Object.fromEntries(FAMILY_ROWS.flatMap(([name, field, sourceKey, targetKey, aliases = [], extra = {}]) => {
   const config = { field, sourceKey, targetKey, ...extra };
