@@ -79,6 +79,17 @@ proof TodoProofs @id("proof_todo") {
   artifact todoTitleProbe @id("artifact_todo_title_probe") kind test status passed path reports/todo-title.json obligation obligation_todo_title_runtime command "npm test -- todo-title"
   assumption hostFetch @id("assumption_host_fetch") scope host subject cap_http_request description "The host fetch adapter preserves request semantics."
 }
+paradigm TodoSemantics @id("paradigm_todo") {
+  bindingScope todoModule @id("scope_todo_module") kind module subject mod_todo statement "Todo module owns authored bindings."
+  binding todoTitle @id("binding_todo_title") kind field subject field_title bindingScope scope_todo_module semanticNode ent_todo evidence contract_todo_title
+  typeConstraint todoTitleText @id("type_constraint_todo_title") kind textField subject field_title binding binding_todo_title evidence contract_todo_title
+  effectRegion persistWrite @id("effect_region_persist_write") kind storageWrite subject effect_persist_todo effect effect_persist_todo
+  lowering todoTitleTypescript @id("lowering_todo_title_ts") kind projection subject field_title sourceRecord binding_todo_title targetRecord type_constraint_todo_title language typescript evidence artifact_todo_title_probe
+}
+operations TodoOperations @id("semantic_ops_todo") {
+  operation addTodoWrite @id("op_add_todo_write") op effect language frontier semanticNode action_add semanticSymbol symbol:addTodo write TodoDb.todos effect effect_persist_todo ownerKey action:addTodo conflictKey state:TodoDb.todos readiness ready evidence artifact_todo_title_probe summary "Add todo writes the todos collection."
+  operation titleProjection @id("op_title_projection") op projection language typescript semanticNode ent_todo semanticSymbol symbol:Todo nativeAstNode ts_node_title readiness needs-review evidence contract_todo_title
+}
 action addTodo @id("action_add") {
   input TodoInput
   returns Patch
@@ -112,6 +123,15 @@ assert.equal(doc.metadata.proof.contracts[0].subjectId, 'ent_todo');
 assert.equal(doc.metadata.proof.obligations[0].contractIds[0], 'contract_todo_title');
 assert.equal(doc.metadata.proof.artifacts[0].command, 'npm test -- todo-title');
 assert.equal(doc.metadata.proof.assumptions[0].scope, 'host');
+assert.equal(doc.metadata.paradigmSemantics.id, 'paradigm_todo');
+assert.equal(doc.metadata.paradigmSemantics.bindings[0].bindingScopeId, 'scope_todo_module');
+assert.equal(doc.metadata.paradigmSemantics.typeConstraints[0].bindingId, 'binding_todo_title');
+assert.equal(doc.metadata.paradigmSemantics.effectRegions[0].effectIds[0], 'effect_persist_todo');
+assert.equal(doc.metadata.paradigmSemantics.loweringRecords[0].targetRecordId, 'type_constraint_todo_title');
+assert.equal(doc.metadata.semanticOperations.id, 'semantic_ops_todo');
+assert.equal(doc.metadata.semanticOperations.operations[0].operationKind, 'effect');
+assert.equal(doc.metadata.semanticOperations.operations[0].writes[0], 'TodoDb.todos');
+assert.equal(doc.metadata.semanticOperations.operations[1].nativeAstNodeIds[0], 'ts_node_title');
 assert.equal(doc.nodes.state_todo.collections[0].merge.law, 'commutative');
 assert.equal(doc.nodes.view_todo_list.kind, 'view');
 assert.equal(doc.nodes.view_todo_list.reads[0], 'TodoDb.todos');
