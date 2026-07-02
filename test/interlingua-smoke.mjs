@@ -43,3 +43,4 @@ assert.equal(interlingua.interlinguaRecords[0].query.proofEvidenceIds[0], 'proof
 assert.equal(interlingua.interlinguaRecords[0].query.constraintObligationMissingEvidence[0], 'translation-borrow-scope:borrow-across-await');
 assert.equal(interlingua.interlinguaRecords[0].lift.sourceImportIds[0], 'native_import_js');
 assert.equal(interlingua.interlinguaRecords[0].lift.proofIds[0], 'proof_translation');
+assert.equal(interlingua.evidenceIds.includes('evidence_translation'), true);

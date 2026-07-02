@@ -168,7 +168,7 @@ function mergeInterlinguaBlocks(blocks) {
     obligationIds: blocks.flatMap((block) => ids(block.record?.obligations)),
     loweringIds: blocks.flatMap((block) => ids(block.record?.loweringRecords)),
     liftIds: blocks.flatMap((block) => ids(block.record?.liftRecords)),
-    evidenceIds: [...new Set(blocks.flatMap((block) => block.record?.query?.proofEvidenceIds ?? []).concat(blocks.flatMap((block) => block.record?.query?.constraintEvidenceIds ?? [])))],
+    evidenceIds: [...new Set(blocks.flatMap((block) => block.record?.lowering?.evidenceIds ?? []).concat(blocks.flatMap((block) => block.record?.query?.proofEvidenceIds ?? []), blocks.flatMap((block) => block.record?.query?.constraintEvidenceIds ?? [])))],
     routeIds: [...new Set(interlinguaRecords.map((record) => record.routeId).filter(Boolean))],
     summary: {
       interlinguaCount: interlinguaRecords.length,
