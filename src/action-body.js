@@ -78,9 +78,10 @@ function parseActionBodyLine(line, index) {
   const rest = rawName?.startsWith('@') ? ` ${rawName}${rawRest ?? ''}` : (rawRest ?? '');
   if (rowKind === 'set' || rowKind === 'insert' || rowKind === 'merge') {
     const path = readInlineWord('path', rest);
-    const value = readInlineActionValue('value', rest);
+    const valueType = readInlineType(rest);
+    const value = readInlineActionValue('value', rest, { valueType });
     if (!path || !value) return undefined;
-    return compactRecord({ kind: 'patch', op: rowKind, id: idFrom(rest, `action_body_${rowKind}_${name}`), name, path, value });
+    return compactRecord({ kind: 'patch', op: rowKind, id: idFrom(rest, `action_body_${rowKind}_${name}`), name, path, valueType, value });
   }
   if (rowKind === 'remove') {
     const path = readInlineWord('path', rest);
@@ -94,9 +95,10 @@ function parseActionBodyLine(line, index) {
     return compactRecord({ kind: 'callEffect', id: idFrom(rest, `action_body_callEffect_${name}`), name, capability: readInlineWord('capability', rest) ?? readInlineWord('effect', rest) ?? name, input });
   }
   if (rowKind === 'let') {
-    const value = readInlineActionBindingValue('value', rest);
+    const valueType = readInlineType(rest);
+    const value = readInlineActionBindingValue('value', rest, { valueType });
     if (!rawName || rawName.startsWith('@') || !isActionBindingName(name) || !value) return undefined;
-    return compactRecord({ kind: 'let', id: idFrom(rest, `action_body_let_${name}`), name, value });
+    return compactRecord({ kind: 'let', id: idFrom(rest, `action_body_let_${name}`), name, valueType, value });
   }
   if (rowKind === 'return') {
     const valueText = stripIds(rawName?.startsWith('@') ? rest : `${rawName ?? ''}${rest ?? ''}`).trim();
@@ -171,13 +173,13 @@ function findMatchingBrace(source, open) {
   return -1;
 }
 
-function readInlineActionValue(label, text) {
+function readInlineActionValue(label, text, options = {}) {
   const value = readInlineValue(label, text);
-  return value ? readActionValue(value) : undefined;
+  return value ? readActionValue(value, options) : undefined;
 }
 
-function readInlineActionBindingValue(label, text) {
-  const value = readInlineActionValue(label, text);
+function readInlineActionBindingValue(label, text, options = {}) {
+  const value = readInlineActionValue(label, text, options);
   return value ?? undefined;
 }
 
@@ -186,6 +188,7 @@ function isActionBindingName(value) {
 }
 
 function idFrom(header, fallback) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(header)?.[1] ?? fallback; }
+function readInlineType(text) { return readInlineWord('type', text) ?? readInlineWord('valueType', text); }
 function readInlineWord(label, text) { return new RegExp('(?:^|\\s)' + label + '\\s+([^\\s,]+)').exec(text)?.[1]?.trim(); }
 function readInlineValue(label, text) { return new RegExp('(?:^|\\s)' + label + '\\s+(.+?)(?=\\s+[A-Za-z_$][\\w$-]*\\s+|$)').exec(text)?.[1]?.trim(); }
 function stripIds(text) { return String(text ?? '').replace(/@id\(\s*["'][^"']+["']\s*\)/g, '').trim(); }

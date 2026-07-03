@@ -94,7 +94,7 @@ function validateActionRow(rowKind, rawName, rest, header) {
   if (rowKind === 'if') return validateActionExpressionText(readIfCondition(header));
   if (rowKind === 'set' || rowKind === 'insert' || rowKind === 'merge') {
     if (!readInlineWord('path', rest)) return { ok: false, reason: 'missing-action-path' };
-    return validateActionExpressionText(readInlineValue('value', rest));
+    return validateActionExpressionText(readInlineValue('value', rest), { valueType: readInlineType(rest) });
   }
   if (rowKind === 'remove') {
     return readInlineWord('path', rest) ? { ok: true } : { ok: false, reason: 'missing-action-path' };
@@ -112,8 +112,12 @@ function validateActionRow(rowKind, rawName, rest, header) {
       return { ok: false, reason: 'unsupported-action-binding-name' };
     }
     const value = readInlineValue('value', rest);
-    const parsed = value ? parseActionValue(value) : undefined;
-    return parsed?.ok ? { ok: true } : { ok: false, reason: 'unsupported-action-binding-value' };
+    const parsed = value ? parseActionValue(value, { valueType: readInlineType(rest) }) : undefined;
+    if (parsed?.ok) return { ok: true };
+    if (parsed?.reason === 'missing-action-expression-type' || parsed?.reason === 'unsupported-action-expression-type') {
+      return { ok: false, reason: parsed.reason };
+    }
+    return { ok: false, reason: 'unsupported-action-binding-value' };
   }
   return { ok: true };
 }
@@ -124,6 +128,10 @@ function readInlineValue(label, text) {
 
 function readInlineWord(label, text) {
   return new RegExp('(?:^|\\s)' + label + '\\s+([^\\s,]+)').exec(text)?.[1]?.trim();
+}
+
+function readInlineType(text) {
+  return readInlineWord('type', text) ?? readInlineWord('valueType', text);
 }
 
 function readIfCondition(header) {
@@ -141,8 +149,8 @@ function stripIds(text) {
   return String(text ?? '').replace(/@id\(\s*["'][^"']+["']\s*\)/g, '').trim();
 }
 
-function validateActionExpressionText(text) {
-  const parsed = parseActionValue(text);
+function validateActionExpressionText(text, options = {}) {
+  const parsed = parseActionValue(text, options);
   return parsed.ok ? { ok: true } : { ok: false, reason: parsed.reason };
 }
 

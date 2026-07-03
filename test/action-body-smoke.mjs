@@ -22,6 +22,8 @@ action AddTodo @id("action_add_todo") {
     merge meta @id("patch_merge_meta") path /todos/meta value "created"
     remove oldTitle @id("patch_remove_old_title") path /todos/oldTitle
     callEffect persist @id("effect_call_persist") capability storage.write input input
+    let next_count @id("bind_next_count") type Number value input.count + 1
+    set count @id("patch_set_count") path /todos/count type Number value next_count
     return patches
   }
 }
@@ -36,7 +38,7 @@ assert.deepEqual(action.reads, ['TodoDb.todos']);
 assert.deepEqual(action.writes, ['TodoDb.todos']);
 assert.deepEqual(action.uses, ['Clock']);
 assert.deepEqual(action.throws, ['ValidationError', 'StorageError']);
-assert.equal(action.body.length, 9);
+assert.equal(action.body.length, 11);
 assert.deepEqual(action.body[0], {
   kind: 'let',
   id: 'bind_normalized_title',
@@ -93,13 +95,38 @@ assert.equal(action.body[6].op, 'remove');
 assert.equal(action.body[7].kind, 'callEffect');
 assert.equal(action.body[7].capability, 'storage.write');
 assert.deepEqual(action.body[7].input, { expression: 'input', expressionAst: { kind: 'ref', name: 'input', scope: 'input', path: [] } });
-assert.equal(action.body[8].kind, 'return');
-assert.deepEqual(action.body[8].value, { expression: 'patches', expressionAst: { kind: 'ref', name: 'patches', scope: 'patches', path: [] } });
+assert.deepEqual(action.body[8], {
+  kind: 'let',
+  id: 'bind_next_count',
+  name: 'next_count',
+  valueType: 'Number',
+  value: {
+    expression: 'input.count + 1',
+    expressionAst: {
+      kind: 'binary',
+      op: '+',
+      left: { kind: 'ref', name: 'input.count', scope: 'input', path: ['count'] },
+      right: { kind: 'literal', value: 1 }
+    },
+    valueType: 'Number'
+  }
+});
+assert.deepEqual(action.body[9], {
+  kind: 'patch',
+  op: 'set',
+  id: 'patch_set_count',
+  name: 'count',
+  path: '/todos/count',
+  valueType: 'Number',
+  value: { expression: 'next_count', expressionAst: { kind: 'ref', name: 'next_count', scope: 'local', path: ['next_count'] }, valueType: 'Number' }
+});
+assert.equal(action.body[10].kind, 'return');
+assert.deepEqual(action.body[10].value, { expression: 'patches', expressionAst: { kind: 'ref', name: 'patches', scope: 'patches', path: [] } });
 
 const report = inspectFrontierSourceSyntax(source, { sourcePath: 'action-body.frontier' });
 assert.equal(report.summary.failClosed, false);
-assert.equal(report.summary.childCount, 12);
-assert.equal(report.summary.recognizedChildCount, 12);
+assert.equal(report.summary.childCount, 14);
+assert.equal(report.summary.recognizedChildCount, 14);
 assert.deepEqual(report.summary.recognizedChildKinds, ['actionBodyRow']);
 const actionBlock = report.recognizedBlocks.find((block) => block.id === 'action_add_todo');
 assert.ok(actionBlock);
@@ -115,6 +142,8 @@ assert.equal(nestedBindingChild.rowKind, 'let');
 assert.equal(nestedBindingChild.parentActionBodyId, 'guard_valid_title');
 const nestedPatchChild = actionBlock.children.find((child) => child.id === 'patch_set_status');
 assert.equal(nestedPatchChild.parentActionBodyId, 'guard_valid_title');
+assert.equal(actionBlock.children.find((child) => child.id === 'bind_next_count').rowKind, 'let');
+assert.equal(actionBlock.children.find((child) => child.id === 'patch_set_count').rowKind, 'set');
 
 const unsupported = inspectFrontierSourceSyntax(`module UnsupportedActionBody @id("mod_unsupported_action_body") {
 action AddTodo @id("action_add_todo") {
@@ -184,7 +213,20 @@ assert.equal((parseFrontierSource(unsupportedPatchValueSource).nodes.action_add_
 const unsupportedPatchValue = inspectFrontierSourceSyntax(unsupportedPatchValueSource);
 assert.equal(unsupportedPatchValue.summary.failClosed, true);
 assert.equal(unsupportedPatchValue.unknownChildren[0].id, 'unsupported_patch_value');
-assert.equal(unsupportedPatchValue.unknownChildren[0].reason, 'unsupported-action-expression-operator');
+assert.equal(unsupportedPatchValue.unknownChildren[0].reason, 'missing-action-expression-type');
+
+const unsupportedPatchValueTypeSource = `module UnsupportedActionPatchValueType @id("mod_unsupported_action_patch_value_type") {
+action AddTodo @id("action_add_todo") {
+  body {
+    set total @id("unsupported_patch_value_type") path /todos/total type Text value input.count + 1
+  }
+}
+}`;
+assert.equal((parseFrontierSource(unsupportedPatchValueTypeSource).nodes.action_add_todo.body ?? []).length, 0);
+const unsupportedPatchValueType = inspectFrontierSourceSyntax(unsupportedPatchValueTypeSource);
+assert.equal(unsupportedPatchValueType.summary.failClosed, true);
+assert.equal(unsupportedPatchValueType.unknownChildren[0].id, 'unsupported_patch_value_type');
+assert.equal(unsupportedPatchValueType.unknownChildren[0].reason, 'unsupported-action-expression-type');
 
 const unsupportedRefSource = `module UnsupportedActionRef @id("mod_unsupported_action_ref") {
 action AddTodo @id("action_add_todo") {

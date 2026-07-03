@@ -1,5 +1,7 @@
 const IDENTIFIER = /^[A-Za-z_$][\w$-]*$/;
 const BLOCKED_REF_ROOTS = new Set(['globalThis', 'process', 'window', 'document', 'constructor', 'prototype', '__proto__', 'env']);
+const NUMERIC_OPERATORS = new Set(['+', '-', '*', '/', '%']);
+const NUMERIC_TYPES = new Set(['number', 'numeric', 'int', 'integer', 'float', 'double', 'decimal']);
 
 export function readActionValue(value, options = {}) {
   const parsed = parseActionValue(value, options);
@@ -11,8 +13,12 @@ export function parseActionValue(value, options = {}) {
   if (!text) return fail('missing-action-expression');
   const expression = parseActionExpression(text, options);
   if (!expression.ok) return expression;
-  if (expression.literal) return { ok: true, value: { value: expression.ast.value } };
-  return { ok: true, value: { expression: text, expressionAst: expression.ast } };
+  if (hasNumericOperator(expression.ast) && !isNumericType(options.valueType ?? options.type)) {
+    return fail((options.valueType ?? options.type) ? 'unsupported-action-expression-type' : 'missing-action-expression-type');
+  }
+  const valueType = options.valueType ?? options.type;
+  if (expression.literal) return { ok: true, value: compactRecord({ value: expression.ast.value, valueType }) };
+  return { ok: true, value: compactRecord({ expression: text, expressionAst: expression.ast, valueType }) };
 }
 
 export function parseActionExpression(value, options = {}) {
@@ -47,7 +53,8 @@ function tokenizeActionExpression(text) {
       index = read.next;
       continue;
     }
-    const number = /^-?\d+(?:\.\d+)?/.exec(text.slice(index));
+    const canReadSignedNumber = char !== '-' || canStartSignedNumber(tokens);
+    const number = canReadSignedNumber ? /^-?\d+(?:\.\d+)?/.exec(text.slice(index)) : undefined;
     if (number) {
       tokens.push({ type: 'number', value: Number(number[0]), text: number[0], start: index, end: index + number[0].length });
       index += number[0].length;
@@ -67,7 +74,7 @@ function tokenizeActionExpression(text) {
       index += 2;
       continue;
     }
-    if (char === '!' || char === '>' || char === '<') {
+    if (char === '!' || char === '>' || char === '<' || NUMERIC_OPERATORS.has(char)) {
       tokens.push({ type: 'operator', text: char, start: index, end: index + 1 });
       index++;
       continue;
@@ -77,7 +84,7 @@ function tokenizeActionExpression(text) {
       index++;
       continue;
     }
-    if ('+-*/%=&|?:[]{}'.includes(char)) return fail('unsupported-action-expression-operator');
+    if ('=&|?:[]{}'.includes(char)) return fail('unsupported-action-expression-operator');
     return fail('malformed-action-expression');
   }
   tokens.push({ type: 'eof', text: '', start: text.length, end: text.length });
@@ -136,14 +143,34 @@ class ExpressionParser {
   }
 
   parseComparison() {
-    let left = this.parseUnary();
+    let left = this.parseAdditive();
     const operator = this.peek();
     if (operator.type === 'operator' && ['==', '!=', '>', '>=', '<', '<='].includes(operator.text)) {
       this.index++;
-      left = { kind: 'binary', op: operator.text, left, right: this.parseUnary() };
+      left = { kind: 'binary', op: operator.text, left, right: this.parseAdditive() };
       if (this.peek().type === 'operator' && ['==', '!=', '>', '>=', '<', '<='].includes(this.peek().text)) {
         this.reject('malformed-action-expression');
       }
+    }
+    return left;
+  }
+
+  parseAdditive() {
+    let left = this.parseMultiplicative();
+    while (this.peek().type === 'operator' && (this.peek().text === '+' || this.peek().text === '-')) {
+      const operator = this.peek().text;
+      this.index++;
+      left = { kind: 'binary', op: operator, left, right: this.parseMultiplicative() };
+    }
+    return left;
+  }
+
+  parseMultiplicative() {
+    let left = this.parseUnary();
+    while (this.peek().type === 'operator' && (this.peek().text === '*' || this.peek().text === '/' || this.peek().text === '%')) {
+      const operator = this.peek().text;
+      this.index++;
+      left = { kind: 'binary', op: operator, left, right: this.parseUnary() };
     }
     return left;
   }
@@ -254,6 +281,25 @@ class ExpressionParser {
   }
 }
 
+function canStartSignedNumber(tokens) {
+  const previous = tokens[tokens.length - 1];
+  if (!previous) return true;
+  if (previous.type === 'operator') return true;
+  return previous.type === 'punctuation' && previous.text === '(';
+}
+
+function hasNumericOperator(node) {
+  if (!node || typeof node !== 'object') return false;
+  if (node.kind === 'binary') return NUMERIC_OPERATORS.has(node.op) || hasNumericOperator(node.left) || hasNumericOperator(node.right);
+  if (node.kind === 'logical') return hasNumericOperator(node.left) || hasNumericOperator(node.right);
+  if (node.kind === 'unary') return hasNumericOperator(node.argument);
+  return false;
+}
+
+function isNumericType(value) {
+  return NUMERIC_TYPES.has(String(value ?? '').trim().toLowerCase());
+}
+
 function refNode(parts) {
   const [root, ...rest] = parts;
   const scope = root === 'input' || root === 'state' || root === 'patches' ? root : 'local';
@@ -263,4 +309,8 @@ function refNode(parts) {
 
 function fail(reason) {
   return { ok: false, reason };
+}
+
+function compactRecord(record) {
+  return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined && (!Array.isArray(value) || value.length > 0)));
 }
