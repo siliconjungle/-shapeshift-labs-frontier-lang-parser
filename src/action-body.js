@@ -111,12 +111,34 @@ function parseActionBodyLine(line, index) {
     return compactRecord({ kind: 'let', id: idFrom(rest, `action_body_let_${name}`), name, valueType, comparisonType, callType, value });
   }
   if (rowKind === 'return') {
-    const valueText = stripIds(rawName?.startsWith('@') ? rest : `${rawName ?? ''}${rest ?? ''}`).trim();
-    const value = valueText ? readActionValue(valueText) : undefined;
-    if (valueText && !value) return undefined;
-    return compactRecord({ kind: 'return', id: idFrom(rest, `action_body_return_${index}`), value });
+    const details = readReturnDetails(rawName, rest);
+    const value = details.valueText ? readActionValue(details.valueText, details) : undefined;
+    if (details.valueText && !value) return undefined;
+    return compactRecord({
+      kind: 'return',
+      id: idFrom(rest, `action_body_return_${index}`),
+      valueType: details.valueType,
+      comparisonType: details.comparisonType,
+      callType: details.callType,
+      value
+    });
   }
   return undefined;
+}
+
+function readReturnDetails(rawName, rest) {
+  const text = stripIds(rawName?.startsWith('@') ? rest : `${rawName ?? ''}${rest ?? ''}`).trim();
+  const explicitValue = /\bvalue\s+/.test(text);
+  const valueType = readInlineType(text);
+  const comparisonType = readInlineComparisonType(text);
+  const callType = readInlineCallType(text);
+  const valueText = explicitValue ? readInlineValue('value', text) : text;
+  return {
+    valueText,
+    valueType,
+    comparisonType,
+    callType
+  };
 }
 
 function skipWhitespaceAndComments(source, offset) {

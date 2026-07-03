@@ -104,8 +104,12 @@ function validateActionRow(rowKind, rawName, rest, header) {
     return input ? validateActionExpressionText(input) : { ok: true };
   }
   if (rowKind === 'return') {
-    const value = readReturnValue(rawName, rest);
-    return value ? validateActionExpressionText(value) : { ok: true };
+    const details = readReturnDetails(rawName, rest);
+    if (!details.valueText) return { ok: true };
+    const parsed = parseActionValue(details.valueText, details);
+    if (parsed.ok) return { ok: true };
+    if (isActionExpressionAdmissionReason(parsed.reason)) return { ok: false, reason: parsed.reason };
+    return { ok: false, reason: 'unsupported-action-return-value' };
   }
   if (rowKind === 'let') {
     if (!rawName || rawName.startsWith('@') || !/^[A-Za-z_$][\w$-]*$/.test(rawName)) {
@@ -148,9 +152,15 @@ function readIfCondition(header) {
   return explicit ? explicit[1].trim() : text;
 }
 
-function readReturnValue(rawName, rest) {
-  if (rawName?.startsWith('@')) return stripIds(`${rawName}${rest ?? ''}`).trim();
-  return stripIds(`${rawName ?? ''}${rest ?? ''}`).trim();
+function readReturnDetails(rawName, rest) {
+  const text = stripIds(rawName?.startsWith('@') ? rest : `${rawName ?? ''}${rest ?? ''}`).trim();
+  const explicitValue = /\bvalue\s+/.test(text);
+  return {
+    valueText: explicitValue ? readInlineValue('value', text) : text,
+    valueType: readInlineType(text),
+    comparisonType: readInlineComparisonType(text),
+    callType: readInlineCallType(text)
+  };
 }
 
 function stripIds(text) {
@@ -160,6 +170,20 @@ function stripIds(text) {
 function validateActionExpressionText(text, options = {}) {
   const parsed = parseActionValue(text, options);
   return parsed.ok ? { ok: true } : { ok: false, reason: parsed.reason };
+}
+
+function isActionExpressionAdmissionReason(reason) {
+  return reason === 'missing-action-expression-type'
+    || reason === 'unsupported-action-expression-type'
+    || reason === 'missing-action-comparison-type'
+    || reason === 'unsupported-action-comparison-type'
+    || reason === 'missing-action-call-type'
+    || reason === 'unsupported-action-call-type'
+    || reason === 'unsupported-action-call-callee'
+    || reason === 'unsupported-action-call-argument'
+    || reason === 'unsupported-action-expression-ref'
+    || reason === 'malformed-action-expression'
+    || reason === 'missing-action-expression';
 }
 
 function readNestedBodyBlocks(kind, source) {
