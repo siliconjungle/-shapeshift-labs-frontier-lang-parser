@@ -91,10 +91,10 @@ function actionRowName(rowKind, rawName, rowIndex) {
 
 function validateActionRow(rowKind, rawName, rest, header) {
   if (!ACTION_BODY_ROWS.has(rowKind)) return { ok: false, reason: 'unsupported-action-body-row' };
-  if (rowKind === 'if') return validateActionExpressionText(readIfCondition(header), { comparisonType: readInlineComparisonType(header) });
+  if (rowKind === 'if') return validateActionExpressionText(readIfCondition(header), { comparisonType: readInlineComparisonType(header), callType: readInlineCallType(header) });
   if (rowKind === 'set' || rowKind === 'insert' || rowKind === 'merge') {
     if (!readInlineWord('path', rest)) return { ok: false, reason: 'missing-action-path' };
-    return validateActionExpressionText(readInlineValue('value', rest), { valueType: readInlineType(rest), comparisonType: readInlineComparisonType(rest) });
+    return validateActionExpressionText(readInlineValue('value', rest), { valueType: readInlineType(rest), comparisonType: readInlineComparisonType(rest), callType: readInlineCallType(rest) });
   }
   if (rowKind === 'remove') {
     return readInlineWord('path', rest) ? { ok: true } : { ok: false, reason: 'missing-action-path' };
@@ -112,9 +112,9 @@ function validateActionRow(rowKind, rawName, rest, header) {
       return { ok: false, reason: 'unsupported-action-binding-name' };
     }
     const value = readInlineValue('value', rest);
-    const parsed = value ? parseActionValue(value, { valueType: readInlineType(rest), comparisonType: readInlineComparisonType(rest) }) : undefined;
+    const parsed = value ? parseActionValue(value, { valueType: readInlineType(rest), comparisonType: readInlineComparisonType(rest), callType: readInlineCallType(rest) }) : undefined;
     if (parsed?.ok) return { ok: true };
-    if (parsed?.reason === 'missing-action-expression-type' || parsed?.reason === 'unsupported-action-expression-type' || parsed?.reason === 'missing-action-comparison-type' || parsed?.reason === 'unsupported-action-comparison-type') {
+    if (parsed?.reason === 'missing-action-expression-type' || parsed?.reason === 'unsupported-action-expression-type' || parsed?.reason === 'missing-action-comparison-type' || parsed?.reason === 'unsupported-action-comparison-type' || parsed?.reason === 'missing-action-call-type' || parsed?.reason === 'unsupported-action-call-type' || parsed?.reason === 'unsupported-action-call-callee' || parsed?.reason === 'unsupported-action-call-argument') {
       return { ok: false, reason: parsed.reason };
     }
     return { ok: false, reason: 'unsupported-action-binding-value' };
@@ -136,6 +136,10 @@ function readInlineType(text) {
 
 function readInlineComparisonType(text) {
   return readInlineWord('compare', text) ?? readInlineWord('comparisonType', text) ?? readInlineWord('compareType', text);
+}
+
+function readInlineCallType(text) {
+  return readInlineWord('call', text) ?? readInlineWord('callType', text);
 }
 
 function readIfCondition(header) {

@@ -5,6 +5,7 @@ await mkdir("dist", { recursive: true });
 await copyFile("src/action-body.js", "dist/action-body.js");
 await copyFile("src/action-expression.js", "dist/action-expression.js");
 await copyFile("src/action-expression-semantics.js", "dist/action-expression-semantics.js");
+await copyFile("src/action-expression-tokenizer.js", "dist/action-expression-tokenizer.js");
 await copyFile("src/action-syntax-children.js", "dist/action-syntax-children.js");
 await copyFile("src/application-surface.js", "dist/application-surface.js");
 await copyFile("src/constraint-space.js", "dist/constraint-space.js");

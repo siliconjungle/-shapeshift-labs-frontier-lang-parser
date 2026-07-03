@@ -212,7 +212,7 @@ assert.equal(unsupportedBinding.summary.failClosed, true);
 assert.equal(unsupportedBinding.summary.unknownChildCount, 1);
 assert.equal(unsupportedBinding.unknownChildren[0].id, 'unsupported_action_binding');
 assert.equal(unsupportedBinding.unknownChildren[0].rowKind, 'let');
-assert.equal(unsupportedBinding.unknownChildren[0].reason, 'unsupported-action-binding-value');
+assert.equal(unsupportedBinding.unknownChildren[0].reason, 'missing-action-call-type');
 
 const missingBindingValue = inspectFrontierSourceSyntax(`module MissingActionBinding @id("mod_missing_action_binding") {
 action AddTodo @id("action_add_todo") {

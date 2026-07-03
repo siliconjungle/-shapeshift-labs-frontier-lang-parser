@@ -53,6 +53,7 @@ function parseActionIfBlock(header, body, index, state) {
     id: details.id,
     name: details.name,
     comparisonType: details.comparisonType,
+    callType: details.callType,
     condition: details.condition,
     body: parseActionBodyRecords(body, state)
   });
@@ -65,11 +66,13 @@ function parseActionIfHeader(header, index) {
   const name = firstIdentifier(nameText) ?? `if_${index}`;
   const conditionText = explicitCondition?.[1]?.trim() || withoutId;
   const comparisonType = readInlineComparisonType(header);
+  const callType = readInlineCallType(header);
   return {
     id: idFrom(header, `action_body_if_${name}`),
     name,
     comparisonType,
-    condition: conditionText ? readActionValue(conditionText, { comparisonType }) : undefined
+    callType,
+    condition: conditionText ? readActionValue(conditionText, { comparisonType, callType }) : undefined
   };
 }
 
@@ -83,9 +86,10 @@ function parseActionBodyLine(line, index) {
     const path = readInlineWord('path', rest);
     const valueType = readInlineType(rest);
     const comparisonType = readInlineComparisonType(rest);
-    const value = readInlineActionValue('value', rest, { valueType, comparisonType });
+    const callType = readInlineCallType(rest);
+    const value = readInlineActionValue('value', rest, { valueType, comparisonType, callType });
     if (!path || !value) return undefined;
-    return compactRecord({ kind: 'patch', op: rowKind, id: idFrom(rest, `action_body_${rowKind}_${name}`), name, path, valueType, comparisonType, value });
+    return compactRecord({ kind: 'patch', op: rowKind, id: idFrom(rest, `action_body_${rowKind}_${name}`), name, path, valueType, comparisonType, callType, value });
   }
   if (rowKind === 'remove') {
     const path = readInlineWord('path', rest);
@@ -101,9 +105,10 @@ function parseActionBodyLine(line, index) {
   if (rowKind === 'let') {
     const valueType = readInlineType(rest);
     const comparisonType = readInlineComparisonType(rest);
-    const value = readInlineActionBindingValue('value', rest, { valueType, comparisonType });
+    const callType = readInlineCallType(rest);
+    const value = readInlineActionBindingValue('value', rest, { valueType, comparisonType, callType });
     if (!rawName || rawName.startsWith('@') || !isActionBindingName(name) || !value) return undefined;
-    return compactRecord({ kind: 'let', id: idFrom(rest, `action_body_let_${name}`), name, valueType, comparisonType, value });
+    return compactRecord({ kind: 'let', id: idFrom(rest, `action_body_let_${name}`), name, valueType, comparisonType, callType, value });
   }
   if (rowKind === 'return') {
     const valueText = stripIds(rawName?.startsWith('@') ? rest : `${rawName ?? ''}${rest ?? ''}`).trim();
@@ -195,6 +200,7 @@ function isActionBindingName(value) {
 function idFrom(header, fallback) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(header)?.[1] ?? fallback; }
 function readInlineType(text) { return readInlineWord('type', text) ?? readInlineWord('valueType', text); }
 function readInlineComparisonType(text) { return readInlineWord('compare', text) ?? readInlineWord('comparisonType', text) ?? readInlineWord('compareType', text); }
+function readInlineCallType(text) { return readInlineWord('call', text) ?? readInlineWord('callType', text); }
 function readInlineWord(label, text) { return new RegExp('(?:^|\\s)' + label + '\\s+([^\\s,]+)').exec(text)?.[1]?.trim(); }
 function readInlineValue(label, text) { return new RegExp('(?:^|\\s)' + label + '\\s+(.+?)(?=\\s+[A-Za-z_$][\\w$-]*\\s+|$)').exec(text)?.[1]?.trim(); }
 function stripIds(text) { return String(text ?? '').replace(/@id\(\s*["'][^"']+["']\s*\)/g, '').trim(); }
