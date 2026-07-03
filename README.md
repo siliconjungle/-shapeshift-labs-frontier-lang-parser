@@ -220,6 +220,22 @@ npm install @shapeshift-labs/frontier-lang-parser
 
 The parser projects text into `@shapeshift-labs/frontier-lang-kernel` documents. The syntax is intentionally small and experimental.
 
+## Source syntax reports
+
+Use `inspectFrontierSourceSyntax` when a `.frontier` file is being treated as authored source, not only as convenient input to `parseFrontierSource`. It returns a `frontier.lang.sourceSyntaxReport` with every module-level or top-level declaration block the parser can see, whether that block kind is recognized, and any unsupported block kinds that would make a translation or merge proof fail closed.
+
+```js
+import { inspectFrontierSourceSyntax } from '@shapeshift-labs/frontier-lang-parser';
+
+const report = inspectFrontierSourceSyntax(source);
+
+if (report.summary.failClosed) {
+  console.error(report.summary.unknownKinds);
+}
+```
+
+Nested child syntax such as `render` blocks inside a `view` is not reported as an unknown top-level block; the parent parser owns those child rows. The report is evidence about parser coverage only. It keeps `autoMergeClaim` and `semanticEquivalenceClaim` false.
+
 ## Authored view render graph syntax
 
 `.frontier` view blocks can describe UI render graphs directly. Nested `render`

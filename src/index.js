@@ -16,6 +16,8 @@ import { parseRuntimeCapabilityBlock } from './runtime-capability.js';
 import { parseNativeSourceBlock } from './source-evidence.js';
 import { parseTargetProjectionMetadata } from './target-projection.js';
 import { parseViewBlock } from './view.js';
+import { FrontierSourceBlockKinds } from './source-syntax-report.js';
+export { FrontierSourceBlockKinds, inspectFrontierSourceSyntax } from './source-syntax-report.js';
 
 export function parseFrontierSource(source, options = {}) {
   const nodes = [];
@@ -76,7 +78,7 @@ function readName(source) { return /module\s+([A-Za-z_$][\w$]*)/.exec(source)?.[
 function readId(source) { return /module\s+[A-Za-z_$][\w$]*\s+@id\(\s*["']([^"']+)["']\s*\)/.exec(source)?.[1]; }
 function readBlocks(source) {
   const blocks = [];
-  const header = /\b(entity|state|action|view|migration|capability|effect|type|extern|lattice|nativeSource|target|proof|paradigm|paradigmSemantics|operations|semanticOperations|conversion|universalConversionPlan|constraintSpace|possibilitySpace|decisionGraph|admissionGraph|dialectRegistry|universalDialectRegistry|interlingua|universalInterlingua|resourceGraph|semanticResourceGraph|packageManifest|packageGraph|packageSurface|canvasSurface|canvasGraph|applicationSurface|appHost|plugin|pluginSurface|pluginContract|runtimeCapabilities|runtimeCapabilityMatrix|runtimeHosts)\s+([^{}]+)\{/g;
+  const header = new RegExp('\\b(' + FrontierSourceBlockKinds.join('|') + ')\\s+([^{}]+)\\{', 'g');
   let match;
   while ((match = header.exec(source))) {
     let depth = 1; let index = header.lastIndex;

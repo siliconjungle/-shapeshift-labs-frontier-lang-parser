@@ -21,6 +21,7 @@ await copyFile("src/resource-graph.js", "dist/resource-graph.js");
 await copyFile("src/runtime-capability.js", "dist/runtime-capability.js");
 await copyFile("src/runtime-capability-records.js", "dist/runtime-capability-records.js");
 await copyFile("src/source-evidence.js", "dist/source-evidence.js");
+await copyFile("src/source-syntax-report.js", "dist/source-syntax-report.js");
 await copyFile("src/target-projection.js", "dist/target-projection.js");
 await copyFile("src/target-projection-aggregate.js", "dist/target-projection-aggregate.js");
 await copyFile("src/view.js", "dist/view.js");
