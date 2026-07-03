@@ -3,6 +3,7 @@ import { parseFrontierSource } from '../dist/index.js';
 import './action-body-smoke.mjs';
 import './application-surface-smoke.mjs';
 import './runtime-capability-smoke.mjs';
+import './sem-edit-records-smoke.mjs';
 import './source-syntax-report-smoke.mjs';
 
 const doc = parseFrontierSource(`module TodoApp @id("mod_todo") {

@@ -16,6 +16,8 @@ export const FrontierSourceBlockKinds = Object.freeze([
   'paradigmSemantics',
   'operations',
   'semanticOperations',
+  'semanticEdits',
+  'semanticEditRecords',
   'conversion',
   'universalConversionPlan',
   'constraintSpace',

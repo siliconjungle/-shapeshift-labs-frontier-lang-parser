@@ -3,6 +3,7 @@ import { mergeApplicationSurfaceBlocks } from './application-surface.js';
 import { mergeRuntimeCapabilityBlocks } from './runtime-capability.js';
 import { mergeTargetProjectionTargets } from './target-projection-aggregate.js';
 import { mergeConversionBlocks } from './conversion-metadata.js';
+import { mergeSemanticEditBlocks } from './semantic-edit-metadata.js';
 
 const PROOF_GROUPS = ['contracts', 'refinements', 'invariants', 'termination', 'temporal', 'obligations', 'artifacts', 'assumptions'];
 const PARADIGM_GROUPS = [
@@ -11,11 +12,12 @@ const PARADIGM_GROUPS = [
   'clockModels', 'objectModels', 'macroExpansions', 'reflectionBoundaries', 'loweringRecords'
 ];
 
-export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], decisionGraphBlocks = [], dialectRegistryBlocks = [], interlinguaBlocks = [], resourceGraphBlocks = [], nativeSourceBlocks = [], packageManifestBlocks = [], canvasSurfaceBlocks = [], applicationSurfaceBlocks = [], runtimeCapabilityBlocks = [], targetProjectionTargets = [] } = {}) {
+export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], semanticEditBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], decisionGraphBlocks = [], dialectRegistryBlocks = [], interlinguaBlocks = [], resourceGraphBlocks = [], nativeSourceBlocks = [], packageManifestBlocks = [], canvasSurfaceBlocks = [], applicationSurfaceBlocks = [], runtimeCapabilityBlocks = [], targetProjectionTargets = [] } = {}) {
   const metadata = {};
   if (proofBlocks.length) metadata.proof = mergeProofBlocks(proofBlocks);
   if (paradigmBlocks.length) metadata.paradigmSemantics = mergeParadigmBlocks(paradigmBlocks);
   if (operationBlocks.length) metadata.semanticOperations = mergeOperationBlocks(operationBlocks);
+  if (semanticEditBlocks.length) metadata.semanticEditRecords = mergeSemanticEditBlocks(semanticEditBlocks);
   if (conversionBlocks.length) metadata.universalConversionPlan = mergeConversionBlocks(conversionBlocks);
   if (constraintSpaceBlocks.length) metadata.constraintSpaces = mergeConstraintSpaceBlocks(constraintSpaceBlocks);
   if (decisionGraphBlocks.length) metadata.decisionGraph = mergeDecisionGraphBlocks(decisionGraphBlocks);

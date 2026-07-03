@@ -26,6 +26,8 @@ await copyFile("src/interlingua.js", "dist/interlingua.js");
 await copyFile("src/member-records.js", "dist/member-records.js");
 await copyFile("src/metadata.js", "dist/metadata.js");
 await copyFile("src/operations.js", "dist/operations.js");
+await copyFile("src/semantic-edit-metadata.js", "dist/semantic-edit-metadata.js");
+await copyFile("src/semantic-edit-records.js", "dist/semantic-edit-records.js");
 await copyFile("src/package-manifest.js", "dist/package-manifest.js");
 await copyFile("src/paradigm.js", "dist/paradigm.js");
 await copyFile("src/proof.js", "dist/proof.js");

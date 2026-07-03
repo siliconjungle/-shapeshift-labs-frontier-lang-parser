@@ -5,6 +5,7 @@ const dialectRows = words('dialect record extern');
 const interlinguaRows = words('layer constraint edge obligation proofObligation proof lowering lower source sourceLift lift evidence');
 const packageRows = words('metadata dependency script export gap proofGap evidence proofEvidence');
 const runtimeRows = words('host runtimeHost hostProfile sourceHost targetHost capability hostCapability hostBinding binding requirement runtimeRequirement requiredRuntime evidence proofEvidence gap proofGap');
+const semanticEditRows = words('script semanticEditScript projection semanticEditProjection replay semanticEditReplay');
 
 export const ROW_SYNTAX_CONFIG = Object.freeze({
   interlingua: rowConfig('interlinguaRow', 'interlingua_row', interlinguaRows, normalizeInterlinguaRow),
@@ -33,6 +34,8 @@ export const ROW_SYNTAX_CONFIG = Object.freeze({
   admissionGraph: rowConfig('decisionGraphRow', 'decision_graph_row', words('node edge chunk gate evidence semanticChange change patchEvent patch admissionDecision admission candidateDecision candidate mergeDecision merge replay tournament tournamentCandidate panelProjection panel rsiLoop improvementFeedback feedback'), normalizeDecisionGraphRow),
   operations: rowConfig('semanticOperationRow', 'semantic_operation_row', words('operation op'), normalizeOperationRow),
   semanticOperations: rowConfig('semanticOperationRow', 'semantic_operation_row', words('operation op'), normalizeOperationRow),
+  semanticEdits: rowConfig('semanticEditRecordRow', 'semantic_edit_record_row', semanticEditRows, normalizeSemanticEditRow),
+  semanticEditRecords: rowConfig('semanticEditRecordRow', 'semantic_edit_record_row', semanticEditRows, normalizeSemanticEditRow),
   paradigm: rowConfig('paradigmRow', 'paradigm_row', words('valueSemantics mutationModel effectModel ownership ownershipModel lifetime lifetimeModel bindingScope binding dispatch typeModel moduleModel concurrency errorModel memoryModel evaluation metaprogramming interop lowering'), normalizeParadigmRow),
   paradigmSemantics: rowConfig('paradigmRow', 'paradigm_row', words('valueSemantics mutationModel effectModel ownership ownershipModel lifetime lifetimeModel bindingScope binding dispatch typeModel moduleModel concurrency errorModel memoryModel evaluation metaprogramming interop lowering'), normalizeParadigmRow),
   proof: rowConfig('proofRow', 'proof_row', words('contract refinement invariant termination temporal obligation artifact assumption')),
@@ -115,6 +118,13 @@ function normalizeDecisionGraphRow(rowKind) {
 
 function normalizeOperationRow(rowKind) {
   if (rowKind === 'op') return 'operation';
+  return rowKind;
+}
+
+function normalizeSemanticEditRow(rowKind) {
+  if (rowKind === 'semanticEditScript') return 'script';
+  if (rowKind === 'semanticEditProjection') return 'projection';
+  if (rowKind === 'semanticEditReplay') return 'replay';
   return rowKind;
 }
 
