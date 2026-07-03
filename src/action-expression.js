@@ -1,7 +1,7 @@
+import { NUMERIC_OPERATORS, hasNonLiteralOrderedComparison, hasNumericOperator, isNumericType } from './action-expression-semantics.js';
+
 const IDENTIFIER = /^[A-Za-z_$][\w$-]*$/;
 const BLOCKED_REF_ROOTS = new Set(['globalThis', 'process', 'window', 'document', 'constructor', 'prototype', '__proto__', 'env']);
-const NUMERIC_OPERATORS = new Set(['+', '-', '*', '/', '%']);
-const NUMERIC_TYPES = new Set(['number', 'numeric', 'int', 'integer', 'float', 'double', 'decimal']);
 
 export function readActionValue(value, options = {}) {
   const parsed = parseActionValue(value, options);
@@ -16,9 +16,13 @@ export function parseActionValue(value, options = {}) {
   if (hasNumericOperator(expression.ast) && !isNumericType(options.valueType ?? options.type)) {
     return fail((options.valueType ?? options.type) ? 'unsupported-action-expression-type' : 'missing-action-expression-type');
   }
+  if (hasNonLiteralOrderedComparison(expression.ast) && !isNumericType(options.comparisonType ?? options.compareType)) {
+    return fail((options.comparisonType ?? options.compareType) ? 'unsupported-action-comparison-type' : 'missing-action-comparison-type');
+  }
   const valueType = options.valueType ?? options.type;
-  if (expression.literal) return { ok: true, value: compactRecord({ value: expression.ast.value, valueType }) };
-  return { ok: true, value: compactRecord({ expression: text, expressionAst: expression.ast, valueType }) };
+  const comparisonType = options.comparisonType ?? options.compareType;
+  if (expression.literal) return { ok: true, value: compactRecord({ value: expression.ast.value, valueType, comparisonType }) };
+  return { ok: true, value: compactRecord({ expression: text, expressionAst: expression.ast, valueType, comparisonType }) };
 }
 
 export function parseActionExpression(value, options = {}) {
@@ -286,18 +290,6 @@ function canStartSignedNumber(tokens) {
   if (!previous) return true;
   if (previous.type === 'operator') return true;
   return previous.type === 'punctuation' && previous.text === '(';
-}
-
-function hasNumericOperator(node) {
-  if (!node || typeof node !== 'object') return false;
-  if (node.kind === 'binary') return NUMERIC_OPERATORS.has(node.op) || hasNumericOperator(node.left) || hasNumericOperator(node.right);
-  if (node.kind === 'logical') return hasNumericOperator(node.left) || hasNumericOperator(node.right);
-  if (node.kind === 'unary') return hasNumericOperator(node.argument);
-  return false;
-}
-
-function isNumericType(value) {
-  return NUMERIC_TYPES.has(String(value ?? '').trim().toLowerCase());
 }
 
 function refNode(parts) {

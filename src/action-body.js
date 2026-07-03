@@ -52,6 +52,7 @@ function parseActionIfBlock(header, body, index, state) {
     kind: 'if',
     id: details.id,
     name: details.name,
+    comparisonType: details.comparisonType,
     condition: details.condition,
     body: parseActionBodyRecords(body, state)
   });
@@ -63,10 +64,12 @@ function parseActionIfHeader(header, index) {
   const nameText = explicitCondition ? withoutId.slice(0, explicitCondition.index).trim() : '';
   const name = firstIdentifier(nameText) ?? `if_${index}`;
   const conditionText = explicitCondition?.[1]?.trim() || withoutId;
+  const comparisonType = readInlineComparisonType(header);
   return {
     id: idFrom(header, `action_body_if_${name}`),
     name,
-    condition: conditionText ? readActionValue(conditionText) : undefined
+    comparisonType,
+    condition: conditionText ? readActionValue(conditionText, { comparisonType }) : undefined
   };
 }
 
@@ -79,9 +82,10 @@ function parseActionBodyLine(line, index) {
   if (rowKind === 'set' || rowKind === 'insert' || rowKind === 'merge') {
     const path = readInlineWord('path', rest);
     const valueType = readInlineType(rest);
-    const value = readInlineActionValue('value', rest, { valueType });
+    const comparisonType = readInlineComparisonType(rest);
+    const value = readInlineActionValue('value', rest, { valueType, comparisonType });
     if (!path || !value) return undefined;
-    return compactRecord({ kind: 'patch', op: rowKind, id: idFrom(rest, `action_body_${rowKind}_${name}`), name, path, valueType, value });
+    return compactRecord({ kind: 'patch', op: rowKind, id: idFrom(rest, `action_body_${rowKind}_${name}`), name, path, valueType, comparisonType, value });
   }
   if (rowKind === 'remove') {
     const path = readInlineWord('path', rest);
@@ -96,9 +100,10 @@ function parseActionBodyLine(line, index) {
   }
   if (rowKind === 'let') {
     const valueType = readInlineType(rest);
-    const value = readInlineActionBindingValue('value', rest, { valueType });
+    const comparisonType = readInlineComparisonType(rest);
+    const value = readInlineActionBindingValue('value', rest, { valueType, comparisonType });
     if (!rawName || rawName.startsWith('@') || !isActionBindingName(name) || !value) return undefined;
-    return compactRecord({ kind: 'let', id: idFrom(rest, `action_body_let_${name}`), name, valueType, value });
+    return compactRecord({ kind: 'let', id: idFrom(rest, `action_body_let_${name}`), name, valueType, comparisonType, value });
   }
   if (rowKind === 'return') {
     const valueText = stripIds(rawName?.startsWith('@') ? rest : `${rawName ?? ''}${rest ?? ''}`).trim();
@@ -189,6 +194,7 @@ function isActionBindingName(value) {
 
 function idFrom(header, fallback) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(header)?.[1] ?? fallback; }
 function readInlineType(text) { return readInlineWord('type', text) ?? readInlineWord('valueType', text); }
+function readInlineComparisonType(text) { return readInlineWord('compare', text) ?? readInlineWord('comparisonType', text) ?? readInlineWord('compareType', text); }
 function readInlineWord(label, text) { return new RegExp('(?:^|\\s)' + label + '\\s+([^\\s,]+)').exec(text)?.[1]?.trim(); }
 function readInlineValue(label, text) { return new RegExp('(?:^|\\s)' + label + '\\s+(.+?)(?=\\s+[A-Za-z_$][\\w$-]*\\s+|$)').exec(text)?.[1]?.trim(); }
 function stripIds(text) { return String(text ?? '').replace(/@id\(\s*["'][^"']+["']\s*\)/g, '').trim(); }

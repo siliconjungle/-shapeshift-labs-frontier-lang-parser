@@ -23,7 +23,11 @@ action AddTodo @id("action_add_todo") {
     remove oldTitle @id("patch_remove_old_title") path /todos/oldTitle
     callEffect persist @id("effect_call_persist") capability storage.write input input
     let next_count @id("bind_next_count") type Number value input.count + 1
+    let has_count @id("bind_has_count") compare Number value input.count > 0
     set count @id("patch_set_count") path /todos/count type Number value next_count
+    if counted @id("guard_counted") compare Number condition input.count > 0 {
+      set counted @id("patch_set_counted") path /todos/counted value has_count
+    }
     return patches
   }
 }
@@ -38,7 +42,7 @@ assert.deepEqual(action.reads, ['TodoDb.todos']);
 assert.deepEqual(action.writes, ['TodoDb.todos']);
 assert.deepEqual(action.uses, ['Clock']);
 assert.deepEqual(action.throws, ['ValidationError', 'StorageError']);
-assert.equal(action.body.length, 11);
+assert.equal(action.body.length, 13);
 assert.deepEqual(action.body[0], {
   kind: 'let',
   id: 'bind_normalized_title',
@@ -112,6 +116,22 @@ assert.deepEqual(action.body[8], {
   }
 });
 assert.deepEqual(action.body[9], {
+  kind: 'let',
+  id: 'bind_has_count',
+  name: 'has_count',
+  comparisonType: 'Number',
+  value: {
+    expression: 'input.count > 0',
+    expressionAst: {
+      kind: 'binary',
+      op: '>',
+      left: { kind: 'ref', name: 'input.count', scope: 'input', path: ['count'] },
+      right: { kind: 'literal', value: 0 }
+    },
+    comparisonType: 'Number'
+  }
+});
+assert.deepEqual(action.body[10], {
   kind: 'patch',
   op: 'set',
   id: 'patch_set_count',
@@ -120,13 +140,28 @@ assert.deepEqual(action.body[9], {
   valueType: 'Number',
   value: { expression: 'next_count', expressionAst: { kind: 'ref', name: 'next_count', scope: 'local', path: ['next_count'] }, valueType: 'Number' }
 });
-assert.equal(action.body[10].kind, 'return');
-assert.deepEqual(action.body[10].value, { expression: 'patches', expressionAst: { kind: 'ref', name: 'patches', scope: 'patches', path: [] } });
+assert.equal(action.body[11].kind, 'if');
+assert.equal(action.body[11].id, 'guard_counted');
+assert.equal(action.body[11].comparisonType, 'Number');
+assert.deepEqual(action.body[11].condition, {
+  expression: 'input.count > 0',
+  expressionAst: {
+    kind: 'binary',
+    op: '>',
+    left: { kind: 'ref', name: 'input.count', scope: 'input', path: ['count'] },
+    right: { kind: 'literal', value: 0 }
+  },
+  comparisonType: 'Number'
+});
+assert.equal(action.body[11].body[0].id, 'patch_set_counted');
+assert.deepEqual(action.body[11].body[0].value, { expression: 'has_count', expressionAst: { kind: 'ref', name: 'has_count', scope: 'local', path: ['has_count'] } });
+assert.equal(action.body[12].kind, 'return');
+assert.deepEqual(action.body[12].value, { expression: 'patches', expressionAst: { kind: 'ref', name: 'patches', scope: 'patches', path: [] } });
 
 const report = inspectFrontierSourceSyntax(source, { sourcePath: 'action-body.frontier' });
 assert.equal(report.summary.failClosed, false);
-assert.equal(report.summary.childCount, 14);
-assert.equal(report.summary.recognizedChildCount, 14);
+assert.equal(report.summary.childCount, 17);
+assert.equal(report.summary.recognizedChildCount, 17);
 assert.deepEqual(report.summary.recognizedChildKinds, ['actionBodyRow']);
 const actionBlock = report.recognizedBlocks.find((block) => block.id === 'action_add_todo');
 assert.ok(actionBlock);
@@ -143,7 +178,10 @@ assert.equal(nestedBindingChild.parentActionBodyId, 'guard_valid_title');
 const nestedPatchChild = actionBlock.children.find((child) => child.id === 'patch_set_status');
 assert.equal(nestedPatchChild.parentActionBodyId, 'guard_valid_title');
 assert.equal(actionBlock.children.find((child) => child.id === 'bind_next_count').rowKind, 'let');
+assert.equal(actionBlock.children.find((child) => child.id === 'bind_has_count').rowKind, 'let');
 assert.equal(actionBlock.children.find((child) => child.id === 'patch_set_count').rowKind, 'set');
+assert.equal(actionBlock.children.find((child) => child.id === 'guard_counted').rowKind, 'if');
+assert.equal(actionBlock.children.find((child) => child.id === 'patch_set_counted').parentActionBodyId, 'guard_counted');
 
 const unsupported = inspectFrontierSourceSyntax(`module UnsupportedActionBody @id("mod_unsupported_action_body") {
 action AddTodo @id("action_add_todo") {
@@ -227,6 +265,36 @@ const unsupportedPatchValueType = inspectFrontierSourceSyntax(unsupportedPatchVa
 assert.equal(unsupportedPatchValueType.summary.failClosed, true);
 assert.equal(unsupportedPatchValueType.unknownChildren[0].id, 'unsupported_patch_value_type');
 assert.equal(unsupportedPatchValueType.unknownChildren[0].reason, 'unsupported-action-expression-type');
+
+const unsupportedComparisonSource = `module UnsupportedActionComparison @id("mod_unsupported_action_comparison") {
+action AddTodo @id("action_add_todo") {
+  body {
+    if counted @id("unsupported_comparison") condition input.count > 0 {
+      set counted @id("patch_counted") path /todos/counted value true
+    }
+  }
+}
+}`;
+assert.equal((parseFrontierSource(unsupportedComparisonSource).nodes.action_add_todo.body ?? []).length, 0);
+const unsupportedComparison = inspectFrontierSourceSyntax(unsupportedComparisonSource);
+assert.equal(unsupportedComparison.summary.failClosed, true);
+assert.equal(unsupportedComparison.unknownChildren[0].id, 'unsupported_comparison');
+assert.equal(unsupportedComparison.unknownChildren[0].reason, 'missing-action-comparison-type');
+
+const unsupportedComparisonTypeSource = `module UnsupportedActionComparisonType @id("mod_unsupported_action_comparison_type") {
+action AddTodo @id("action_add_todo") {
+  body {
+    if counted @id("unsupported_comparison_type") compare Text condition input.count > 0 {
+      set counted @id("patch_counted") path /todos/counted value true
+    }
+  }
+}
+}`;
+assert.equal((parseFrontierSource(unsupportedComparisonTypeSource).nodes.action_add_todo.body ?? []).length, 0);
+const unsupportedComparisonType = inspectFrontierSourceSyntax(unsupportedComparisonTypeSource);
+assert.equal(unsupportedComparisonType.summary.failClosed, true);
+assert.equal(unsupportedComparisonType.unknownChildren[0].id, 'unsupported_comparison_type');
+assert.equal(unsupportedComparisonType.unknownChildren[0].reason, 'unsupported-action-comparison-type');
 
 const unsupportedRefSource = `module UnsupportedActionRef @id("mod_unsupported_action_ref") {
 action AddTodo @id("action_add_todo") {
