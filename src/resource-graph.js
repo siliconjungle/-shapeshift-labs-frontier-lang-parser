@@ -12,6 +12,11 @@ const GROUPS = {
   lifetimeRelation: 'lifetimeRelations',
   borrowScope: 'borrowScopes',
   unsafeBoundary: 'unsafeBoundaries',
+  memoryRegion: 'memoryRegions',
+  dataLayout: 'dataLayouts',
+  pointerEdge: 'pointerEdges',
+  memoryAccess: 'memoryAccesses',
+  abiBoundary: 'abiBoundaries',
   conflict: 'conflicts',
   proofObligation: 'proofObligations'
 };
@@ -41,6 +46,11 @@ export function parseResourceGraphBlock(block) {
     borrowScopes: [],
     borrowScopeRegions: [],
     unsafeBoundaries: [],
+    memoryRegions: [],
+    dataLayouts: [],
+    pointerEdges: [],
+    memoryAccesses: [],
+    abiBoundaries: [],
     conflicts: [],
     proofObligations: [],
     parser: { status: 'authored', errors: rowIdentity.errors },
@@ -54,14 +64,14 @@ export function parseResourceGraphBlock(block) {
     metadata: { name }
   };
 
-  for (const rawLine of block.body.split('\n')) {
-    const line = rawLine.trim();
+  for (const authoredLine of readAuthoredLines(block)) {
+    const line = authoredLine.text;
     if (!line || line.startsWith('#') || isGraphPropertyLine(line)) continue;
     const match = /^([A-Za-z_$][\w$-]*)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
     if (!match) continue;
     const [, rowKind, rowName, rest] = match;
     const normalized = normalizeRowKind(rowKind);
-    const record = parseResourceRecord(normalized, rowName, rest, graph);
+    const record = parseResourceRecord(normalized, rowName, rest, graph, authoredLine);
     const group = GROUPS[normalized];
     if (record && group) rowIdentity.push(graph[group], record, { rowKind, normalizedRowKind: normalized, name: rowName });
   }
@@ -73,6 +83,7 @@ export function parseResourceGraphBlock(block) {
     resourceIds: ids(graph.resources),
     ownerIds: ids(graph.owners),
     lifetimeRegionIds: ids(graph.lifetimeRegions),
+    lowLevelPrimitiveIds: ids([...graph.memoryRegions, ...graph.dataLayouts, ...graph.pointerEdges, ...graph.memoryAccesses, ...graph.abiBoundaries]),
     sourcePaths: unique(allRecords(graph).map((record) => record.sourcePath)),
     evidenceIds: unique([...graph.evidenceIds, ...allRecords(graph).flatMap((record) => record.evidenceIds ?? [])]),
     blockerReasonCodes: unique(graph.conflicts.map((record) => record.reasonCode))
@@ -90,8 +101,8 @@ export function parseResourceGraphBlock(block) {
   };
 }
 
-function parseResourceRecord(kind, name, text, graph) {
-  const common = commonRecord(kind, name, text, graph);
+function parseResourceRecord(kind, name, text, graph, authoredLine = {}) {
+  const common = commonRecord(kind, name, text, graph, authoredLine);
   if (kind === 'resource') return cleanRecord({ ...common, resourceKind: readInlineWord('resourceKind', text) ?? readInlineWord('kind', text) ?? name, ownerId: readInlineWord('owner', text) ?? readInlineWord('ownerId', text), ownerName: readInlineWord('ownerName', text) });
   if (kind === 'owner') return cleanRecord({ ...common, ownerKind: readInlineWord('ownerKind', text) ?? readInlineWord('kind', text) ?? 'owner' });
   if (kind === 'loan') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), ownerId: readInlineWord('owner', text) ?? readInlineWord('ownerId', text), lifetimeRegionId: readInlineWord('lifetime', text) ?? readInlineWord('lifetimeRegion', text) ?? readInlineWord('lifetimeRegionId', text), mode: readInlineWord('mode', text) ?? 'unknown', access: readInlineWord('access', text) });
@@ -103,18 +114,31 @@ function parseResourceRecord(kind, name, text, graph) {
   if (kind === 'lifetimeRelation') return cleanRecord({ ...common, relationKind: readInlineWord('relationKind', text) ?? readInlineWord('kind', text) ?? 'outlives', fromLifetimeId: readInlineWord('fromLifetime', text) ?? readInlineWord('fromLifetimeId', text) ?? readInlineWord('from', text), toLifetimeId: readInlineWord('toLifetime', text) ?? readInlineWord('toLifetimeId', text) ?? readInlineWord('to', text), from: readInlineWord('from', text), to: readInlineWord('to', text) });
   if (kind === 'borrowScope') return cleanRecord({ ...common, scopeKind: readInlineWord('scopeKind', text) ?? readInlineWord('kind', text) ?? 'borrow-scope', constraintKind: readInlineWord('constraintKind', text), constraintKinds: readInlineList(text, 'constraint', 'constraints', 'constraintKind', 'constraintKinds') ?? [], ownershipKind: readInlineWord('ownershipKind', text), lifetimeKind: readInlineWord('lifetimeKind', text), controlFlowKind: readInlineWord('controlFlowKind', text), sourceControlFlowId: readInlineWord('sourceControlFlow', text) ?? readInlineWord('sourceControlFlowId', text), lifetimeRegionId: readInlineWord('lifetime', text) ?? readInlineWord('lifetimeRegion', text) ?? readInlineWord('lifetimeRegionId', text), resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text) });
   if (kind === 'unsafeBoundary') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), unsafeBoundary: true, proofStatus: readInlineWord('proofStatus', text) ?? readInlineWord('status', text) ?? 'missing', kind: readInlineWord('kind', text) });
+  if (kind === 'memoryRegion') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), memoryKind: readInlineWord('memoryKind', text) ?? readInlineWord('kind', text) ?? name, regionKind: readInlineWord('regionKind', text), addressSpace: readInlineWord('addressSpace', text) ?? readInlineWord('space', text), address: readInlineWord('address', text) ?? readInlineWord('baseAddress', text), sizeBytes: readInlineNumber('sizeBytes', text) ?? readInlineNumber('size', text), alignmentBytes: readInlineNumber('alignmentBytes', text) ?? readInlineNumber('alignment', text), pointerWidth: readInlineNumber('pointerWidth', text), endian: readInlineWord('endian', text) ?? readInlineWord('endianness', text), volatile: readInlineFlag('volatile', text), atomic: readInlineFlag('atomic', text), shared: readInlineFlag('shared', text) });
+  if (kind === 'dataLayout') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), typeId: readInlineWord('type', text) ?? readInlineWord('typeId', text), structId: readInlineWord('struct', text) ?? readInlineWord('structId', text), fieldId: readInlineWord('field', text) ?? readInlineWord('fieldId', text), bitfieldId: readInlineWord('bitfield', text) ?? readInlineWord('bitfieldId', text), layoutKind: readInlineWord('layoutKind', text) ?? readInlineWord('kind', text), repr: readInlineWord('repr', text), abi: readInlineWord('abi', text), endian: readInlineWord('endian', text) ?? readInlineWord('endianness', text), sizeBytes: readInlineNumber('sizeBytes', text) ?? readInlineNumber('size', text), alignmentBytes: readInlineNumber('alignmentBytes', text) ?? readInlineNumber('alignment', text), offsetBytes: readInlineNumber('offsetBytes', text) ?? readInlineNumber('offset', text), bitWidth: readInlineNumber('bitWidth', text) ?? readInlineNumber('width', text), fieldOrder: readInlineList(text, 'fieldOrder', 'fields'), constraintKinds: readInlineList(text, 'constraint', 'constraints', 'constraintKind', 'constraintKinds') });
+  if (kind === 'pointerEdge') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), targetResourceId: readInlineWord('targetResource', text) ?? readInlineWord('targetResourceId', text) ?? readInlineWord('target', text), ownerId: readInlineWord('owner', text) ?? readInlineWord('ownerId', text), lifetimeRegionId: readInlineWord('lifetime', text) ?? readInlineWord('lifetimeRegion', text) ?? readInlineWord('lifetimeRegionId', text), pointerKind: readInlineWord('pointerKind', text) ?? readInlineWord('kind', text) ?? 'pointer', addressSpace: readInlineWord('addressSpace', text) ?? readInlineWord('space', text), pointerWidth: readInlineNumber('pointerWidth', text), aliasKind: readInlineWord('aliasKind', text), mode: readInlineWord('mode', text), provenance: readInlineWord('provenance', text), nullable: readInlineFlag('nullable', text), mutable: readInlineFlag('mutable', text) });
+  if (kind === 'memoryAccess') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), accessKind: readInlineWord('accessKind', text) ?? readInlineWord('kind', text) ?? name, operationKind: readInlineWord('operation', text) ?? readInlineWord('operationKind', text), memoryOrder: readInlineWord('memoryOrder', text) ?? readInlineWord('ordering', text), lockId: readInlineWord('lock', text) ?? readInlineWord('lockId', text), synchronizationKey: readInlineWord('sync', text) ?? readInlineWord('synchronizationKey', text), reads: readInlineList(text, 'read', 'reads'), writes: readInlineList(text, 'write', 'writes'), volatile: readInlineFlag('volatile', text), atomic: readInlineFlag('atomic', text), proofStatus: readInlineWord('proofStatus', text) ?? readInlineWord('status', text) ?? 'missing' });
+  if (kind === 'abiBoundary') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), callableId: readInlineWord('callable', text) ?? readInlineWord('callableId', text), functionId: readInlineWord('function', text) ?? readInlineWord('functionId', text), boundaryKind: readInlineWord('boundaryKind', text) ?? readInlineWord('kind', text) ?? 'abi-boundary', abi: readInlineWord('abi', text), abiKind: readInlineWord('abiKind', text), callingConvention: readInlineWord('callingConvention', text) ?? readInlineWord('convention', text), pointerWidth: readInlineNumber('pointerWidth', text), endian: readInlineWord('endian', text) ?? readInlineWord('endianness', text), ffiBoundary: readInlineWord('ffiBoundary', text), proofStatus: readInlineWord('proofStatus', text) ?? readInlineWord('status', text) ?? 'missing' });
   if (kind === 'conflict') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), ownerId: readInlineWord('owner', text) ?? readInlineWord('ownerId', text), loanId: readInlineWord('loan', text) ?? readInlineWord('loanId', text), aliasId: readInlineWord('alias', text) ?? readInlineWord('aliasId', text), unsafeBoundaryId: readInlineWord('unsafeBoundary', text) ?? readInlineWord('unsafeBoundaryId', text), reasonCode: readInlineWord('reasonCode', text), message: readInlineQuoted('message', text), status: readInlineWord('status', text) ?? 'open', severity: readInlineWord('severity', text) ?? 'error' });
   if (kind === 'proofObligation') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), conflictId: readInlineWord('conflict', text) ?? readInlineWord('conflictId', text), kind: readInlineWord('kind', text), status: readInlineWord('status', text) ?? 'open', statement: readInlineQuoted('statement', text) });
   return undefined;
 }
 
-function commonRecord(kind, name, text, graph) {
+function commonRecord(kind, name, text, graph, authoredLine = {}) {
   return cleanRecord({
     recordKind: recordKind(kind),
     id: idFrom(text, `${recordPrefix(kind)}_${name}`),
     name,
     sourcePath: readInlineWord('sourcePath', text) ?? readInlineWord('path', text) ?? graph.sourcePath,
     sourceHash: readInlineWord('sourceHash', text) ?? graph.sourceHash,
+    sourceSpan: authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan,
+    sourceMapIds: readInlineList(text, 'sourceMap', 'sourceMaps', 'sourceMapId', 'sourceMapIds'),
+    sourceMapMappingIds: readInlineList(text, 'sourceMapMapping', 'sourceMapMappings', 'sourceMapMappingId', 'sourceMapMappingIds'),
+    proofEvidenceIds: readInlineList(text, 'proofEvidence', 'proofEvidenceId', 'proofEvidenceIds'),
+    proofObligationIds: readInlineList(text, 'proofObligation', 'proofObligations', 'proofObligationId', 'proofObligationIds', 'obligation', 'obligations'),
+    missingEvidence: readInlineList(text, 'missingEvidence'),
+    failClosed: readInlineFlag('failClosed', text),
     evidenceIds: readInlineList(text, 'evidence', 'evidenceIds') ?? graph.evidenceIds,
     metadata: { authoredName: name }
   });
@@ -134,6 +158,11 @@ function summarize(graph) {
     lifetimeRelations: graph.lifetimeRelations.length,
     borrowScopes: graph.borrowScopes.length,
     unsafeBoundaries: graph.unsafeBoundaries.length,
+    memoryRegions: graph.memoryRegions.length,
+    dataLayouts: graph.dataLayouts.length,
+    pointerEdges: graph.pointerEdges.length,
+    memoryAccesses: graph.memoryAccesses.length,
+    abiBoundaries: graph.abiBoundaries.length,
     conflicts: graph.conflicts.length,
     proofObligations: graph.proofObligations.length,
     unsafeBoundariesWithoutProof: graph.unsafeBoundaries.filter((record) => record.proofStatus !== 'passed').length,
@@ -155,6 +184,11 @@ function allRecords(graph) {
     ...graph.lifetimeRelations,
     ...graph.borrowScopes,
     ...graph.unsafeBoundaries,
+    ...graph.memoryRegions,
+    ...graph.dataLayouts,
+    ...graph.pointerEdges,
+    ...graph.memoryAccesses,
+    ...graph.abiBoundaries,
     ...graph.conflicts,
     ...graph.proofObligations
   ];
@@ -165,6 +199,11 @@ function normalizeRowKind(kind) {
   if (kind === 'outlives' || kind === 'lifetimeRelation' || kind === 'lifeRelation') return 'lifetimeRelation';
   if (kind === 'borrow' || kind === 'borrowScope' || kind === 'borrowRegion') return 'borrowScope';
   if (kind === 'unsafe' || kind === 'unsafeBoundary') return 'unsafeBoundary';
+  if (kind === 'memory' || kind === 'memoryRegion' || kind === 'region') return 'memoryRegion';
+  if (kind === 'layout' || kind === 'dataLayout') return 'dataLayout';
+  if (kind === 'pointer' || kind === 'ptr' || kind === 'address') return 'pointerEdge';
+  if (kind === 'access' || kind === 'memoryAccess' || kind === 'atomic' || kind === 'volatile') return 'memoryAccess';
+  if (kind === 'abi' || kind === 'abiBoundary' || kind === 'callBoundary') return 'abiBoundary';
   if (kind === 'proof' || kind === 'obligation' || kind === 'proofObligation') return 'proofObligation';
   return kind;
 }
@@ -174,6 +213,11 @@ function recordKind(kind) {
   if (kind === 'lifetimeRelation') return 'lifetime-relation';
   if (kind === 'borrowScope') return 'borrow-scope';
   if (kind === 'unsafeBoundary') return 'unsafe-boundary';
+  if (kind === 'memoryRegion') return 'memory-region';
+  if (kind === 'dataLayout') return 'data-layout';
+  if (kind === 'pointerEdge') return 'pointer-edge';
+  if (kind === 'memoryAccess') return 'memory-access';
+  if (kind === 'abiBoundary') return 'abi-boundary';
   if (kind === 'proofObligation') return 'proof-obligation';
   return kind;
 }
@@ -195,6 +239,7 @@ function readListLine(label, body) {
 }
 function readInlineWord(label, text) { return new RegExp('(?:^|\\s)' + label + '\\s+([^\\s,]+)').exec(text)?.[1]?.trim(); }
 function readInlineQuoted(label, text) { return new RegExp("(?:^|\\s)" + label + "\\s+[\"']([^\"']+)[\"']").exec(text)?.[1]?.trim(); }
+function readInlineFlag(label, text) { return new RegExp('(?:^|\\s)' + label + '(?:\\s|$)').test(text) || undefined; }
 function readInlineNumber(label, text) {
   const value = readInlineWord(label, text);
   return value === undefined ? undefined : Number(value);
@@ -208,6 +253,21 @@ function readInlineList(text, ...labels) {
 }
 function ids(records = []) { return records.map((record) => record?.id).filter(Boolean); }
 function unique(values = []) { return [...new Set(values.filter(Boolean))]; }
+function readAuthoredLines(block) {
+  const lines = block.body.split('\n');
+  const records = [];
+  let lineStart = block.syntax?.bodyStartOffset ?? 0;
+  for (const rawLine of lines) {
+    const rawEnd = lineStart + rawLine.length;
+    const leading = /^\s*/.exec(rawLine)?.[0].length ?? 0;
+    const trailing = /\s*$/.exec(rawLine)?.[0].length ?? 0;
+    const startOffset = lineStart + leading;
+    const endOffset = Math.max(startOffset, rawEnd - trailing);
+    records.push({ text: rawLine.trim(), sourceSpan: typeof block.sourceSpan === 'function' ? block.sourceSpan(startOffset, endOffset) : undefined });
+    lineStart = rawEnd + 1;
+  }
+  return records;
+}
 function cleanRecord(record) {
   return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined && (!Array.isArray(value) || value.length > 0)));
 }

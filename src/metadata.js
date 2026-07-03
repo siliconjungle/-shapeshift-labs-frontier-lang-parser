@@ -264,6 +264,11 @@ function mergeResourceGraphBlocks(blocks) {
     lifetimeRelationIds: blocks.flatMap((block) => ids(block.graph?.lifetimeRelations)),
     borrowScopeIds: blocks.flatMap((block) => ids(block.graph?.borrowScopes)),
     unsafeBoundaryIds: blocks.flatMap((block) => ids(block.graph?.unsafeBoundaries)),
+    memoryRegionIds: blocks.flatMap((block) => ids(block.graph?.memoryRegions)),
+    dataLayoutIds: blocks.flatMap((block) => ids(block.graph?.dataLayouts)),
+    pointerEdgeIds: blocks.flatMap((block) => ids(block.graph?.pointerEdges)),
+    memoryAccessIds: blocks.flatMap((block) => ids(block.graph?.memoryAccesses)),
+    abiBoundaryIds: blocks.flatMap((block) => ids(block.graph?.abiBoundaries)),
     conflictIds: blocks.flatMap((block) => ids(block.graph?.conflicts)),
     proofObligationIds: blocks.flatMap((block) => ids(block.graph?.proofObligations)),
     summary: {
@@ -280,6 +285,11 @@ function mergeResourceGraphBlocks(blocks) {
       lifetimeRelationCount: sum(blocks, 'lifetimeRelations'),
       borrowScopeCount: sum(blocks, 'borrowScopes'),
       unsafeBoundaryCount: sum(blocks, 'unsafeBoundaries'),
+      memoryRegionCount: sum(blocks, 'memoryRegions'),
+      dataLayoutCount: sum(blocks, 'dataLayouts'),
+      pointerEdgeCount: sum(blocks, 'pointerEdges'),
+      memoryAccessCount: sum(blocks, 'memoryAccesses'),
+      abiBoundaryCount: sum(blocks, 'abiBoundaries'),
       conflictCount: sum(blocks, 'conflicts'),
       proofObligationCount: sum(blocks, 'proofObligations'),
       unsafeBoundariesWithoutProof: sum(blocks, 'unsafeBoundariesWithoutProof')
