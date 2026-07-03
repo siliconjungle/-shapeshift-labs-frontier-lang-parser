@@ -58,3 +58,12 @@ type DuplicateState @id("type_duplicate_state") {
 assert.equal(duplicate.summary.failClosed, true);
 assert.equal(duplicate.unknownChildren[0].id, 'variant_ready');
 assert.equal(duplicate.unknownChildren[0].reason, 'duplicate-type-variant-field-id');
+
+const malformedStructuralPayload = inspectFrontierSourceSyntax(`module MalformedStructuralVariantPayload @id("mod_malformed_structural_variant_payload") {
+type StructuralPayloadState @id("type_structural_payload_state") {
+  variant Ready @id("variant_ready") (value: Record<id Text>)
+}
+}`);
+assert.equal(malformedStructuralPayload.summary.failClosed, true);
+assert.equal(malformedStructuralPayload.unknownChildren[0].id, 'variant_ready');
+assert.equal(malformedStructuralPayload.unknownChildren[0].reason, 'malformed-structural-record-field');

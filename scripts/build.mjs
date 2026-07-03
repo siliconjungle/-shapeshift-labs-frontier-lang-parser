@@ -36,6 +36,7 @@ await copyFile("src/source-evidence.js", "dist/source-evidence.js");
 await copyFile("src/source-syntax-children.js", "dist/source-syntax-children.js");
 await copyFile("src/source-syntax-row-config.js", "dist/source-syntax-row-config.js");
 await copyFile("src/source-syntax-report.js", "dist/source-syntax-report.js");
+await copyFile("src/source-syntax-type-expressions.js", "dist/source-syntax-type-expressions.js");
 await copyFile("src/target-projection.js", "dist/target-projection.js");
 await copyFile("src/target-projection-aggregate.js", "dist/target-projection-aggregate.js");
 await copyFile("src/type-expressions.js", "dist/type-expressions.js");

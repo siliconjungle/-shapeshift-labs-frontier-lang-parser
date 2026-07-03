@@ -1,23 +1,25 @@
 import { readActionSyntaxChildren } from './action-syntax-children.js';
 import { ROW_SYNTAX_CONFIG } from './source-syntax-row-config.js';
+import { readTypeExpressionSyntaxChildren } from './source-syntax-type-expressions.js';
+import { inspectTypeExpressionSyntax } from './type-expressions.js';
 import { inspectVariantPayload } from './type-variants.js';
 
 const ROW_NAME_PATTERN = '([A-Za-z_$@./:*+-][\\w$./@:*+-]*)';
 
 export function readSourceSyntaxChildren(source, block, options = {}) {
+  let children = [];
   if (block.malformed) return [];
   if (block.kind === 'action') {
-    return readActionSyntaxChildren(source, block, options);
+    children = readActionSyntaxChildren(source, block, options);
+  } else if (block.kind === 'conversion' || block.kind === 'universalConversionPlan') {
+    children = readConversionSyntaxChildren(source, block, options);
+  } else if (block.kind === 'type') {
+    children = readTypeSyntaxChildren(source, block, options);
+  } else {
+    const rowConfig = ROW_SYNTAX_CONFIG[block.kind];
+    if (rowConfig) children = readGenericRowSyntaxChildren(source, block, options, rowConfig);
   }
-  if (block.kind === 'conversion' || block.kind === 'universalConversionPlan') {
-    return readConversionSyntaxChildren(source, block, options);
-  }
-  if (block.kind === 'type') {
-    return readTypeSyntaxChildren(source, block, options);
-  }
-  const rowConfig = ROW_SYNTAX_CONFIG[block.kind];
-  if (rowConfig) return readGenericRowSyntaxChildren(source, block, options, rowConfig);
-  return [];
+  return [...children, ...readTypeExpressionSyntaxChildren(source, block, options)];
 }
 
 function readTypeSyntaxChildren(source, block, options) {
@@ -27,7 +29,7 @@ function readTypeSyntaxChildren(source, block, options) {
     const variant = /^variant\s+([A-Za-z_$][\w$]*)(.*)$/.exec(line.text);
     if (!variant) continue;
     const [, name, rest] = variant;
-    const payload = inspectVariantPayload(rest ?? '');
+    const payload = inspectVariantPayload(rest ?? '', inspectTypeExpressionSyntax);
     children.push(cleanRecord({
       kind: 'typeVariant',
       rowKind: 'variant',

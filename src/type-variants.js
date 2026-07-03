@@ -12,18 +12,24 @@ export function readVariantPayloadFields(rest, variantName, parseTypeExpression)
   return fields;
 }
 
-export function inspectVariantPayload(rest) {
+export function inspectVariantPayload(rest, inspectTypeExpressionSyntax) {
   const withoutId = stripLeadingVariantId(rest);
   if (!withoutId) return { ok: true };
   const payload = /^\((.*)\)$/.exec(withoutId);
   if (!payload || !payload[1].trim()) return { ok: false, reason: 'malformed-type-variant-payload' };
   const fieldIds = [];
   const seen = new Set();
+  const seenNames = new Set();
   for (const fieldSource of splitTopLevelCommaList(payload[1])) {
     const field = parseVariantPayloadField(fieldSource);
     if (!field) return { ok: false, reason: 'malformed-type-variant-payload' };
     if (seen.has(field.id)) return { ok: false, reason: 'duplicate-type-variant-field-id' };
     seen.add(field.id);
+    if (seenNames.has(field.name)) return { ok: false, reason: 'duplicate-type-variant-field-name' };
+    seenNames.add(field.name);
+    const typeSource = readVariantPayloadFieldTypeSource(fieldSource);
+    const inspected = inspectTypeExpressionSyntax?.(typeSource);
+    if (inspected && !inspected.ok) return { ok: false, reason: inspected.reason };
     fieldIds.push(field.id);
   }
   return { ok: true, fieldCount: fieldIds.length, fieldIds };
@@ -39,6 +45,10 @@ function parseVariantPayloadField(source, variantName, parseTypeExpression) {
     ...(parseTypeExpression ? { type: parseTypeExpression(match[5].trim()) } : {}),
     ...(optional ? { optional: true } : {})
   };
+}
+
+function readVariantPayloadFieldTypeSource(source) {
+  return /^\s*[A-Za-z_$][\w$]*(\?)?(?:\s+@id\(\s*["'][^"']+["']\s*\))?(\?)?\s*:\s*(.+)\s*$/.exec(source)?.[3]?.trim();
 }
 
 export function splitTopLevelCommaList(source) {
