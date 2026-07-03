@@ -15,6 +15,22 @@ export function readSourceSyntaxChildren(source, block, options = {}) {
     children = readConversionSyntaxChildren(source, block, options);
   } else if (block.kind === 'type') {
     children = readTypeSyntaxChildren(source, block, options);
+  } else if (block.kind === 'entity') {
+    children = readMemberSyntaxChildren(source, block, options, {
+      kind: 'entityField',
+      rowKind: 'field',
+      idPrefix: `field_${safeId(block.name)}_`,
+      duplicateNameReason: 'duplicate-entity-field-name',
+      duplicateIdReason: 'duplicate-entity-field-id'
+    });
+  } else if (block.kind === 'state') {
+    children = readMemberSyntaxChildren(source, block, options, {
+      kind: 'stateCollection',
+      rowKind: 'collection',
+      idPrefix: `collection_${safeId(block.name)}_`,
+      duplicateNameReason: 'duplicate-state-collection-name',
+      duplicateIdReason: 'duplicate-state-collection-id'
+    });
   } else {
     const rowConfig = ROW_SYNTAX_CONFIG[block.kind];
     if (rowConfig) children = readGenericRowSyntaxChildren(source, block, options, rowConfig);
@@ -23,7 +39,13 @@ export function readSourceSyntaxChildren(source, block, options = {}) {
 }
 
 function readTypeSyntaxChildren(source, block, options) {
-  const children = [];
+  const children = readMemberSyntaxChildren(source, block, options, {
+    kind: 'typeField',
+    rowKind: 'typeField',
+    idPrefix: 'type_field_',
+    duplicateNameReason: 'duplicate-type-field-name',
+    duplicateIdReason: 'duplicate-type-field-id'
+  });
   const seenVariantNames = new Set();
   const seenVariantIds = new Set();
   for (const line of readBodyLines(source, block)) {
@@ -70,6 +92,46 @@ function readTypeSyntaxChildren(source, block, options) {
     }));
   }
   return children;
+}
+
+function readMemberSyntaxChildren(source, block, options, config) {
+  const children = [];
+  const seenNames = new Set(), seenIds = new Set();
+  for (const line of readBodyLines(source, block)) {
+    if (!line.text || line.text.startsWith('#')) continue;
+    const member = /^([A-Za-z_$][\w$]*)(?:\s+@id\(\s*["']([^"']+)["']\s*\))?\s*:\s*(.+)$/.exec(line.text);
+    if (!member) continue;
+    const [, name, explicitId] = member;
+    const id = explicitId ?? `${config.idPrefix}${safeId(name)}`;
+    let recognized = true, reason;
+    if (seenNames.has(name)) { recognized = false; reason = config.duplicateNameReason; }
+    if (recognized && seenIds.has(id)) { recognized = false; reason = config.duplicateIdReason; }
+    if (recognized) { seenNames.add(name); seenIds.add(id); }
+    children.push(memberChild(source, block, options, line, { ...config, name, id, recognized, reason }));
+  }
+  return children;
+}
+
+function memberChild(source, block, options, line, input) {
+  return cleanRecord({
+    kind: input.kind,
+    rowKind: input.rowKind,
+    normalizedRowKind: input.rowKind,
+    name: input.name,
+    id: input.id,
+    header: line.text,
+    startOffset: line.startOffset,
+    endOffset: line.endOffset,
+    location: sourcePosition(source, line.startOffset),
+    parentKind: block.kind,
+    parentId: block.id,
+    parentName: block.name,
+    moduleId: block.moduleId,
+    moduleName: block.moduleName,
+    sourceSpan: sourceSpan(source, block, line.startOffset, line.endOffset, options),
+    recognized: input.recognized,
+    reason: input.reason
+  });
 }
 
 function readConversionSyntaxChildren(source, block, options) {

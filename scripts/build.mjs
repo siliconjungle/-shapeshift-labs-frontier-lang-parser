@@ -23,6 +23,7 @@ await copyFile("src/dialect-registry.js", "dist/dialect-registry.js");
 await copyFile("src/index.js", "dist/index.js");
 await copyFile("src/index.d.ts", "dist/index.d.ts");
 await copyFile("src/interlingua.js", "dist/interlingua.js");
+await copyFile("src/member-records.js", "dist/member-records.js");
 await copyFile("src/metadata.js", "dist/metadata.js");
 await copyFile("src/operations.js", "dist/operations.js");
 await copyFile("src/package-manifest.js", "dist/package-manifest.js");

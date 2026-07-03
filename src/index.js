@@ -1,4 +1,4 @@
-import { actionNode, capabilityNode, createDocument, effectNode, entityNode, externNode, latticeNode, migrationNode, stateNode, targetNode, typeNode } from '@shapeshift-labs/frontier-lang-kernel';
+import { actionNode, capabilityNode, createDocument, effectNode, externNode, latticeNode, migrationNode, targetNode, typeNode } from '@shapeshift-labs/frontier-lang-kernel';
 import { readActionBodyRecords, stripNestedBlocks } from './action-body.js';
 import { parseConstraintSpaceBlock } from './constraint-space.js';
 import { parseConversionBlock } from './conversion.js';
@@ -8,6 +8,7 @@ import { parseDecisionGraphBlock } from './decision-graph.js';
 import { parseDialectRegistryBlock } from './dialect-registry.js';
 import { parseInterlinguaBlock } from './interlingua.js';
 import { createParsedMetadata } from './metadata.js';
+import { parseEntityBlock, parseStateBlock, readTypeFields } from './member-records.js';
 import { parseSemanticOperationsBlock } from './operations.js';
 import { parsePackageManifestBlock } from './package-manifest.js';
 import { parseParadigmBlock } from './paradigm.js';
@@ -85,40 +86,8 @@ function readBlocks(source, options) {
 }
 function idFrom(header, fallback) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(header)?.[1] ?? fallback; }
 function nameFrom(header) { return /^([A-Za-z_$][\w$]*)/.exec(header)?.[1] ?? 'Unnamed'; }
-function parseEntity(block) {
-  const name = nameFrom(block.header);
-  const fields = [];
-  const fieldRe = /^\s*([A-Za-z_$][\w$]*)(?:\s+@id\(\s*["']([^"']+)["']\s*\))?\s*:\s*([^@{\n]+)([^\n{]*)(?:\{([^}]*)\})?/gm;
-  let m;
-  while ((m = fieldRe.exec(block.body))) {
-    const mergeText = (m[4] ?? '') + ' ' + (m[5] ?? '');
-    fields.push({
-      id: m[2] ?? `field_${name}_${m[1]}`,
-      name: m[1],
-      type: parseTypeExpression(m[3].trim()),
-      key: /@key/.test(m[4] ?? ''),
-      merge: parseMerge(mergeText),
-      semantic: parseSemantic(mergeText)
-    });
-  }
-  return entityNode({ id: idFrom(block.header, `ent_${name}`), name, fields });
-}
-function parseState(block) {
-  const name = nameFrom(block.header);
-  const collections = [];
-  const re = /^\s*([A-Za-z_$][\w$]*)(?:\s+@id\(\s*["']([^"']+)["']\s*\))?\s*:\s*([^@{\n]+)(?:\{([^}]*)\})?/gm;
-  let m;
-  while ((m = re.exec(block.body))) {
-    collections.push({
-      id: m[2] ?? `collection_${name}_${m[1]}`,
-      name: m[1],
-      type: parseTypeExpression(m[3].trim()),
-      merge: parseMerge(m[4] ?? ''),
-      semantic: parseSemantic(m[4] ?? '')
-    });
-  }
-  return stateNode({ id: idFrom(block.header, `state_${name}`), name, collections });
-}
+function parseEntity(block) { return parseEntityBlock(block, idFrom, nameFrom); }
+function parseState(block) { return parseStateBlock(block, idFrom, nameFrom); }
 function parseAction(block) {
   const name = nameFrom(block.header);
   const topLevelBody = stripNestedBlocks('body', block.body);
@@ -276,30 +245,6 @@ function readChangeRecords(body) {
     changes.push({ id: `change_${changes.length}`, kind: match[1], ...(statement ? { statement, target: statement.split(/\s+/)[0] } : {}) });
   }
   return changes;
-}
-function parseMerge(text) {
-  const kind = /merge\s+([A-Za-z][\w-]*)/.exec(text)?.[1];
-  if (!kind) return undefined;
-  const law = /law\s+([A-Za-z][\w-]*)/.exec(text)?.[1];
-  const laws = /laws\s+([A-Za-z][\w-]*(?:\s*,\s*[A-Za-z][\w-]*)*)/.exec(text)?.[1]?.split(',').map((item) => item.trim()).filter(Boolean);
-  const latticeId = /lattice\s+([A-Za-z_$][\w$-]*)/.exec(text)?.[1];
-  return { kind, law, laws, latticeId };
-}
-function parseSemantic(text) {
-  const crdtType = /crdt\s+([A-Za-z][\w-]*)/.exec(text)?.[1];
-  const latticeId = /lattice\s+([A-Za-z_$][\w$-]*)/.exec(text)?.[1];
-  if (crdtType) return { kind: 'crdt', latticeId, crdt: { type: crdtType } };
-  if (latticeId) return { kind: 'lattice', latticeId };
-  return undefined;
-}
-function readTypeFields(body) {
-  const fields = [];
-  const re = /^\s*([A-Za-z_$][\w$]*)(?:\s+@id\(\s*["']([^"']+)["']\s*\))?\s*:\s*([^\n]+)/gm;
-  let match;
-  while ((match = re.exec(body))) {
-    fields.push({ id: match[2] ?? `type_field_${match[1]}`, name: match[1], type: parseTypeExpression(match[3].trim()) });
-  }
-  return fields.length ? fields : undefined;
 }
 function readVariants(body) {
   const variants = [];
