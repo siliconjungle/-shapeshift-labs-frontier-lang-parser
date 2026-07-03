@@ -303,12 +303,17 @@ function readTypeFields(body) {
 }
 function readVariants(body) {
   const variants = [];
+  const seenNames = new Set();
+  const seenIds = new Set();
   const re = /^\s*variant\s+([A-Za-z_$][\w$]*)(.*)$/gm;
   let match;
   while ((match = re.exec(body))) {
     const fields = readVariantPayloadFields(match[2] ?? '', match[1], parseTypeExpression);
     if (fields === null) continue;
     const id = /@id\(\s*["']([^"']+)["']\s*\)/.exec(match[2] ?? '')?.[1];
+    const variantId = id ?? `type_variant_${safeId(match[1])}`;
+    if (seenNames.has(match[1]) || seenIds.has(variantId)) continue;
+    seenNames.add(match[1]); seenIds.add(variantId);
     variants.push({ ...(id ? { id } : {}), name: match[1], ...(fields?.length ? { fields } : {}) });
   }
   return variants.length ? variants : undefined;

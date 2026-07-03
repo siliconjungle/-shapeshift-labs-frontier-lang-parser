@@ -67,3 +67,43 @@ type StructuralPayloadState @id("type_structural_payload_state") {
 assert.equal(malformedStructuralPayload.summary.failClosed, true);
 assert.equal(malformedStructuralPayload.unknownChildren[0].id, 'variant_ready');
 assert.equal(malformedStructuralPayload.unknownChildren[0].reason, 'malformed-structural-record-field');
+
+const duplicateVariantNameSource = `module DuplicateVariantName @id("mod_duplicate_variant_name") {
+type DuplicateState @id("type_duplicate_state") {
+  variant Ready @id("variant_ready") (value: Text)
+  variant Ready @id("variant_ready_again") (value: Json)
+}
+}`;
+const duplicateVariantName = inspectFrontierSourceSyntax(duplicateVariantNameSource);
+assert.equal(duplicateVariantName.summary.failClosed, true);
+assert.equal(duplicateVariantName.unknownChildren[0].id, 'variant_ready_again');
+assert.equal(duplicateVariantName.unknownChildren[0].reason, 'duplicate-type-variant-name');
+assert.deepEqual(parseFrontierSource(duplicateVariantNameSource).nodes.type_duplicate_state.variants, [
+  {
+    id: 'variant_ready',
+    name: 'Ready',
+    fields: [
+      { id: 'variant_field_Ready_value', name: 'value', type: 'Text' }
+    ]
+  }
+]);
+
+const duplicateVariantIdSource = `module DuplicateVariantId @id("mod_duplicate_variant_id") {
+type DuplicateIdState @id("type_duplicate_id_state") {
+  variant Ready @id("variant_state") (value: Text)
+  variant Failed @id("variant_state") (message: Text)
+}
+}`;
+const duplicateVariantId = inspectFrontierSourceSyntax(duplicateVariantIdSource);
+assert.equal(duplicateVariantId.summary.failClosed, true);
+assert.equal(duplicateVariantId.unknownChildren[0].id, 'variant_state');
+assert.equal(duplicateVariantId.unknownChildren[0].reason, 'duplicate-type-variant-id');
+assert.deepEqual(parseFrontierSource(duplicateVariantIdSource).nodes.type_duplicate_id_state.variants, [
+  {
+    id: 'variant_state',
+    name: 'Ready',
+    fields: [
+      { id: 'variant_field_Ready_value', name: 'value', type: 'Text' }
+    ]
+  }
+]);

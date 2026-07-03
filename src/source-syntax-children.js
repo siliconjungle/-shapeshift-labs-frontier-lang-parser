@@ -24,18 +24,35 @@ export function readSourceSyntaxChildren(source, block, options = {}) {
 
 function readTypeSyntaxChildren(source, block, options) {
   const children = [];
+  const seenVariantNames = new Set();
+  const seenVariantIds = new Set();
   for (const line of readBodyLines(source, block)) {
     if (!line.text || line.text.startsWith('#')) continue;
     const variant = /^variant\s+([A-Za-z_$][\w$]*)(.*)$/.exec(line.text);
     if (!variant) continue;
     const [, name, rest] = variant;
     const payload = inspectVariantPayload(rest ?? '', inspectTypeExpressionSyntax);
+    const id = idFrom(rest, `type_variant_${safeId(name)}`);
+    let recognized = payload.ok;
+    let reason = payload.ok ? undefined : payload.reason;
+    if (recognized && seenVariantNames.has(name)) {
+      recognized = false;
+      reason = 'duplicate-type-variant-name';
+    }
+    if (recognized && seenVariantIds.has(id)) {
+      recognized = false;
+      reason = 'duplicate-type-variant-id';
+    }
+    if (recognized) {
+      seenVariantNames.add(name);
+      seenVariantIds.add(id);
+    }
     children.push(cleanRecord({
       kind: 'typeVariant',
       rowKind: 'variant',
       normalizedRowKind: 'variant',
       name,
-      id: idFrom(rest, `type_variant_${safeId(name)}`),
+      id,
       header: line.text,
       startOffset: line.startOffset,
       endOffset: line.endOffset,
@@ -46,8 +63,8 @@ function readTypeSyntaxChildren(source, block, options) {
       moduleId: block.moduleId,
       moduleName: block.moduleName,
       sourceSpan: sourceSpan(source, block, line.startOffset, line.endOffset, options),
-      recognized: payload.ok,
-      reason: payload.ok ? undefined : payload.reason,
+      recognized,
+      reason,
       fieldCount: payload.fieldCount,
       fieldIds: payload.fieldIds
     }));
