@@ -92,6 +92,7 @@ function parseActionRepeatBlock(header, body, index, state) {
   const details = readActionRepeatHeader(header, index);
   return compactRecord({
     kind: 'repeat',
+    repeatKind: 'times',
     id: details.id,
     name: details.name,
     indexName: details.indexName,

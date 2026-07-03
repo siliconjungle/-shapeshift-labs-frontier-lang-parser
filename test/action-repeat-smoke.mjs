@@ -15,6 +15,7 @@ const action = parseFrontierSource(source).nodes.action_record_last_index;
 assert.equal(action.body.length, 1);
 assert.deepEqual(action.body[0], {
   kind: 'repeat',
+  repeatKind: 'times',
   id: 'repeat_items',
   name: 'index',
   indexName: 'index',
@@ -103,6 +104,22 @@ assert.equal(missingCount.unknownChildren[0].id, 'repeat_missing_count');
 assert.equal(missingCount.unknownChildren[0].reason, 'missing-action-repeat-count');
 assert.equal(missingCount.blocks[0].children.some((child) => child.id === 'missing_count_patch_should_not_escape'), false);
 
+const missingCountAfterTimesSource = `module MissingCountAfterTimes @id("mod_missing_count_after_times") {
+action RecordLastIndex @id("action_record_last_index") {
+  body {
+    repeat index @id("repeat_missing_count_after_times") times {
+      set lastIndex @id("missing_count_after_times_patch_should_not_escape") path /lastIndex value 0
+    }
+  }
+}
+}`;
+assert.equal((parseFrontierSource(missingCountAfterTimesSource).nodes.action_record_last_index.body ?? []).length, 0);
+const missingCountAfterTimes = inspectFrontierSourceSyntax(missingCountAfterTimesSource);
+assert.equal(missingCountAfterTimes.summary.failClosed, true);
+assert.equal(missingCountAfterTimes.unknownChildren[0].id, 'repeat_missing_count_after_times');
+assert.equal(missingCountAfterTimes.unknownChildren[0].reason, 'missing-action-repeat-count');
+assert.equal(missingCountAfterTimes.blocks[0].children.some((child) => child.id === 'missing_count_after_times_patch_should_not_escape'), false);
+
 const unsupportedCountSource = `module UnsupportedCount @id("mod_unsupported_count") {
 action RecordLastIndex @id("action_record_last_index") {
   body {
@@ -119,6 +136,21 @@ assert.equal(unsupportedCount.unknownChildren[0].id, 'repeat_string_count');
 assert.equal(unsupportedCount.unknownChildren[0].reason, 'unsupported-action-repeat-count');
 assert.equal(unsupportedCount.blocks[0].children.some((child) => child.id === 'string_count_patch_should_not_escape'), false);
 
+const fractionalCountSource = `module FractionalCount @id("mod_fractional_count") {
+action RecordLastIndex @id("action_record_last_index") {
+  body {
+    repeat index @id("repeat_fractional_count") times 1.5 {
+      set lastIndex @id("fractional_count_patch_should_not_escape") path /lastIndex value 0
+    }
+  }
+}
+}`;
+assert.equal((parseFrontierSource(fractionalCountSource).nodes.action_record_last_index.body ?? []).length, 0);
+const fractionalCount = inspectFrontierSourceSyntax(fractionalCountSource);
+assert.equal(fractionalCount.summary.failClosed, true);
+assert.equal(fractionalCount.unknownChildren[0].reason, 'unsupported-action-repeat-count');
+assert.equal(fractionalCount.blocks[0].children.some((child) => child.id === 'fractional_count_patch_should_not_escape'), false);
+
 const callCountSource = `module CallCount @id("mod_call_count") {
 action RecordLastIndex @id("action_record_last_index") {
   body {
@@ -133,6 +165,21 @@ const callCount = inspectFrontierSourceSyntax(callCountSource);
 assert.equal(callCount.summary.failClosed, true);
 assert.equal(callCount.unknownChildren[0].reason, 'unsupported-action-repeat-count');
 assert.equal(callCount.blocks[0].children.some((child) => child.id === 'call_count_patch_should_not_escape'), false);
+
+const lateIdSource = `module LateId @id("mod_late_id") {
+action RecordLastIndex @id("action_record_last_index") {
+  body {
+    repeat index times input.count @id("repeat_late_id") {
+      set lastIndex @id("late_id_patch_should_not_escape") path /lastIndex value 0
+    }
+  }
+}
+}`;
+assert.equal((parseFrontierSource(lateIdSource).nodes.action_record_last_index.body ?? []).length, 0);
+const lateId = inspectFrontierSourceSyntax(lateIdSource);
+assert.equal(lateId.summary.failClosed, true);
+assert.equal(lateId.unknownChildren[0].reason, 'malformed-action-repeat-header');
+assert.equal(lateId.blocks[0].children.some((child) => child.id === 'late_id_patch_should_not_escape'), false);
 
 const extraTokenSource = `module ExtraToken @id("mod_extra_token") {
 action RecordLastIndex @id("action_record_last_index") {
