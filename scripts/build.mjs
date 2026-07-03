@@ -21,6 +21,7 @@ await copyFile("src/canvas-surface.js", "dist/canvas-surface.js");
 await copyFile("src/decision-graph.js", "dist/decision-graph.js");
 await copyFile("src/dialect-registry.js", "dist/dialect-registry.js");
 await copyFile("src/gate-admission-evidence.js", "dist/gate-admission-evidence.js");
+await copyFile("src/gate-admission-evidence-proof-obligations.js", "dist/gate-admission-evidence-proof-obligations.js");
 await copyFile("src/index.js", "dist/index.js");
 await copyFile("src/index.d.ts", "dist/index.d.ts");
 await copyFile("src/interlingua.js", "dist/interlingua.js");

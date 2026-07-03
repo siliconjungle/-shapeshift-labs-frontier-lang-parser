@@ -1,3 +1,5 @@
+import { parserUnsupportedRowError, proofObligationRecord, unknownRowRecord, unsupportedRowProofGapRecord } from './gate-admission-evidence-proof-obligations.js';
+
 export function parseGateAdmissionEvidenceBlock(block) {
   const name = nameFrom(block.header);
   const surface = {
@@ -9,7 +11,9 @@ export function parseGateAdmissionEvidenceBlock(block) {
     gates: [],
     evidence: [],
     admissions: [],
+    proofObligations: [],
     proofGaps: [],
+    unknownRows: [],
     parser: { status: 'authored', errors: [] },
     claims: falseClaims(),
     metadata: { authoredName: name, authoredBlockKind: block.kind }
@@ -17,22 +21,34 @@ export function parseGateAdmissionEvidenceBlock(block) {
   for (const authoredLine of readAuthoredLines(block)) {
     const line = authoredLine.text;
     if (!line || line.startsWith('#')) continue;
-    const match = /^(gate|evidence|proofEvidence|admission|admissionDecision|gap|proofGap)\s+([A-Za-z_$@/.:*-][\w$./@:*+-]*)(.*)$/.exec(line);
-    if (!match) continue;
+    const match = /^(gate|evidence|proofEvidence|admission|admissionDecision|proofObligation|obligation|gap|proofGap)\s+([A-Za-z_$@/.:*-][\w$./@:*+-]*)(.*)$/.exec(line);
+    if (!match) {
+      const unknownRow = unknownRowRecord(line, authoredLine);
+      surface.unknownRows.push(unknownRow);
+      surface.proofGaps.push(unsupportedRowProofGapRecord(unknownRow, authoredLine));
+      surface.parser.status = 'needs-review';
+      surface.parser.errors.push(parserUnsupportedRowError(unknownRow));
+      continue;
+    }
     const [, rowKind, rowName, text] = match;
     if (rowKind === 'gate') surface.gates.push(gateRecord(rowName, text, authoredLine));
     else if (rowKind === 'evidence' || rowKind === 'proofEvidence') surface.evidence.push(evidenceRecord(rowName, text, authoredLine, rowKind));
     else if (rowKind === 'admission' || rowKind === 'admissionDecision') surface.admissions.push(admissionRecord(rowName, text, authoredLine));
+    else if (rowKind === 'proofObligation' || rowKind === 'obligation') surface.proofObligations.push(proofObligationRecord(rowName, text, authoredLine, rowKind));
     else surface.proofGaps.push(proofGapRecord(rowName, text, authoredLine));
   }
   surface.gateIds = ids(surface.gates);
   surface.evidenceIds = ids(surface.evidence);
   surface.proofEvidenceIds = surface.evidence.filter((record) => record.proof).map((record) => record.id).filter(Boolean);
   surface.admissionIds = ids(surface.admissions);
+  surface.proofObligationIds = ids(surface.proofObligations);
+  surface.unknownRowIds = ids(surface.unknownRows);
   surface.proofGapCodes = uniqueStrings(surface.proofGaps.map((record) => record.code));
   surface.missingEvidence = uniqueStrings([
     ...surface.gates.flatMap((record) => record.missingEvidence ?? []),
     ...surface.admissions.flatMap((record) => record.missingEvidence ?? []),
+    ...surface.proofObligations.flatMap((record) => record.missingEvidence ?? []),
+    ...surface.proofObligations.flatMap((record) => record.missingSignals ?? []),
     ...surface.proofGaps.map((record) => record.code)
   ]);
   surface.summary = {
@@ -40,10 +56,13 @@ export function parseGateAdmissionEvidenceBlock(block) {
     evidenceCount: surface.evidence.length,
     proofEvidenceCount: surface.proofEvidenceIds.length,
     admissionCount: surface.admissions.length,
+    proofObligationCount: surface.proofObligations.length,
     proofGapCount: surface.proofGaps.length,
+    unknownRowCount: surface.unknownRows.length,
     missingEvidenceCount: surface.missingEvidence.length,
     passedGateCount: surface.gates.filter((record) => record.status === 'passed').length,
     failedGateCount: surface.gates.filter((record) => record.status === 'failed').length,
+    openProofObligationCount: surface.proofObligations.filter((record) => /missing|blocked|review|open|unknown/.test(record.status ?? '')).length,
     blockedAdmissionCount: surface.admissions.filter((record) => /blocked|missing|failed|review/.test(record.status ?? '')).length
   };
   return surface;
@@ -53,13 +72,18 @@ export function mergeGateAdmissionEvidenceBlocks(blocks) {
   const gates = uniqueRecords(blocks.flatMap((block) => block.gates ?? []));
   const evidence = uniqueRecords(blocks.flatMap((block) => block.evidence ?? []));
   const admissions = uniqueRecords(blocks.flatMap((block) => block.admissions ?? []));
+  const proofObligations = uniqueRecords(blocks.flatMap((block) => block.proofObligations ?? []));
   const proofGaps = uniqueRecords(blocks.flatMap((block) => block.proofGaps ?? []));
+  const unknownRows = uniqueRecords(blocks.flatMap((block) => block.unknownRows ?? []));
   const proofEvidenceIds = evidence.filter((record) => record.proof).map((record) => record.id).filter(Boolean);
   const missingEvidence = uniqueStrings([
     ...gates.flatMap((record) => record.missingEvidence ?? []),
     ...admissions.flatMap((record) => record.missingEvidence ?? []),
+    ...proofObligations.flatMap((record) => record.missingEvidence ?? []),
+    ...proofObligations.flatMap((record) => record.missingSignals ?? []),
     ...proofGaps.map((record) => record.code)
   ]);
+  const parserErrors = blocks.flatMap((block) => block.parser?.errors ?? []);
   return {
     kind: 'frontier.lang.authoredGateAdmissionEvidenceInput',
     version: 1,
@@ -70,23 +94,34 @@ export function mergeGateAdmissionEvidenceBlocks(blocks) {
     gates,
     evidence,
     admissions,
+    proofObligations,
     proofGaps,
+    unknownRows,
     gateIds: ids(gates),
     evidenceIds: ids(evidence),
     proofEvidenceIds,
     admissionIds: ids(admissions),
+    proofObligationIds: ids(proofObligations),
+    unknownRowIds: ids(unknownRows),
     proofGapCodes: uniqueStrings(proofGaps.map((record) => record.code)),
     missingEvidence,
+    parser: {
+      status: parserErrors.length ? 'needs-review' : 'authored',
+      errors: parserErrors
+    },
     summary: {
       blockCount: blocks.length,
       gateCount: gates.length,
       evidenceCount: evidence.length,
       proofEvidenceCount: proofEvidenceIds.length,
       admissionCount: admissions.length,
+      proofObligationCount: proofObligations.length,
       proofGapCount: proofGaps.length,
+      unknownRowCount: unknownRows.length,
       missingEvidenceCount: missingEvidence.length,
       passedGateCount: gates.filter((record) => record.status === 'passed').length,
       failedGateCount: gates.filter((record) => record.status === 'failed').length,
+      openProofObligationCount: proofObligations.filter((record) => /missing|blocked|review|open|unknown/.test(record.status ?? '')).length,
       blockedAdmissionCount: admissions.filter((record) => /blocked|missing|failed|review/.test(record.status ?? '')).length
     },
     claims: falseClaims(),
@@ -124,6 +159,7 @@ function gateRecord(name, text, authoredLine) {
     reasonCodes: readInlineList(text, 'reasonCode', 'reasonCodes'),
     failClosed: true,
     claims: falseClaims(),
+    authoredText: authoredLine.text,
     sourceSpan: authoredLine.sourceSpan,
     authoredSourceSpan: authoredLine.sourceSpan,
     metadata: cleanRecord({ authoredName: name, summary: readInlineQuoted('summary', text), ...falseClaims() })
@@ -159,6 +195,8 @@ function evidenceRecord(name, text, authoredLine, rowKind) {
     autoMergeClaim: false,
     semanticEquivalenceClaim: false,
     runtimeEquivalenceClaim: false,
+    targetAdapterReadinessClaim: false,
+    authoredText: authoredLine.text,
     sourceSpan: authoredLine.sourceSpan,
     authoredSourceSpan: authoredLine.sourceSpan,
     metadata: cleanRecord({ authoredName: name, authoredRowKind: rowKind, ...falseClaims() })
@@ -198,6 +236,8 @@ function admissionRecord(name, text, authoredLine) {
     autoMergeClaim: false,
     semanticEquivalenceClaim: false,
     runtimeEquivalenceClaim: false,
+    targetAdapterReadinessClaim: false,
+    authoredText: authoredLine.text,
     sourceSpan: authoredLine.sourceSpan,
     authoredSourceSpan: authoredLine.sourceSpan,
     metadata: cleanRecord({ authoredName: name, summary: readInlineQuoted('summary', text), ...falseClaims() })
@@ -221,6 +261,7 @@ function proofGapRecord(name, text, authoredLine) {
     summary: readInlineQuoted('summary', text) ?? readInlineQuoted('message', text),
     failClosed: true,
     ...falseClaims(),
+    authoredText: authoredLine.text,
     sourceSpan: authoredLine.sourceSpan,
     authoredSourceSpan: authoredLine.sourceSpan,
     metadata: cleanRecord({ authoredName: name, ...falseClaims() })
@@ -237,24 +278,14 @@ function readAuthoredLines(block) {
     const trailing = /\s*$/.exec(rawLine)?.[0].length ?? 0;
     const startOffset = lineStart + leading;
     const endOffset = Math.max(startOffset, rawEnd - trailing);
-    records.push({
-      text: rawLine.trim(),
-      startOffset,
-      endOffset,
-      sourceSpan: typeof block.sourceSpan === 'function' ? block.sourceSpan(startOffset, endOffset) : undefined
-    });
+    records.push({ text: rawLine.trim(), startOffset, endOffset, sourceSpan: typeof block.sourceSpan === 'function' ? block.sourceSpan(startOffset, endOffset) : undefined });
     lineStart = rawEnd + 1;
   }
   return records;
 }
 
 function falseClaims() {
-  return {
-    autoMergeClaim: false,
-    semanticEquivalenceClaim: false,
-    runtimeEquivalenceClaim: false,
-    gatePassImpliesAdmissionClaim: false
-  };
+  return { autoMergeClaim: false, semanticEquivalenceClaim: false, runtimeEquivalenceClaim: false, gatePassImpliesAdmissionClaim: false, targetAdapterReadinessClaim: false };
 }
 
 function ids(records = []) { return records.map((record) => record?.id).filter(Boolean); }

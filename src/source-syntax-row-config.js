@@ -6,7 +6,7 @@ const interlinguaRows = words('layer constraint edge obligation proofObligation 
 const packageRows = words('metadata dependency script export gap proofGap evidence proofEvidence');
 const runtimeRows = words('host runtimeHost hostProfile sourceHost targetHost capability hostCapability hostBinding binding requirement runtimeRequirement requiredRuntime evidence proofEvidence gap proofGap');
 const semanticEditRows = words('script semanticEditScript projection semanticEditProjection replay semanticEditReplay');
-const gateAdmissionRows = words('gate evidence proofEvidence admission admissionDecision gap proofGap');
+const gateAdmissionRows = words('gate evidence proofEvidence admission admissionDecision proofObligation obligation gap proofGap');
 
 export const ROW_SYNTAX_CONFIG = Object.freeze({
   interlingua: rowConfig('interlinguaRow', 'interlingua_row', interlinguaRows, normalizeInterlinguaRow),
@@ -135,6 +135,7 @@ function normalizeSemanticEditRow(rowKind) {
 function normalizeGateAdmissionRow(rowKind) {
   if (rowKind === 'proofEvidence') return 'evidence';
   if (rowKind === 'admissionDecision') return 'admission';
+  if (rowKind === 'obligation') return 'proofObligation';
   if (rowKind === 'gap') return 'proofGap';
   return rowKind;
 }

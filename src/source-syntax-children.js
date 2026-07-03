@@ -227,9 +227,9 @@ function readGenericRowSyntaxChildren(source, block, options, config) {
   for (const line of readBodyLines(source, block)) {
     if (!line.text || line.text.startsWith('#')) continue;
     const row = rowPattern.exec(line.text);
-    if (!row) continue;
+    if (!row) { if (config.childKind === 'gateAdmissionEvidenceRow') children.push(genericUnknownRowChild(source, block, options, line, config, undefined, undefined, 'unsupported-gate-admission-row')); continue; }
     const [, rowKind, name, rest] = row;
-    if (!config.rowKinds.has(rowKind)) continue;
+    if (!config.rowKinds.has(rowKind)) { if (config.childKind === 'gateAdmissionEvidenceRow') children.push(genericUnknownRowChild(source, block, options, line, config, rowKind, name, 'unsupported-gate-admission-row')); continue; }
     const normalizedRowKind = config.normalize?.(rowKind) ?? rowKind;
     const id = idFrom(rest, `${config.idPrefix}_${safeId(normalizedRowKind)}_${safeId(name)}`);
     let recognized = true;
@@ -264,9 +264,18 @@ function readGenericRowSyntaxChildren(source, block, options, config) {
   return children;
 }
 
-function readBodyLines(source, block) {
-  return readTextLines(source, block.bodyStartOffset, block.bodyEndOffset);
+function genericUnknownRowChild(source, block, options, line, config, rowKind, name, reason) {
+  const resolvedName = name ?? rowKind ?? 'unknown';
+  return cleanRecord({
+    kind: config.childKind === 'gateAdmissionEvidenceRow' ? 'gateAdmissionUnknownRow' : 'genericUnknownRow', rowKind,
+    normalizedRowKind: 'unknown', name: resolvedName, id: `gate_admission_unknown_${safeId(rowKind ?? 'row')}_${line.startOffset}`,
+    header: line.text, startOffset: line.startOffset, endOffset: line.endOffset, location: sourcePosition(source, line.startOffset),
+    parentKind: block.kind, parentId: block.id, parentName: block.name, moduleId: block.moduleId, moduleName: block.moduleName,
+    sourceSpan: sourceSpan(source, block, line.startOffset, line.endOffset, options), recognized: false, reason
+  });
 }
+
+function readBodyLines(source, block) { return readTextLines(source, block.bodyStartOffset, block.bodyEndOffset); }
 
 function readTextLines(source, startOffset, endOffset) {
   const body = source.slice(startOffset, endOffset);
