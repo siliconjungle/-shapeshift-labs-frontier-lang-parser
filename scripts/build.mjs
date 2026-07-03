@@ -3,6 +3,7 @@ import { copyFile, mkdir, rm } from "node:fs/promises";
 await rm("dist", { recursive: true, force: true });
 await mkdir("dist", { recursive: true });
 await copyFile("src/action-body.js", "dist/action-body.js");
+await copyFile("src/action-else-block.js", "dist/action-else-block.js");
 await copyFile("src/action-expression.js", "dist/action-expression.js");
 await copyFile("src/action-expression-semantics.js", "dist/action-expression-semantics.js");
 await copyFile("src/action-expression-tokenizer.js", "dist/action-expression-tokenizer.js");

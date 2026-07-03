@@ -1,5 +1,6 @@
 import { readFrontierNestedBlocks } from './source-syntax-report.js';
 import { readActionValue } from './action-expression.js';
+import { readElseHeaderBlock } from './action-else-block.js';
 
 export function readActionBodyRecords(body) {
   const records = [];
@@ -27,10 +28,18 @@ function parseActionBodyRecords(source, state) {
       const open = offset + ifHeader[0].length - 1;
       const close = findMatchingBrace(source, open);
       if (close < 0) break;
+      const elseBlock = readElseHeaderBlock(source, close + 1, source.length, { skipWhitespace: skipWhitespaceAndComments, findMatchingBrace });
       const index = state.index++;
-      const record = parseActionIfBlock(ifHeader[1].trim(), source.slice(open + 1, close), index, state);
+      const record = parseActionIfBlock(ifHeader[1].trim(), source.slice(open + 1, close), index, state, elseBlock);
       if (record) records.push(record);
-      offset = close + 1;
+      offset = elseBlock ? elseBlock.close + 1 : close + 1;
+      continue;
+    }
+    const elseHeader = /^else\b([^{\n]*)\{/.exec(source.slice(offset));
+    if (elseHeader) {
+      const open = offset + elseHeader[0].length - 1;
+      const close = findMatchingBrace(source, open);
+      offset = close < 0 ? source.length : close + 1;
       continue;
     }
     const lineEnd = source.indexOf('\n', offset);
@@ -45,9 +54,10 @@ function parseActionBodyRecords(source, state) {
   return records;
 }
 
-function parseActionIfBlock(header, body, index, state) {
+function parseActionIfBlock(header, body, index, state, elseBlock) {
   const details = parseActionIfHeader(header, index);
   if (!details.condition) return undefined;
+  const elseDetails = elseBlock ? parseActionElseHeader(elseBlock.header, index) : undefined;
   return compactRecord({
     kind: 'if',
     id: details.id,
@@ -55,7 +65,10 @@ function parseActionIfBlock(header, body, index, state) {
     comparisonType: details.comparisonType,
     callType: details.callType,
     condition: details.condition,
-    body: parseActionBodyRecords(body, state)
+    body: parseActionBodyRecords(body, state),
+    elseId: elseDetails?.id,
+    elseName: elseDetails?.name,
+    elseBody: elseBlock ? parseActionBodyRecords(elseBlock.body, state) : undefined
   });
 }
 
@@ -73,6 +86,15 @@ function parseActionIfHeader(header, index) {
     comparisonType,
     callType,
     condition: conditionText ? readActionValue(conditionText, { comparisonType, callType }) : undefined
+  };
+}
+
+function parseActionElseHeader(header, index) {
+  const withoutId = header.replace(/@id\(\s*["'][^"']+["']\s*\)/g, '').trim();
+  const name = firstIdentifier(withoutId) ?? `else_${index}`;
+  return {
+    id: idFrom(header, `action_body_else_${name}`),
+    name
   };
 }
 

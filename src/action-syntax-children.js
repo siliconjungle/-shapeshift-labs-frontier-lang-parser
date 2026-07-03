@@ -1,4 +1,5 @@
 import { parseActionValue } from './action-expression.js';
+import { readElseHeaderBlock } from './action-else-block.js';
 
 const ACTION_BODY_ROWS = new Set(['set', 'insert', 'remove', 'merge', 'callEffect', 'return', 'if', 'let']);
 
@@ -33,7 +34,29 @@ function readActionSyntaxRows(source, block, options, state, startOffset, endOff
       }, state, parentActionBodyId);
       children.push(child);
       children.push(...readActionSyntaxRows(source, block, options, state, open + 1, close, child.id));
+      const elseBlock = readElseHeaderBlock(source, close + 1, endOffset, { skipWhitespace: skipWhitespaceAndLineComments, findMatchingBrace });
+      if (elseBlock) {
+        const elseChild = actionSyntaxChild(source, block, options, {
+          text: source.slice(elseBlock.start, elseBlock.open + 1).trim(),
+          startOffset: elseBlock.start,
+          endOffset: elseBlock.open + 1
+        }, state, child.id, { recognized: elseBlock.supported });
+        children.push(elseChild);
+        if (elseBlock.supported) children.push(...readActionSyntaxRows(source, block, options, state, elseBlock.open + 1, elseBlock.close, elseChild.id));
+        offset = elseBlock.close + 1;
+        continue;
+      }
       offset = close + 1;
+      continue;
+    }
+    const elseBlock = readElseHeaderBlock(source, offset, endOffset, { skipWhitespace: skipWhitespaceAndLineComments, findMatchingBrace });
+    if (elseBlock) {
+      children.push(actionSyntaxChild(source, block, options, {
+        text: source.slice(elseBlock.start, elseBlock.open + 1).trim(),
+        startOffset: elseBlock.start,
+        endOffset: elseBlock.open + 1
+      }, state, parentActionBodyId));
+      offset = elseBlock.close + 1;
       continue;
     }
     const lineEnd = source.indexOf('\n', offset);
@@ -52,14 +75,14 @@ function readActionSyntaxRows(source, block, options, state, startOffset, endOff
   return children;
 }
 
-function actionSyntaxChild(source, block, options, line, state, parentActionBodyId) {
+function actionSyntaxChild(source, block, options, line, state, parentActionBodyId, overrides = {}) {
   const rowIndex = state.rowIndex++;
   const row = /^([A-Za-z_$][\w$-]*)(?:\s+([A-Za-z_$@./:*+-][\w$./@:*+-]*))?(.*)$/.exec(line.text);
   const rowKind = row?.[1] ?? 'unknown';
   const name = actionRowName(rowKind, row?.[2], rowIndex);
   const rest = row?.[2]?.startsWith('@') ? ` ${row[2]}${row[3] ?? ''}` : (row?.[3] ?? '');
   const validation = validateActionRow(rowKind, row?.[2], rest, line.text);
-  const recognized = ACTION_BODY_ROWS.has(rowKind) && validation.ok;
+  const recognized = overrides.recognized ?? (ACTION_BODY_ROWS.has(rowKind) && validation.ok);
   return cleanRecord({
     kind: recognized ? 'actionBodyRow' : 'actionUnknownRow',
     rowKind,
