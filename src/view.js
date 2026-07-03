@@ -1,5 +1,6 @@
 import { viewNode } from '@shapeshift-labs/frontier-lang-kernel';
 import { readFrontierNestedBlocks } from './source-syntax-report.js';
+import { parseOptionalTypeExpression, parseTypeExpression } from './type-expressions.js';
 
 export function parseViewBlock(block) {
   const name = nameFrom(block.header);
@@ -30,7 +31,7 @@ function readViewEvents(body) {
   const events = [];
   const re = /^\s*event\s+([A-Za-z_$][\w$.-]*)(?:\s+@id\(\s*["']([^"']+)["']\s*\))?([^\n]*)$/gm;
   let match;
-  while ((match = re.exec(body))) events.push({ id: match[2] ?? `view_event_${match[1]}`, name: match[1], action: readInlineWord('action', match[3]), input: parseOptionalTypeExpression(readInlineWord('input', match[3])) });
+  while ((match = re.exec(body))) events.push({ id: match[2] ?? `view_event_${match[1]}`, name: match[1], action: readInlineWord('action', match[3]), input: parseOptionalTypeExpression(readInlineType('input', match[3])) });
   return events;
 }
 
@@ -95,15 +96,7 @@ function readList(label, body) { const line = new RegExp('^\\s*' + label + '\\s+
 function readLine(label, body) { return new RegExp('^\\s*' + label + '\\s+([^\\n]+)', 'm').exec(body)?.[1]?.trim(); }
 function readQuotedLine(label, body) { return new RegExp(`^\\s*${label}\\s+["']([^"']+)["']`, 'm').exec(body)?.[1]; }
 function readInlineWord(label, text = '') { return new RegExp('(?:^|\\s)' + label + '\\s+([^\\s,]+)').exec(text)?.[1]?.trim(); }
+function readInlineType(label, text = '') { return new RegExp('(?:^|\\s)' + label + '\\s+(.+)$').exec(text)?.[1]?.trim(); }
 function readRenderValue(value) { const quoted = /^["']([^"']+)["']$/.exec(value.trim()); return quoted ? { value: quoted[1] } : { expression: value.trim() }; }
 function compactRecord(record) { return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined)); }
 function uniqueStrings(values) { const result = []; for (const value of values) if (value && !result.includes(value)) result.push(value); return result.length ? result : undefined; }
-function parseOptionalTypeExpression(value) { return value ? parseTypeExpression(value.trim()) : undefined; }
-function parseTypeExpression(value) {
-  const text = value.trim();
-  if (/^Set<.+>$/.test(text)) return { kind: 'set', item: parseTypeExpression(text.slice(4, -1)) };
-  if (/^List<.+>$/.test(text)) return { kind: 'list', item: parseTypeExpression(text.slice(5, -1)) };
-  const map = /^Map<(.+),\s*(.+)>$/.exec(text);
-  if (map) return { kind: 'map', key: parseTypeExpression(map[1]), value: parseTypeExpression(map[2]) };
-  return text;
-}

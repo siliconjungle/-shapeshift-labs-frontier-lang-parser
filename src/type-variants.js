@@ -41,7 +41,7 @@ function parseVariantPayloadField(source, variantName, parseTypeExpression) {
   };
 }
 
-function splitTopLevelCommaList(source) {
+export function splitTopLevelCommaList(source) {
   const parts = [];
   let depth = 0;
   let start = 0;

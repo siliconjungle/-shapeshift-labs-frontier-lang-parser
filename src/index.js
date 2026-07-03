@@ -16,6 +16,7 @@ import { parseResourceGraphBlock } from './resource-graph.js';
 import { parseRuntimeCapabilityBlock } from './runtime-capability.js';
 import { parseNativeSourceBlock } from './source-evidence.js';
 import { parseTargetProjectionMetadata } from './target-projection.js';
+import { parseOptionalTypeExpression, parseTypeExpression } from './type-expressions.js';
 import { readVariantPayloadFields } from './type-variants.js';
 import { parseViewBlock } from './view.js';
 import { FrontierSourceBlockKinds, readFrontierSourceBlocks } from './source-syntax-report.js';
@@ -279,15 +280,6 @@ function parseSemantic(text) {
   if (crdtType) return { kind: 'crdt', latticeId, crdt: { type: crdtType } };
   if (latticeId) return { kind: 'lattice', latticeId };
   return undefined;
-}
-function parseOptionalTypeExpression(value) { return value ? parseTypeExpression(value.trim()) : undefined; }
-function parseTypeExpression(value) {
-  const text = value.trim();
-  if (/^Set<.+>$/.test(text)) return { kind: 'set', item: parseTypeExpression(text.slice(4, -1)) };
-  if (/^List<.+>$/.test(text)) return { kind: 'list', item: parseTypeExpression(text.slice(5, -1)) };
-  const map = /^Map<(.+),\s*(.+)>$/.exec(text);
-  if (map) return { kind: 'map', key: parseTypeExpression(map[1]), value: parseTypeExpression(map[2]) };
-  return text;
 }
 function readTypeParameters(header) {
   return /<([^>]+)>/.exec(header)?.[1]?.split(',').map((item) => item.trim()).filter(Boolean);
