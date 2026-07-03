@@ -5,6 +5,7 @@ await mkdir("dist", { recursive: true });
 await copyFile("src/application-surface.js", "dist/application-surface.js");
 await copyFile("src/constraint-space.js", "dist/constraint-space.js");
 await copyFile("src/conversion-constraint-record.js", "dist/conversion-constraint-record.js");
+await copyFile("src/conversion-metadata.js", "dist/conversion-metadata.js");
 await copyFile("src/conversion.js", "dist/conversion.js");
 await copyFile("src/canvas-surface.js", "dist/canvas-surface.js");
 await copyFile("src/decision-graph.js", "dist/decision-graph.js");

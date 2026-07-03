@@ -13,6 +13,7 @@ export function parseConversionBlock(block) {
     const runtimeRequirement = /^(?:runtimeRequirement|requiredRuntime|requiresRuntime)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
     const dialect = /^dialect\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
     const extern = /^extern\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
+    const evidence = /^(?:evidence|proofEvidence)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
     const constraint = /^constraint\s+([A-Za-z_$][\w$-]*)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
     if (target) plan.targets.push(target);
     else if (sourceLanguage) plan.sourceLanguage = sourceLanguage;
@@ -21,9 +22,33 @@ export function parseConversionBlock(block) {
     else if (runtimeRequirement) addRuntimeRequirement(plan, runtimeRequirement[1], runtimeRequirement[2]);
     else if (dialect) addDialectRecord(plan, dialect[1], dialect[2], false);
     else if (extern) addDialectRecord(plan, extern[1], extern[2], true);
+    else if (evidence) addEvidenceRecord(plan, evidence[1], evidence[2], authoredLine);
     else if (constraint) addConstraint(plan, constraint[1], constraint[2], constraint[3], authoredLine);
   }
   return cleanRecord({ ...plan, targets: unique(plan.targets) });
+}
+
+function addEvidenceRecord(plan, name, text, authoredLine = {}) {
+  plan.evidence = [...(plan.evidence ?? []), cleanRecord({
+    id: idFrom(text, `conversion_evidence_${name}`),
+    name,
+    kind: readInlineWord('kind', text) ?? 'conversion-route-evidence',
+    status: readInlineWord('status', text) ?? 'unknown',
+    sourceLanguage: readInlineWord('sourceLanguage', text) ?? readInlineWord('language', text) ?? plan.sourceLanguage,
+    target: readInlineWord('target', text) ?? readInlineWord('targetLanguage', text) ?? plan.targets[0],
+    routeId: readInlineWord('routeId', text) ?? readInlineWord('route', text),
+    path: readInlineWord('path', text) ?? readInlineWord('report', text),
+    command: readInlineQuoted('command', text) ?? readInlineWord('command', text),
+    probeId: readInlineWord('probeId', text) ?? readInlineWord('probe', text),
+    sourceHash: readInlineWord('sourceHash', text),
+    targetHash: readInlineWord('targetHash', text),
+    telemetryHash: readInlineWord('telemetryHash', text),
+    proofEvidenceIds: readInlineList(text, 'proofEvidence', 'proofEvidenceId', 'proofEvidenceIds', 'proof'),
+    summary: readInlineQuoted('summary', text),
+    sourceSpan: authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan,
+    metadata: { authoredConversionBlockId: plan.id, autoMergeClaim: false, semanticEquivalenceClaim: false }
+  })];
 }
 
 function addRuntimeRequirement(plan, name, text) {

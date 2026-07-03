@@ -23,6 +23,10 @@ export function inspectFrontierSourceSyntax(source, options = {}) {
     reason: 'unsupported-top-level-block'
   }));
   const childRecords = blocks.flatMap((block) => block.children ?? []);
+  const unknownChildren = childRecords.filter((child) => !child.recognized).map((child) => ({
+    ...child,
+    reason: child.reason ?? 'unsupported-child-syntax'
+  }));
   const malformedBlockOpenOffsets = new Set(blocks.filter((block) => block.malformed).map((block) => block.bodyStartOffset - 1));
   const diagnostics = [
     ...blocks.flatMap((block) => block.diagnostics ?? []),
@@ -38,7 +42,7 @@ export function inspectFrontierSourceSyntax(source, options = {}) {
     }))
   ];
   const malformedBlocks = blocks.filter((block) => block.malformed);
-  const failClosed = unknownBlocks.length > 0 || diagnostics.length > 0;
+  const failClosed = unknownBlocks.length > 0 || unknownChildren.length > 0 || diagnostics.length > 0;
   return {
     kind: 'frontier.lang.sourceSyntaxReport',
     version: 1,
@@ -47,10 +51,12 @@ export function inspectFrontierSourceSyntax(source, options = {}) {
     blocks,
     recognizedBlocks,
     unknownBlocks,
+    unknownChildren,
     summary: {
       blockCount: blocks.length,
       recognizedBlockCount: recognizedBlocks.length,
       unknownBlockCount: unknownBlocks.length,
+      unknownChildCount: unknownChildren.length,
       malformedBlockCount: malformedBlocks.length,
       childCount: childRecords.length,
       recognizedChildCount: childRecords.filter((child) => child.recognized).length,
@@ -58,8 +64,9 @@ export function inspectFrontierSourceSyntax(source, options = {}) {
       recognizedKinds: unique(recognizedBlocks.map((block) => block.kind)),
       recognizedChildKinds: unique(childRecords.filter((child) => child.recognized).map((child) => child.kind)),
       unknownKinds: unique(unknownBlocks.map((block) => block.kind)),
+      unknownChildKinds: unique(unknownChildren.map((child) => child.rowKind ?? child.kind)),
       failClosed,
-      unsupportedSyntax: unknownBlocks.length > 0
+      unsupportedSyntax: unknownBlocks.length > 0 || unknownChildren.length > 0
     },
     diagnostics,
     metadata: {

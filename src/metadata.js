@@ -2,6 +2,7 @@ import { mergeDialectRegistryBlocks } from './dialect-registry.js';
 import { mergeApplicationSurfaceBlocks } from './application-surface.js';
 import { mergeRuntimeCapabilityBlocks } from './runtime-capability.js';
 import { mergeTargetProjectionTargets } from './target-projection-aggregate.js';
+import { mergeConversionBlocks } from './conversion-metadata.js';
 
 const PROOF_GROUPS = ['contracts', 'refinements', 'invariants', 'termination', 'temporal', 'obligations', 'artifacts', 'assumptions'];
 const PARADIGM_GROUPS = [
@@ -59,24 +60,6 @@ function mergeOperationBlocks(blocks) {
     operations: blocks.flatMap((block) => block.operations ?? []),
     metadata: { authoredSemanticOperationBlockIds: blocks.map((block) => block.id) }
   };
-}
-
-function mergeConversionBlocks(blocks) {
-  const plan = {
-    id: blocks.length === 1 ? blocks[0].id : 'universalConversionPlan:source',
-    targets: [...new Set(blocks.flatMap((block) => block.targets ?? []))],
-    metadata: { authoredConversionBlockIds: blocks.map((block) => block.id) }
-  };
-  for (const block of blocks) {
-    if (block.sourceLanguage && !plan.sourceLanguage) plan.sourceLanguage = block.sourceLanguage;
-    for (const [key, value] of Object.entries(block)) {
-      if (Array.isArray(value) && key !== 'targets') plan[key] = [...(plan[key] ?? []), ...value];
-      else if ((key === 'sourceRuntimes' || key === 'targetRuntimes') && value && typeof value === 'object') {
-        plan[key] = { ...(plan[key] ?? {}), ...value };
-      }
-    }
-  }
-  return plan;
 }
 
 function mergeConstraintSpaceBlocks(blocks) {

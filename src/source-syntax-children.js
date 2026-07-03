@@ -16,29 +16,86 @@ function readConversionSyntaxChildren(source, block, options) {
   const children = [];
   for (const line of readBodyLines(source, block)) {
     if (!line.text || line.text.startsWith('#')) continue;
+    const planField = /^(?:sourceLanguage|source|target|sourceRuntime|targetRuntime)\s+/.exec(line.text);
+    if (planField) continue;
+    const runtimeRequirement = /^(runtimeRequirement|requiredRuntime|requiresRuntime)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line.text);
+    if (runtimeRequirement) {
+      const [, rowKind, name, rest] = runtimeRequirement;
+      children.push(conversionChild(source, block, options, line, {
+        kind: 'conversionRuntimeRequirement',
+        rowKind,
+        normalizedRowKind: 'runtimeRequirement',
+        name,
+        id: idFrom(rest, `runtime_requirement_${name}`)
+      }));
+      continue;
+    }
+    const dialect = /^(dialect|extern)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line.text);
+    if (dialect) {
+      const [, rowKind, name, rest] = dialect;
+      children.push(conversionChild(source, block, options, line, {
+        kind: rowKind === 'extern' ? 'conversionExtern' : 'conversionDialect',
+        rowKind,
+        normalizedRowKind: rowKind,
+        name,
+        id: idFrom(rest, `${rowKind}_${name}`)
+      }));
+      continue;
+    }
+    const evidence = /^(evidence|proofEvidence)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line.text);
+    if (evidence) {
+      const [, rowKind, name, rest] = evidence;
+      children.push(conversionChild(source, block, options, line, {
+        kind: 'conversionEvidence',
+        rowKind,
+        normalizedRowKind: 'evidence',
+        name,
+        id: idFrom(rest, `conversion_evidence_${name}`)
+      }));
+      continue;
+    }
     const constraint = /^constraint\s+([A-Za-z_$][\w$-]*)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line.text);
-    if (!constraint) continue;
+    if (!constraint) {
+      const row = /^([A-Za-z_$][\w$-]*)\b/.exec(line.text);
+      children.push(conversionChild(source, block, options, line, {
+        kind: 'conversionUnknownRow',
+        rowKind: row?.[1],
+        normalizedRowKind: 'unknown',
+        name: row?.[1] ?? 'unknown',
+        id: `conversion_unknown_${safeId(row?.[1] ?? 'row')}_${line.startOffset}`,
+        reason: 'unsupported-conversion-row',
+        recognized: false
+      }));
+      continue;
+    }
     const [, family, name, rest] = constraint;
-    children.push(cleanRecord({
+    children.push(conversionChild(source, block, options, line, {
       kind: 'conversionConstraint',
       name,
       id: idFrom(rest, `conversion_constraint_${family}_${name}`),
       family,
       role: readInlineWord('role', rest) ?? 'source',
-      header: line.text,
-      startOffset: line.startOffset,
-      endOffset: line.endOffset,
-      location: sourcePosition(source, line.startOffset),
-      parentKind: block.kind,
-      parentId: block.id,
-      parentName: block.name,
-      moduleId: block.moduleId,
-      moduleName: block.moduleName,
-      sourceSpan: sourceSpan(source, block, line.startOffset, line.endOffset, options),
       recognized: true
     }));
   }
   return children;
+}
+
+function conversionChild(source, block, options, line, child) {
+  return cleanRecord({
+    header: line.text,
+    startOffset: line.startOffset,
+    endOffset: line.endOffset,
+    location: sourcePosition(source, line.startOffset),
+    parentKind: block.kind,
+    parentId: block.id,
+    parentName: block.name,
+    moduleId: block.moduleId,
+    moduleName: block.moduleName,
+    sourceSpan: sourceSpan(source, block, line.startOffset, line.endOffset, options),
+    recognized: true,
+    ...child
+  });
 }
 
 function readGenericRowSyntaxChildren(source, block, options, config) {

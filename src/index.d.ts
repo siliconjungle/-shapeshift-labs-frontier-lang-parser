@@ -22,11 +22,14 @@ export interface FrontierSourceSyntaxDiagnostic {
   readonly location: FrontierSourcePosition;
 }
 export interface FrontierSourceChildSyntaxRecord {
-  readonly kind: 'conversionConstraint';
+  readonly kind: 'conversionConstraint' | 'conversionEvidence' | 'conversionRuntimeRequirement' | 'conversionDialect' | 'conversionExtern' | 'conversionUnknownRow' | string;
+  readonly rowKind?: string;
+  readonly normalizedRowKind?: string;
   readonly name: string;
   readonly id?: string;
   readonly family?: string;
   readonly role?: string;
+  readonly reason?: string;
   readonly header: string;
   readonly startOffset: number;
   readonly endOffset: number;
@@ -60,6 +63,10 @@ export interface FrontierUnknownSourceBlockSyntaxRecord extends FrontierSourceBl
   readonly recognized: false;
   readonly reason: 'unsupported-top-level-block';
 }
+export interface FrontierUnknownSourceChildSyntaxRecord extends FrontierSourceChildSyntaxRecord {
+  readonly recognized: false;
+  readonly reason: string;
+}
 export interface FrontierSourceSyntaxReport {
   readonly kind: 'frontier.lang.sourceSyntaxReport';
   readonly version: 1;
@@ -68,10 +75,12 @@ export interface FrontierSourceSyntaxReport {
   readonly blocks: readonly FrontierSourceBlockSyntaxRecord[];
   readonly recognizedBlocks: readonly FrontierSourceBlockSyntaxRecord[];
   readonly unknownBlocks: readonly FrontierUnknownSourceBlockSyntaxRecord[];
+  readonly unknownChildren: readonly FrontierUnknownSourceChildSyntaxRecord[];
   readonly summary: {
     readonly blockCount: number;
     readonly recognizedBlockCount: number;
     readonly unknownBlockCount: number;
+    readonly unknownChildCount: number;
     readonly malformedBlockCount: number;
     readonly childCount: number;
     readonly recognizedChildCount: number;
@@ -79,6 +88,7 @@ export interface FrontierSourceSyntaxReport {
     readonly recognizedKinds: readonly string[];
     readonly recognizedChildKinds: readonly string[];
     readonly unknownKinds: readonly string[];
+    readonly unknownChildKinds: readonly string[];
     readonly failClosed: boolean;
     readonly unsupportedSyntax: boolean;
   };
