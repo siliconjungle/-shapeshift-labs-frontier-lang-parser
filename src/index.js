@@ -37,7 +37,7 @@ export function parseFrontierSource(source, options = {}) {
   const runtimeCapabilityBlocks = [], targetProjectionTargets = [];
   const documentId = options.id ?? readId(source) ?? 'mod_frontier';
   const documentName = options.name ?? readName(source) ?? 'FrontierModule';
-  for (const block of readBlocks(source)) {
+  for (const block of readBlocks(source, options)) {
     if (block.kind === 'entity') nodes.push(parseEntity(block));
     if (block.kind === 'state') nodes.push(parseState(block));
     if (block.kind === 'action') nodes.push(parseAction(block));
@@ -76,8 +76,8 @@ export function parseFrontierFile(name, source) { return parseFrontierSource(sou
 
 function readName(source) { return /module\s+([A-Za-z_$][\w$]*)/.exec(source)?.[1]; }
 function readId(source) { return /module\s+[A-Za-z_$][\w$]*\s+@id\(\s*["']([^"']+)["']\s*\)/.exec(source)?.[1]; }
-function readBlocks(source) {
-  return readFrontierSourceBlocks(source);
+function readBlocks(source, options) {
+  return readFrontierSourceBlocks(source, options);
 }
 function idFrom(header, fallback) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(header)?.[1] ?? fallback; }
 function nameFrom(header) { return /^([A-Za-z_$][\w$]*)/.exec(header)?.[1] ?? 'Unnamed'; }

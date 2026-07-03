@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { parseFrontierSource } from '../src/index.js';
+import { parseFrontierFile, parseFrontierSource } from '../src/index.js';
 
 const source = `
 module RichConversion @id("mod_rich_conversion")
@@ -239,3 +239,9 @@ const protocolRecord = plan.protocolConstraints[0].targetProtocols[0];
 assert.equal(protocolRecord.protocolKind, 'trait');
 assert.equal(protocolRecord.traitName, 'Serializable');
 assert.deepEqual(protocolRecord.requirementNames, ['serialize', 'deserialize']);
+
+const fileDoc = parseFrontierFile('rich-conversion.frontier', source);
+assert.equal(
+  fileDoc.metadata.universalConversionPlan.typeConstraints[0].targetTypes[0].authoredSourceSpan.path,
+  'rich-conversion.frontier'
+);
