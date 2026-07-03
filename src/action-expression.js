@@ -138,8 +138,64 @@ class ExpressionParser {
       if (!this.matchPunctuation(')')) this.reject('malformed-action-expression');
       return expression;
     }
+    if (token.type === 'punctuation' && token.text === '[') return this.parseArray();
+    if (token.type === 'punctuation' && token.text === '{') return this.parseObject();
     this.reject('malformed-action-expression');
     return { kind: 'literal', value: null };
+  }
+
+  parseArray() {
+    this.matchPunctuation('[');
+    const elements = [];
+    if (this.matchPunctuation(']')) return { kind: 'array', elements };
+    while (this.ok) {
+      elements.push(this.parseExpression());
+      if (this.matchPunctuation(']')) break;
+      if (!this.matchPunctuation(',')) {
+        this.reject('malformed-action-expression');
+        break;
+      }
+      if (this.peek().type === 'punctuation' && this.peek().text === ']') {
+        this.reject('malformed-action-expression');
+        break;
+      }
+    }
+    return { kind: 'array', elements };
+  }
+
+  parseObject() {
+    this.matchPunctuation('{');
+    const entries = [];
+    if (this.matchPunctuation('}')) return { kind: 'object', entries };
+    while (this.ok) {
+      const key = this.readObjectKey();
+      if (key === undefined) {
+        this.reject('malformed-action-expression');
+        break;
+      }
+      if (!this.matchPunctuation(':')) {
+        this.reject('malformed-action-expression');
+        break;
+      }
+      entries.push({ key, value: this.parseExpression() });
+      if (this.matchPunctuation('}')) break;
+      if (!this.matchPunctuation(',')) {
+        this.reject('malformed-action-expression');
+        break;
+      }
+      if (this.peek().type === 'punctuation' && this.peek().text === '}') {
+        this.reject('malformed-action-expression');
+        break;
+      }
+    }
+    return { kind: 'object', entries };
+  }
+
+  readObjectKey() {
+    const token = this.peek();
+    if (token.type !== 'identifier' && token.type !== 'string') return undefined;
+    this.index++;
+    return token.text === '__proto__' ? '__proto__' : String(token.value ?? token.text);
   }
 
   parseRef() {
@@ -254,6 +310,8 @@ function attachCallType(node, callType) {
   if (node.kind === 'call') return compactRecord({ ...node, callType });
   if (node.kind === 'binary' || node.kind === 'logical') return { ...node, left: attachCallType(node.left, callType), right: attachCallType(node.right, callType) };
   if (node.kind === 'unary') return { ...node, argument: attachCallType(node.argument, callType) };
+  if (node.kind === 'array') return { ...node, elements: (node.elements ?? []).map((element) => attachCallType(element, callType)) };
+  if (node.kind === 'object') return { ...node, entries: (node.entries ?? []).map((entry) => ({ ...entry, value: attachCallType(entry.value, callType) })) };
   return node;
 }
 

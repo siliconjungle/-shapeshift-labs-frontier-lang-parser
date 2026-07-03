@@ -42,12 +42,12 @@ export function tokenizeActionExpression(text) {
       index++;
       continue;
     }
-    if (char === '(' || char === ')' || char === '.' || char === ',') {
+    if (char === '(' || char === ')' || char === '.' || char === ',' || char === '[' || char === ']' || char === '{' || char === '}' || char === ':') {
       tokens.push({ type: 'punctuation', text: char, start: index, end: index + 1 });
       index++;
       continue;
     }
-    if ('=&|?:[]{}'.includes(char)) return fail('unsupported-action-expression-operator');
+    if ('=&|?'.includes(char)) return fail('unsupported-action-expression-operator');
     return fail('malformed-action-expression');
   }
   tokens.push({ type: 'eof', text: '', start: text.length, end: text.length });
@@ -84,7 +84,7 @@ function canStartSignedNumber(tokens) {
   const previous = tokens[tokens.length - 1];
   if (!previous) return true;
   if (previous.type === 'operator') return true;
-  return previous.type === 'punctuation' && (previous.text === '(' || previous.text === ',');
+  return previous.type === 'punctuation' && (previous.text === '(' || previous.text === ',' || previous.text === '[' || previous.text === ':');
 }
 
 function fail(reason) {

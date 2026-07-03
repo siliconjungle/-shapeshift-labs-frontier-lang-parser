@@ -187,7 +187,7 @@ function validateActionRow(rowKind, rawName, rest, header) {
     const value = readInlineValue('value', rest);
     const parsed = value ? parseActionValue(value, { valueType: readInlineType(rest), comparisonType: readInlineComparisonType(rest), callType: readInlineCallType(rest) }) : undefined;
     if (parsed?.ok) return { ok: true };
-    if (parsed?.reason === 'missing-action-expression-type' || parsed?.reason === 'unsupported-action-expression-type' || parsed?.reason === 'missing-action-comparison-type' || parsed?.reason === 'unsupported-action-comparison-type' || parsed?.reason === 'missing-action-call-type' || parsed?.reason === 'unsupported-action-call-type' || parsed?.reason === 'unsupported-action-call-callee' || parsed?.reason === 'unsupported-action-call-argument') {
+    if (isActionExpressionAdmissionReason(parsed?.reason)) {
       return { ok: false, reason: parsed.reason };
     }
     return { ok: false, reason: 'unsupported-action-binding-value' };
