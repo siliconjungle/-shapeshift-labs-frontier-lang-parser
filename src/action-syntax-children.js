@@ -1,10 +1,11 @@
 import { parseActionValue } from './action-expression.js';
 import { readElseHeaderBlock } from './action-else-block.js';
 import { readForInHeaderBlock, validateActionForInHeader } from './action-for-in-block.js';
+import { readRepeatHeaderBlock, validateActionRepeatHeader } from './action-repeat-block.js';
 import { findActionMatchingBrace, readActionNestedBlocks, skipActionWhitespaceAndComments } from './action-source-blocks.js';
 import { readMatchBranchBlock, readMatchHeaderBlock, validateActionMatchBranchHeader, validateActionMatchHeader } from './action-match-block.js';
 
-const ACTION_BODY_ROWS = new Set(['set', 'insert', 'remove', 'merge', 'callEffect', 'return', 'if', 'let', 'match', 'for']);
+const ACTION_BODY_ROWS = new Set(['set', 'insert', 'remove', 'merge', 'callEffect', 'return', 'if', 'let', 'match', 'for', 'repeat']);
 
 export function readActionSyntaxChildren(source, block, options) {
   const body = source.slice(block.bodyStartOffset, block.bodyEndOffset);
@@ -25,6 +26,14 @@ function readActionSyntaxRows(source, block, options, state, startOffset, endOff
   while (offset < endOffset) {
     offset = skipActionWhitespaceAndComments(source, offset, endOffset);
     if (offset >= endOffset) break;
+    const repeatBlock = readRepeatHeaderBlock(source, offset, endOffset);
+    if (repeatBlock) {
+      const child = actionSyntaxChild(source, block, options, { text: source.slice(offset, repeatBlock.open + 1).trim(), startOffset: offset, endOffset: repeatBlock.open + 1 }, state, parentActionBodyId);
+      children.push(child);
+      if (child.recognized) children.push(...readActionSyntaxRows(source, block, options, state, repeatBlock.open + 1, repeatBlock.close, child.id));
+      offset = repeatBlock.end;
+      continue;
+    }
     const forBlock = readForInHeaderBlock(source, offset, endOffset);
     if (forBlock) {
       const child = actionSyntaxChild(source, block, options, { text: source.slice(offset, forBlock.open + 1).trim(), startOffset: offset, endOffset: forBlock.open + 1 }, state, parentActionBodyId);
@@ -151,6 +160,7 @@ function validateActionRow(rowKind, rawName, rest, header) {
   if (rowKind === 'if') return validateActionExpressionText(readIfCondition(header), { comparisonType: readInlineComparisonType(header), callType: readInlineCallType(header) });
   if (rowKind === 'match') return validateActionMatchHeader(header);
   if (rowKind === 'for') return validateActionForInHeader(header);
+  if (rowKind === 'repeat') return validateActionRepeatHeader(header);
   if (rowKind === 'set' || rowKind === 'insert' || rowKind === 'merge') {
     if (!readInlineWord('path', rest)) return { ok: false, reason: 'missing-action-path' };
     return validateActionExpressionText(readInlineValue('value', rest), { valueType: readInlineType(rest), comparisonType: readInlineComparisonType(rest), callType: readInlineCallType(rest) });
