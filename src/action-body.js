@@ -83,7 +83,9 @@ function parseActionBodyLine(line, index) {
     return compactRecord({ kind: 'callEffect', id: idFrom(rest, `action_body_callEffect_${name}`), name, capability: readInlineWord('capability', rest) ?? readInlineWord('effect', rest) ?? name, input: readInlineActionValue('input', rest) });
   }
   if (rowKind === 'let') {
-    return compactRecord({ kind: 'let', id: idFrom(rest, `action_body_let_${name}`), name, value: readInlineActionValue('value', rest) });
+    const value = readInlineActionBindingValue('value', rest);
+    if (!rawName || rawName.startsWith('@') || !isActionBindingName(name) || !value) return undefined;
+    return compactRecord({ kind: 'let', id: idFrom(rest, `action_body_let_${name}`), name, value });
   }
   if (rowKind === 'return') {
     const valueText = rawName?.startsWith('@') ? rest.trim() : `${rawName ?? ''}${rest ?? ''}`.trim();
@@ -161,6 +163,11 @@ function readInlineActionValue(label, text) {
   return value ? readActionValue(value) : undefined;
 }
 
+function readInlineActionBindingValue(label, text) {
+  const value = readInlineActionValue(label, text);
+  return isSupportedBindingValue(value) ? value : undefined;
+}
+
 function readActionValue(value) {
   const text = value.trim();
   const quoted = /^["']([^"']*)["']$/.exec(text);
@@ -170,6 +177,16 @@ function readActionValue(value) {
   if (text === 'null') return { value: null };
   if (/^-?\d+(?:\.\d+)?$/.test(text)) return { value: Number(text) };
   return { expression: text };
+}
+
+function isSupportedBindingValue(value) {
+  if (!value) return false;
+  if (Object.prototype.hasOwnProperty.call(value, 'value')) return true;
+  return /^[A-Za-z_$][\w$-]*(?:\.[A-Za-z_$][\w$-]*)*$/.test(String(value.expression ?? '').trim());
+}
+
+function isActionBindingName(value) {
+  return /^[A-Za-z_$][\w$-]*$/.test(String(value ?? ''));
 }
 
 function idFrom(header, fallback) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(header)?.[1] ?? fallback; }

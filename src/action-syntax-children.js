@@ -56,7 +56,8 @@ function actionSyntaxChild(source, block, options, line, state, parentActionBody
   const rowKind = row?.[1] ?? 'unknown';
   const name = actionRowName(rowKind, row?.[2], rowIndex);
   const rest = row?.[2]?.startsWith('@') ? ` ${row[2]}${row[3] ?? ''}` : (row?.[3] ?? '');
-  const recognized = ACTION_BODY_ROWS.has(rowKind);
+  const validation = validateActionRow(rowKind, row?.[2], rest);
+  const recognized = ACTION_BODY_ROWS.has(rowKind) && validation.ok;
   return cleanRecord({
     kind: recognized ? 'actionBodyRow' : 'actionUnknownRow',
     rowKind,
@@ -75,7 +76,7 @@ function actionSyntaxChild(source, block, options, line, state, parentActionBody
     parentActionBodyId,
     sourceSpan: sourceSpan(source, block, line.startOffset, line.endOffset, options),
     recognized,
-    reason: recognized ? undefined : 'unsupported-action-body-row'
+    reason: recognized ? undefined : validation.reason
   });
 }
 
@@ -84,6 +85,29 @@ function actionRowName(rowKind, rawName, rowIndex) {
     return rawName && !rawName.startsWith('@') && /^[A-Za-z_$][\w$-]*$/.test(rawName) ? rawName : `${rowKind}_${rowIndex}`;
   }
   return rawName && !rawName.startsWith('@') ? rawName : `${rowKind}_${rowIndex}`;
+}
+
+function validateActionRow(rowKind, rawName, rest) {
+  if (!ACTION_BODY_ROWS.has(rowKind)) return { ok: false, reason: 'unsupported-action-body-row' };
+  if (rowKind !== 'let') return { ok: true };
+  if (!rawName || rawName.startsWith('@') || !/^[A-Za-z_$][\w$-]*$/.test(rawName)) {
+    return { ok: false, reason: 'unsupported-action-binding-name' };
+  }
+  const value = readInlineValue('value', rest);
+  if (!value || !isSupportedBindingValue(value)) {
+    return { ok: false, reason: 'unsupported-action-binding-value' };
+  }
+  return { ok: true };
+}
+
+function readInlineValue(label, text) {
+  return new RegExp('(?:^|\\s)' + label + '\\s+(.+?)(?=\\s+[A-Za-z_$][\\w$-]*\\s+|$)').exec(text)?.[1]?.trim();
+}
+
+function isSupportedBindingValue(value) {
+  if (/^["'][^"']*["']$/.test(value)) return true;
+  if (/^(true|false|null|-?\d+(?:\.\d+)?)$/.test(value)) return true;
+  return /^[A-Za-z_$][\w$-]*(?:\.[A-Za-z_$][\w$-]*)*$/.test(value);
 }
 
 function readNestedBodyBlocks(kind, source) {

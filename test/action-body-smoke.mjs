@@ -107,3 +107,30 @@ assert.equal(unsupported.summary.unknownChildCount, 1);
 assert.equal(unsupported.unknownChildren[0].id, 'unsupported_action_body_row');
 assert.equal(unsupported.unknownChildren[0].reason, 'unsupported-action-body-row');
 assert.equal(unsupported.blocks[0].children.find((child) => child.id === 'guard_unsupported').recognized, true);
+
+const unsupportedBindingSource = `module UnsupportedActionBinding @id("mod_unsupported_action_binding") {
+action AddTodo @id("action_add_todo") {
+  body {
+    let normalized @id("unsupported_action_binding") value normalize(input.title)
+  }
+}
+}`;
+const unsupportedBindingDoc = parseFrontierSource(unsupportedBindingSource);
+assert.equal((unsupportedBindingDoc.nodes.action_add_todo.body ?? []).length, 0);
+const unsupportedBinding = inspectFrontierSourceSyntax(unsupportedBindingSource);
+assert.equal(unsupportedBinding.summary.failClosed, true);
+assert.equal(unsupportedBinding.summary.unknownChildCount, 1);
+assert.equal(unsupportedBinding.unknownChildren[0].id, 'unsupported_action_binding');
+assert.equal(unsupportedBinding.unknownChildren[0].rowKind, 'let');
+assert.equal(unsupportedBinding.unknownChildren[0].reason, 'unsupported-action-binding-value');
+
+const missingBindingValue = inspectFrontierSourceSyntax(`module MissingActionBinding @id("mod_missing_action_binding") {
+action AddTodo @id("action_add_todo") {
+  body {
+    let normalized @id("missing_action_binding")
+  }
+}
+}`);
+assert.equal(missingBindingValue.summary.failClosed, true);
+assert.equal(missingBindingValue.summary.unknownChildCount, 1);
+assert.equal(missingBindingValue.unknownChildren[0].reason, 'unsupported-action-binding-value');
