@@ -656,6 +656,14 @@
     "repoUrl": "https://github.com/siliconjungle/-shapeshift-labs-frontier-playwright"
   },
   {
+    "id": "frontier-annotations",
+    "name": "@shapeshift-labs/frontier-annotations",
+    "role": "Browser harness DOM annotation overlay, selected-node targeting records, CSS/source-hint capture, AST/source graph context ranking, and Codex/frontier-swarm task planning for AI-operable UI fixes.",
+    "npmUrl": "https://www.npmjs.com/package/@shapeshift-labs/frontier-annotations",
+    "repoName": "siliconjungle/-shapeshift-labs-frontier-annotations",
+    "repoUrl": "https://github.com/siliconjungle/-shapeshift-labs-frontier-annotations"
+  },
+  {
     "id": "frontier-test",
     "name": "@shapeshift-labs/frontier-test",
     "role": "Serializable test/spec evidence manifests for Frontier apps, including fixtures, commands, expected patches/effects/routes/policies, coverage declarations, run plans, run records, report adapters, replay proofs, fuzzers, benchmarks, registry graph output, and impact queries.",
