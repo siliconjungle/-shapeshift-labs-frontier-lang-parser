@@ -1,5 +1,6 @@
 import { readActionSyntaxChildren } from './action-syntax-children.js';
 import { ROW_SYNTAX_CONFIG } from './source-syntax-row-config.js';
+import { inspectVariantPayload } from './type-variants.js';
 
 const ROW_NAME_PATTERN = '([A-Za-z_$@./:*+-][\\w$./@:*+-]*)';
 
@@ -11,9 +12,45 @@ export function readSourceSyntaxChildren(source, block, options = {}) {
   if (block.kind === 'conversion' || block.kind === 'universalConversionPlan') {
     return readConversionSyntaxChildren(source, block, options);
   }
+  if (block.kind === 'type') {
+    return readTypeSyntaxChildren(source, block, options);
+  }
   const rowConfig = ROW_SYNTAX_CONFIG[block.kind];
   if (rowConfig) return readGenericRowSyntaxChildren(source, block, options, rowConfig);
   return [];
+}
+
+function readTypeSyntaxChildren(source, block, options) {
+  const children = [];
+  for (const line of readBodyLines(source, block)) {
+    if (!line.text || line.text.startsWith('#')) continue;
+    const variant = /^variant\s+([A-Za-z_$][\w$]*)(.*)$/.exec(line.text);
+    if (!variant) continue;
+    const [, name, rest] = variant;
+    const payload = inspectVariantPayload(rest ?? '');
+    children.push(cleanRecord({
+      kind: 'typeVariant',
+      rowKind: 'variant',
+      normalizedRowKind: 'variant',
+      name,
+      id: idFrom(rest, `type_variant_${safeId(name)}`),
+      header: line.text,
+      startOffset: line.startOffset,
+      endOffset: line.endOffset,
+      location: sourcePosition(source, line.startOffset),
+      parentKind: block.kind,
+      parentId: block.id,
+      parentName: block.name,
+      moduleId: block.moduleId,
+      moduleName: block.moduleName,
+      sourceSpan: sourceSpan(source, block, line.startOffset, line.endOffset, options),
+      recognized: payload.ok,
+      reason: payload.ok ? undefined : payload.reason,
+      fieldCount: payload.fieldCount,
+      fieldIds: payload.fieldIds
+    }));
+  }
+  return children;
 }
 
 function readConversionSyntaxChildren(source, block, options) {

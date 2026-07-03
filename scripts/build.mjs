@@ -38,4 +38,5 @@ await copyFile("src/source-syntax-row-config.js", "dist/source-syntax-row-config
 await copyFile("src/source-syntax-report.js", "dist/source-syntax-report.js");
 await copyFile("src/target-projection.js", "dist/target-projection.js");
 await copyFile("src/target-projection-aggregate.js", "dist/target-projection-aggregate.js");
+await copyFile("src/type-variants.js", "dist/type-variants.js");
 await copyFile("src/view.js", "dist/view.js");

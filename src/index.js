@@ -16,6 +16,7 @@ import { parseResourceGraphBlock } from './resource-graph.js';
 import { parseRuntimeCapabilityBlock } from './runtime-capability.js';
 import { parseNativeSourceBlock } from './source-evidence.js';
 import { parseTargetProjectionMetadata } from './target-projection.js';
+import { readVariantPayloadFields } from './type-variants.js';
 import { parseViewBlock } from './view.js';
 import { FrontierSourceBlockKinds, readFrontierSourceBlocks } from './source-syntax-report.js';
 export { FrontierSourceBlockKinds, inspectFrontierSourceSyntax } from './source-syntax-report.js';
@@ -166,15 +167,7 @@ function parseCapability(block) {
 function parseType(block) {
   const name = nameFrom(block.header);
   const alias = /^\s*=\s*([^\n]+)/m.exec(block.body)?.[1]?.trim();
-  return typeNode({
-    id: idFrom(block.header, `type_${name}`),
-    name,
-    parameters: readTypeParameters(block.header),
-    type: alias ? parseTypeExpression(alias) : undefined,
-    fields: readTypeFields(block.body),
-    variants: readVariants(block.body),
-    invariants: readList('invariants', block.body)
-  });
+  return typeNode({ id: idFrom(block.header, `type_${name}`), name, parameters: readTypeParameters(block.header), type: alias ? parseTypeExpression(alias) : undefined, fields: readTypeFields(block.body), variants: readVariants(block.body), invariants: readList('invariants', block.body) });
 }
 function parseExtern(block) {
   const name = nameFrom(block.header);
@@ -310,8 +303,13 @@ function readTypeFields(body) {
 }
 function readVariants(body) {
   const variants = [];
-  const re = /^\s*variant\s+([A-Za-z_$][\w$]*)(?:\s+@id\(\s*["']([^"']+)["']\s*\))?/gm;
+  const re = /^\s*variant\s+([A-Za-z_$][\w$]*)(.*)$/gm;
   let match;
-  while ((match = re.exec(body))) variants.push({ id: match[2], name: match[1] });
+  while ((match = re.exec(body))) {
+    const fields = readVariantPayloadFields(match[2] ?? '', match[1], parseTypeExpression);
+    if (fields === null) continue;
+    const id = /@id\(\s*["']([^"']+)["']\s*\)/.exec(match[2] ?? '')?.[1];
+    variants.push({ ...(id ? { id } : {}), name: match[1], ...(fields?.length ? { fields } : {}) });
+  }
   return variants.length ? variants : undefined;
 }
