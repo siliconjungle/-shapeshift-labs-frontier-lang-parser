@@ -182,7 +182,7 @@ function parseLattice(block) {
 }
 function parseTarget(block) {
   const name = nameFrom(block.header);
-  const metadata = parseTargetProjectionMetadata(block.body, name);
+  const metadata = parseTargetProjectionMetadata(block, name);
   return targetNode({
     id: idFrom(block.header, `target_${name}`),
     name,

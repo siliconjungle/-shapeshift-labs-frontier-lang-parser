@@ -1,6 +1,6 @@
-export function parseTargetProjectionMetadata(body, targetName) {
-  const projectionContracts = readTargetProjectionContracts(body, targetName);
-  const projectionLayers = readTargetProjectionLayers(body, targetName);
+export function parseTargetProjectionMetadata(blockOrBody, targetName) {
+  const projectionContracts = readTargetProjectionContracts(blockOrBody, targetName);
+  const projectionLayers = readTargetProjectionLayers(blockOrBody, targetName);
   if (!projectionContracts.length && !projectionLayers.length) return undefined;
   return cleanObject({
     authoredTargetProjection: true,
@@ -17,11 +17,11 @@ export function parseTargetProjectionMetadata(body, targetName) {
   });
 }
 
-function readTargetProjectionContracts(body, targetName) {
+function readTargetProjectionContracts(blockOrBody, targetName) {
   const rows = [];
-  const re = /^\s*(projection|lowering)\s+([A-Za-z_$][\w$-]*)([^\n]*)$/gm;
-  let match;
-  while ((match = re.exec(body))) {
+  for (const authoredLine of readAuthoredLines(blockOrBody)) {
+    const match = /^(projection|lowering)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(authoredLine.text);
+    if (!match) continue;
     const [, rowKind, name, text] = match;
     rows.push(cleanObject({
       id: idFrom(text, `target_projection_${targetName}_${name}`),
@@ -41,6 +41,8 @@ function readTargetProjectionContracts(body, targetName) {
       missingEvidence: readInlineList(text, 'missingEvidence'),
       review: readInlineList(text, 'review'),
       blockers: readInlineList(text, 'blocker', 'blockers'),
+      sourceSpan: authoredLine.sourceSpan,
+      authoredSourceSpan: authoredLine.sourceSpan,
       semanticEquivalenceClaim: false,
       autoMergeClaim: false
     }));
@@ -48,11 +50,11 @@ function readTargetProjectionContracts(body, targetName) {
   return rows;
 }
 
-function readTargetProjectionLayers(body, targetName) {
+function readTargetProjectionLayers(blockOrBody, targetName) {
   const rows = [];
-  const re = /^\s*layer\s+([A-Za-z_$][\w$-]*)([^\n]*)$/gm;
-  let match;
-  while ((match = re.exec(body))) {
+  for (const authoredLine of readAuthoredLines(blockOrBody)) {
+    const match = /^layer\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(authoredLine.text);
+    if (!match) continue;
     const [, name, text] = match;
     rows.push(cleanObject({
       id: idFrom(text, `target_layer_${targetName}_${name}`),
@@ -64,11 +66,35 @@ function readTargetProjectionLayers(body, targetName) {
       missingEvidence: readInlineList(text, 'missingEvidence'),
       review: readInlineList(text, 'review'),
       blockers: readInlineList(text, 'blocker', 'blockers'),
+      sourceSpan: authoredLine.sourceSpan,
+      authoredSourceSpan: authoredLine.sourceSpan,
       semanticEquivalenceClaim: false,
       autoMergeClaim: false
     }));
   }
   return rows;
+}
+
+function readAuthoredLines(blockOrBody) {
+  const body = typeof blockOrBody === 'string' ? blockOrBody : blockOrBody?.body ?? '';
+  const lines = body.split('\n');
+  const records = [];
+  let lineStart = typeof blockOrBody === 'string' ? 0 : blockOrBody?.syntax?.bodyStartOffset ?? 0;
+  for (const rawLine of lines) {
+    const rawEnd = lineStart + rawLine.length;
+    const leading = /^\s*/.exec(rawLine)?.[0].length ?? 0;
+    const trailing = /\s*$/.exec(rawLine)?.[0].length ?? 0;
+    const startOffset = lineStart + leading;
+    const endOffset = Math.max(startOffset, rawEnd - trailing);
+    records.push({
+      text: rawLine.trim(),
+      startOffset,
+      endOffset,
+      sourceSpan: typeof blockOrBody?.sourceSpan === 'function' ? blockOrBody.sourceSpan(startOffset, endOffset) : undefined
+    });
+    lineStart = rawEnd + 1;
+  }
+  return records;
 }
 
 function idFrom(text, fallback) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(text)?.[1] ?? fallback; }
