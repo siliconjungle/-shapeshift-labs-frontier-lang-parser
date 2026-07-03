@@ -82,6 +82,9 @@ function parseActionBodyLine(line, index) {
   if (rowKind === 'callEffect') {
     return compactRecord({ kind: 'callEffect', id: idFrom(rest, `action_body_callEffect_${name}`), name, capability: readInlineWord('capability', rest) ?? readInlineWord('effect', rest) ?? name, input: readInlineActionValue('input', rest) });
   }
+  if (rowKind === 'let') {
+    return compactRecord({ kind: 'let', id: idFrom(rest, `action_body_let_${name}`), name, value: readInlineActionValue('value', rest) });
+  }
   if (rowKind === 'return') {
     const valueText = rawName?.startsWith('@') ? rest.trim() : `${rawName ?? ''}${rest ?? ''}`.trim();
     return compactRecord({ kind: 'return', id: idFrom(rest, `action_body_return_${index}`), value: valueText ? readActionValue(valueText) : undefined });

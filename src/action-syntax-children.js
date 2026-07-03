@@ -1,4 +1,4 @@
-const ACTION_BODY_ROWS = new Set(['set', 'insert', 'remove', 'merge', 'callEffect', 'return', 'if']);
+const ACTION_BODY_ROWS = new Set(['set', 'insert', 'remove', 'merge', 'callEffect', 'return', 'if', 'let']);
 
 export function readActionSyntaxChildren(source, block, options) {
   const body = source.slice(block.bodyStartOffset, block.bodyEndOffset);
