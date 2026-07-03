@@ -1,4 +1,5 @@
 import { viewNode } from '@shapeshift-labs/frontier-lang-kernel';
+import { readFrontierNestedBlocks } from './source-syntax-report.js';
 
 export function parseViewBlock(block) {
   const name = nameFrom(block.header);
@@ -79,16 +80,7 @@ function readRenderEvents(body) {
 }
 
 function readNestedBlocks(kind, source) {
-  const blocks = [];
-  const header = new RegExp('\\b' + kind + '\\s+([^{}]+)\\{', 'g');
-  let match;
-  while ((match = header.exec(source))) {
-    let depth = 1; let index = header.lastIndex;
-    while (index < source.length && depth > 0) { const ch = source[index++]; if (ch === '{') depth++; if (ch === '}') depth--; }
-    blocks.push({ kind, header: match[1].trim(), body: source.slice(header.lastIndex, index - 1), start: match.index, end: index });
-    header.lastIndex = index;
-  }
-  return blocks;
+  return readFrontierNestedBlocks(kind, source);
 }
 
 function stripNestedBlocks(kind, source) {

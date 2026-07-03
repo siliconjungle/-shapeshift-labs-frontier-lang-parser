@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { FrontierSourceBlockKinds, inspectFrontierSourceSyntax } from '../dist/index.js';
+import { FrontierSourceBlockKinds, inspectFrontierSourceSyntax, parseFrontierSource } from '../dist/index.js';
 
 const syntaxReport = inspectFrontierSourceSyntax(`module SyntaxProbe @id("mod_syntax_probe") {
 entity Todo @id("ent_todo") {
@@ -59,3 +59,20 @@ entity Café @id("ent_cafe") {
 }`;
 const unicodeReport = inspectFrontierSourceSyntax(unicodeSource);
 assert.equal(unicodeReport.metadata.sourceBytes, new TextEncoder().encode(unicodeSource).length);
+
+const robustParseDoc = parseFrontierSource(`module RobustParse @id("mod_robust_parse") {
+view Detail @id("view_detail") {
+  render Label @id("render_detail_label") {
+    text "}"
+    prop marker "{literal}"
+    # { ignored by the nested block scanner
+  }
+}
+action Save @id("action_save") {
+  input TodoInput
+}
+}`);
+
+assert.equal(robustParseDoc.nodes.view_detail.renders[0].text, '}');
+assert.equal(robustParseDoc.nodes.view_detail.renders[0].props[0].value, '{literal}');
+assert.equal(robustParseDoc.nodes.action_save.name, 'Save');

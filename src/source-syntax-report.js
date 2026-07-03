@@ -102,6 +102,39 @@ export function inspectFrontierSourceSyntax(source, options = {}) {
   };
 }
 
+export function readFrontierSourceBlocks(source, options = {}) {
+  const report = inspectFrontierSourceSyntax(source, options);
+  return report.recognizedBlocks.filter((block) => !block.malformed).map((block) => ({
+    kind: block.kind,
+    header: block.header,
+    body: source.slice(block.bodyStartOffset, block.bodyEndOffset),
+    syntax: block
+  }));
+}
+
+export function readFrontierNestedBlocks(kind, source) {
+  const structure = scanFrontierStructure(source);
+  const blocks = [];
+  const header = new RegExp('\\b' + escapeRegExp(kind) + '\\s+([^{}]+?)\\{', 'g');
+  let match;
+  while ((match = header.exec(source))) {
+    const start = match.index;
+    const open = header.lastIndex - 1;
+    if (!structure.codeOffsets[start] || !structure.codeOffsets[open]) continue;
+    const close = findMatchingBrace(structure, open);
+    if (close < 0) continue;
+    blocks.push({
+      kind,
+      header: match[1].trim(),
+      body: source.slice(header.lastIndex, close),
+      start,
+      end: close + 1
+    });
+    header.lastIndex = close + 1;
+  }
+  return blocks;
+}
+
 function readCandidateDeclarationBlocks(source, structure) {
   const moduleRanges = readModuleRanges(source, structure);
   const blocks = [];
@@ -282,3 +315,4 @@ function readId(source) { return /module\s+[A-Za-z_$][\w$]*\s+@id\(\s*["']([^"']
 function idFrom(header) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(header)?.[1]; }
 function nameFrom(header) { return /^([A-Za-z_$][\w$]*)/.exec(header)?.[1] ?? 'Unnamed'; }
 function unique(values) { return [...new Set(values.filter(Boolean))]; }
+function escapeRegExp(value) { return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }

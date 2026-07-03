@@ -16,7 +16,7 @@ import { parseRuntimeCapabilityBlock } from './runtime-capability.js';
 import { parseNativeSourceBlock } from './source-evidence.js';
 import { parseTargetProjectionMetadata } from './target-projection.js';
 import { parseViewBlock } from './view.js';
-import { FrontierSourceBlockKinds } from './source-syntax-report.js';
+import { FrontierSourceBlockKinds, readFrontierSourceBlocks } from './source-syntax-report.js';
 export { FrontierSourceBlockKinds, inspectFrontierSourceSyntax } from './source-syntax-report.js';
 
 export function parseFrontierSource(source, options = {}) {
@@ -77,16 +77,7 @@ export function parseFrontierFile(name, source) { return parseFrontierSource(sou
 function readName(source) { return /module\s+([A-Za-z_$][\w$]*)/.exec(source)?.[1]; }
 function readId(source) { return /module\s+[A-Za-z_$][\w$]*\s+@id\(\s*["']([^"']+)["']\s*\)/.exec(source)?.[1]; }
 function readBlocks(source) {
-  const blocks = [];
-  const header = new RegExp('\\b(' + FrontierSourceBlockKinds.join('|') + ')\\s+([^{}]+)\\{', 'g');
-  let match;
-  while ((match = header.exec(source))) {
-    let depth = 1; let index = header.lastIndex;
-    while (index < source.length && depth > 0) { const ch = source[index++]; if (ch === '{') depth++; if (ch === '}') depth--; }
-    blocks.push({ kind: match[1], header: match[2].trim(), body: source.slice(header.lastIndex, index - 1) });
-    header.lastIndex = index;
-  }
-  return blocks;
+  return readFrontierSourceBlocks(source);
 }
 function idFrom(header, fallback) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(header)?.[1] ?? fallback; }
 function nameFrom(header) { return /^([A-Za-z_$][\w$]*)/.exec(header)?.[1] ?? 'Unnamed'; }
