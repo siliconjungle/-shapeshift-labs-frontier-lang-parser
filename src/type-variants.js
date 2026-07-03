@@ -47,8 +47,8 @@ export function splitTopLevelCommaList(source) {
   let start = 0;
   for (let index = 0; index < source.length; index++) {
     const char = source[index];
-    if (char === '<') depth++;
-    if (char === '>') depth = Math.max(0, depth - 1);
+    if (char === '<' || char === '(' || char === '[' || char === '{') depth++;
+    if (char === '>' || char === ')' || char === ']' || char === '}') depth = Math.max(0, depth - 1);
     if (char === ',' && depth === 0) {
       parts.push(source.slice(start, index).trim());
       start = index + 1;
