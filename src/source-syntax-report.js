@@ -91,7 +91,7 @@ export function readFrontierSourceBlocks(source, options = {}) {
 export function readFrontierNestedBlocks(kind, source) {
   const structure = scanFrontierStructure(source);
   const blocks = [];
-  const header = new RegExp('\\b' + escapeRegExp(kind) + '\\s+([^{}]+?)\\{', 'g');
+  const header = new RegExp('\\b' + escapeRegExp(kind) + '(?:\\s+([^{}\\n]+?))?\\s*\\{', 'g');
   let match;
   while ((match = header.exec(source))) {
     const start = match.index;
@@ -101,7 +101,7 @@ export function readFrontierNestedBlocks(kind, source) {
     if (close < 0) continue;
     blocks.push({
       kind,
-      header: match[1].trim(),
+      header: (match[1] ?? '').trim(),
       body: source.slice(header.lastIndex, close),
       start,
       end: close + 1

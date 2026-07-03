@@ -1,4 +1,5 @@
 import { actionNode, capabilityNode, createDocument, effectNode, entityNode, externNode, latticeNode, migrationNode, stateNode, targetNode, typeNode } from '@shapeshift-labs/frontier-lang-kernel';
+import { readActionBodyRecords, stripNestedBlocks } from './action-body.js';
 import { parseConstraintSpaceBlock } from './constraint-space.js';
 import { parseConversionBlock } from './conversion.js';
 import { parseApplicationSurfaceBlock } from './application-surface.js';
@@ -117,16 +118,21 @@ function parseState(block) {
 }
 function parseAction(block) {
   const name = nameFrom(block.header);
+  const topLevelBody = stripNestedBlocks('body', block.body);
+  const body = readActionBodyRecords(block.body);
   return actionNode({
     id: idFrom(block.header, `action_${name}`),
     name,
-    input: parseOptionalTypeExpression(/input\s*:?\s*([^\n]+)/.exec(block.body)?.[1]),
-    returns: parseOptionalTypeExpression(/returns\s+([^\n]+)/.exec(block.body)?.[1]),
-    reads: readList('reads', block.body),
-    writes: readList('writes', block.body),
-    uses: readList('uses', block.body)
+    input: parseOptionalTypeExpression(/input\s*:?\s*([^\n]+)/.exec(topLevelBody)?.[1]),
+    returns: parseOptionalTypeExpression(/returns\s+([^\n]+)/.exec(topLevelBody)?.[1]),
+    reads: readList('reads', topLevelBody),
+    writes: readList('writes', topLevelBody),
+    uses: readList('uses', topLevelBody),
+    throws: readList('throws', topLevelBody),
+    body: body.length ? body : undefined
   });
 }
+
 function parseMigration(block) {
   const name = nameFrom(block.header);
   return migrationNode({ id: idFrom(block.header, `migration_${name}`), name, fromVersion: readWord('fromVersion', block.body) ?? readWord('from', block.body) ?? 'unknown', toVersion: readWord('toVersion', block.body) ?? readWord('to', block.body) ?? 'unknown', changes: readChangeRecords(block.body), invariants: readList('invariants', block.body) });

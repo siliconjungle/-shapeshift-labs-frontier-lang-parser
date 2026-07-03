@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { parseFrontierSource } from '../dist/index.js';
+import './action-body-smoke.mjs';
 import './application-surface-smoke.mjs';
 import './runtime-capability-smoke.mjs';
 import './source-syntax-report-smoke.mjs';
