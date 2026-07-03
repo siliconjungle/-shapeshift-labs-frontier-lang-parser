@@ -7,7 +7,7 @@ entity Todo @id("ent_todo") {
 }
 view TodoView @id("view_todo") {
   render Button @id("render_todo_button") {
-    text "Save"
+    text "{"
   }
 }
 futureSurface Experimental @id("future_surface") {
@@ -24,6 +24,8 @@ assert.equal(syntaxReport.documentId, 'mod_syntax_probe');
 assert.equal(syntaxReport.summary.blockCount, 4);
 assert.equal(syntaxReport.summary.recognizedBlockCount, 3);
 assert.equal(syntaxReport.summary.unknownBlockCount, 1);
+assert.equal(syntaxReport.summary.malformedBlockCount, 0);
+assert.equal(syntaxReport.summary.diagnosticCount, 0);
 assert.equal(syntaxReport.summary.failClosed, true);
 assert.equal(syntaxReport.summary.unsupportedSyntax, true);
 assert.deepEqual(syntaxReport.summary.unknownKinds, ['futureSurface']);
@@ -35,3 +37,25 @@ assert.equal(syntaxReport.recognizedBlocks.some((block) => block.kind === 'possi
 assert.equal(syntaxReport.metadata.autoMergeClaim, false);
 assert.equal(syntaxReport.metadata.semanticEquivalenceClaim, false);
 assert.equal(FrontierSourceBlockKinds.includes('semanticResourceGraph'), true);
+
+const malformedReport = inspectFrontierSourceSyntax(`module Broken @id("mod_broken") {
+entity Todo @id("ent_todo") {
+  title: Text
+`);
+
+assert.equal(malformedReport.summary.failClosed, true);
+assert.equal(malformedReport.summary.malformedBlockCount, 1);
+assert.equal(malformedReport.summary.diagnosticCount, 2);
+assert.equal(malformedReport.blocks[0].malformed, true);
+assert.equal(malformedReport.blocks[0].diagnostics[0].reason, 'unterminated-block');
+assert.deepEqual(malformedReport.diagnostics.map((diagnostic) => diagnostic.reason), [
+  'unterminated-block',
+  'unterminated-block'
+]);
+
+const unicodeSource = `module Cafe @id("mod_cafe") {
+entity Café @id("ent_cafe") {
+}
+}`;
+const unicodeReport = inspectFrontierSourceSyntax(unicodeSource);
+assert.equal(unicodeReport.metadata.sourceBytes, new TextEncoder().encode(unicodeSource).length);

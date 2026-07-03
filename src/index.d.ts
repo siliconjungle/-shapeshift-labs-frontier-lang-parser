@@ -1,6 +1,11 @@
 import type { FrontierLangDocument } from '@shapeshift-labs/frontier-lang-kernel';
 export interface ParseFrontierOptions { readonly id?: string; readonly name?: string; }
 export declare const FrontierSourceBlockKinds: readonly string[];
+export interface FrontierSourceSyntaxDiagnostic {
+  readonly reason: 'unterminated-block' | 'unmatched-close-brace';
+  readonly message: string;
+  readonly location: { readonly line: number; readonly column: number; readonly offset: number };
+}
 export interface FrontierSourceBlockSyntaxRecord {
   readonly kind: string;
   readonly name: string;
@@ -14,6 +19,8 @@ export interface FrontierSourceBlockSyntaxRecord {
   readonly moduleId?: string;
   readonly moduleName?: string;
   readonly recognized: boolean;
+  readonly malformed?: boolean;
+  readonly diagnostics?: readonly FrontierSourceSyntaxDiagnostic[];
 }
 export interface FrontierUnknownSourceBlockSyntaxRecord extends FrontierSourceBlockSyntaxRecord {
   readonly recognized: false;
@@ -31,11 +38,14 @@ export interface FrontierSourceSyntaxReport {
     readonly blockCount: number;
     readonly recognizedBlockCount: number;
     readonly unknownBlockCount: number;
+    readonly malformedBlockCount: number;
+    readonly diagnosticCount: number;
     readonly recognizedKinds: readonly string[];
     readonly unknownKinds: readonly string[];
     readonly failClosed: boolean;
     readonly unsupportedSyntax: boolean;
   };
+  readonly diagnostics: readonly FrontierSourceSyntaxDiagnostic[];
   readonly metadata: {
     readonly sourceBytes: number;
     readonly autoMergeClaim: false;

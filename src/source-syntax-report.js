@@ -48,7 +48,8 @@ const FrontierSourceBlockKindSet = new Set(FrontierSourceBlockKinds);
 export function inspectFrontierSourceSyntax(source, options = {}) {
   const documentId = options.id ?? readId(source) ?? 'mod_frontier';
   const documentName = options.name ?? readName(source) ?? 'FrontierModule';
-  const blocks = readCandidateDeclarationBlocks(source).map((block) => ({
+  const structure = scanFrontierStructure(source);
+  const blocks = readCandidateDeclarationBlocks(source, structure).map((block) => ({
     ...block,
     recognized: FrontierSourceBlockKindSet.has(block.kind)
   }));
@@ -57,6 +58,22 @@ export function inspectFrontierSourceSyntax(source, options = {}) {
     ...block,
     reason: 'unsupported-top-level-block'
   }));
+  const malformedBlockOpenOffsets = new Set(blocks.filter((block) => block.malformed).map((block) => block.bodyStartOffset - 1));
+  const diagnostics = [
+    ...blocks.flatMap((block) => block.diagnostics ?? []),
+    ...structure.unmatchedOpenBraces.filter((offset) => !malformedBlockOpenOffsets.has(offset)).map((offset) => ({
+      reason: 'unterminated-block',
+      message: 'Found an opening brace without a matching closing brace.',
+      location: sourcePosition(source, offset)
+    })),
+    ...structure.unmatchedCloseBraces.map((offset) => ({
+      reason: 'unmatched-close-brace',
+      message: 'Found a closing brace without a matching opening brace.',
+      location: sourcePosition(source, offset)
+    }))
+  ];
+  const malformedBlocks = blocks.filter((block) => block.malformed);
+  const failClosed = unknownBlocks.length > 0 || diagnostics.length > 0;
   return {
     kind: 'frontier.lang.sourceSyntaxReport',
     version: 1,
@@ -69,21 +86,24 @@ export function inspectFrontierSourceSyntax(source, options = {}) {
       blockCount: blocks.length,
       recognizedBlockCount: recognizedBlocks.length,
       unknownBlockCount: unknownBlocks.length,
+      malformedBlockCount: malformedBlocks.length,
+      diagnosticCount: diagnostics.length,
       recognizedKinds: unique(recognizedBlocks.map((block) => block.kind)),
       unknownKinds: unique(unknownBlocks.map((block) => block.kind)),
-      failClosed: unknownBlocks.length > 0,
+      failClosed,
       unsupportedSyntax: unknownBlocks.length > 0
     },
+    diagnostics,
     metadata: {
-      sourceBytes: source.length,
+      sourceBytes: utf8ByteLength(source),
       autoMergeClaim: false,
       semanticEquivalenceClaim: false
     }
   };
 }
 
-function readCandidateDeclarationBlocks(source) {
-  const moduleRanges = readModuleRanges(source);
+function readCandidateDeclarationBlocks(source, structure) {
+  const moduleRanges = readModuleRanges(source, structure);
   const blocks = [];
   const header = /(^|\n)\s*([A-Za-z_$][\w$]*)\s+([^{}\n]+)\{/g;
   let match;
@@ -94,8 +114,12 @@ function readCandidateDeclarationBlocks(source) {
     const kind = match[2];
     if (kind === 'module') continue;
     const open = header.lastIndex - 1;
-    const close = findMatchingBrace(source, open);
-    const depth = braceDepthBefore(source, start);
+    if (!structure.codeOffsets[start] || !structure.codeOffsets[open]) continue;
+    const close = findMatchingBrace(structure, open);
+    const malformed = close < 0;
+    const end = malformed ? source.length : close + 1;
+    const bodyEnd = malformed ? source.length : close;
+    const depth = braceDepthBefore(structure, start);
     const moduleRange = moduleRanges.find((range) => start > range.open && start < range.close);
     const declarationDepth = moduleRange ? moduleRange.depth + 1 : 0;
     if (depth !== declarationDepth) continue;
@@ -106,18 +130,24 @@ function readCandidateDeclarationBlocks(source) {
       id: idFrom(headerText),
       header: headerText,
       startOffset: start,
-      endOffset: close + 1,
+      endOffset: end,
       bodyStartOffset: open + 1,
-      bodyEndOffset: close,
+      bodyEndOffset: bodyEnd,
       location: sourcePosition(source, start),
       moduleId: moduleRange?.id,
-      moduleName: moduleRange?.name
+      moduleName: moduleRange?.name,
+      malformed,
+      diagnostics: malformed ? [{
+        reason: 'unterminated-block',
+        message: `Block "${kind}" has no matching closing brace.`,
+        location: sourcePosition(source, open)
+      }] : []
     });
   }
   return blocks;
 }
 
-function readModuleRanges(source) {
+function readModuleRanges(source, structure) {
   const ranges = [];
   const header = /(^|\n)\s*module\s+([^{}\n]+)\{/g;
   let match;
@@ -126,36 +156,120 @@ function readModuleRanges(source) {
     const leading = /^\s*/.exec(source.slice(fullStart))?.[0].length ?? 0;
     const start = fullStart + leading;
     const open = header.lastIndex - 1;
-    const close = findMatchingBrace(source, open);
+    if (!structure.codeOffsets[start] || !structure.codeOffsets[open]) continue;
+    const close = findMatchingBrace(structure, open);
+    const malformed = close < 0;
     ranges.push({
       start,
       open,
-      close,
-      depth: braceDepthBefore(source, start),
+      close: malformed ? source.length : close,
+      depth: braceDepthBefore(structure, start),
       name: nameFrom(match[2].trim()),
-      id: idFrom(match[2].trim())
+      id: idFrom(match[2].trim()),
+      malformed
     });
   }
   return ranges;
 }
 
-function findMatchingBrace(source, open) {
-  let depth = 1;
-  for (let index = open + 1; index < source.length; index++) {
-    if (source[index] === '{') depth++;
-    if (source[index] === '}') depth--;
-    if (depth === 0) return index;
-  }
-  return source.length - 1;
+function findMatchingBrace(structure, open) {
+  return structure.bracePairs.get(open) ?? -1;
 }
 
-function braceDepthBefore(source, offset) {
+function braceDepthBefore(structure, offset) {
+  return structure.depthBefore[Math.min(Math.max(offset, 0), structure.depthBefore.length - 1)] ?? 0;
+}
+
+function scanFrontierStructure(source) {
+  const depthBefore = new Int32Array(source.length + 1);
+  const codeOffsets = new Uint8Array(source.length);
+  const stack = [];
+  const bracePairs = new Map();
+  const unmatchedCloseBraces = [];
   let depth = 0;
-  for (let index = 0; index < offset; index++) {
-    if (source[index] === '{') depth++;
-    if (source[index] === '}') depth = Math.max(0, depth - 1);
+  let state = 'code';
+  let quote = '';
+  for (let index = 0; index < source.length; index++) {
+    depthBefore[index] = depth;
+    const char = source[index];
+    const next = source[index + 1];
+    if (state === 'line-comment') {
+      if (char === '\n') state = 'code';
+      continue;
+    }
+    if (state === 'block-comment') {
+      if (char === '*' && next === '/') {
+        depthBefore[index + 1] = depth;
+        index++;
+        state = 'code';
+      }
+      continue;
+    }
+    if (state === 'string') {
+      if (char === '\\') {
+        depthBefore[index + 1] = depth;
+        index++;
+        continue;
+      }
+      if (char === quote) {
+        state = 'code';
+        quote = '';
+      }
+      continue;
+    }
+    codeOffsets[index] = 1;
+    if (char === '/' && next === '/') {
+      codeOffsets[index + 1] = 0;
+      depthBefore[index + 1] = depth;
+      index++;
+      state = 'line-comment';
+      continue;
+    }
+    if (char === '/' && next === '*') {
+      codeOffsets[index + 1] = 0;
+      depthBefore[index + 1] = depth;
+      index++;
+      state = 'block-comment';
+      continue;
+    }
+    if (char === '#' && isLineLeadingWhitespace(source, index)) {
+      state = 'line-comment';
+      continue;
+    }
+    if (char === '"' || char === "'" || char === '`') {
+      state = 'string';
+      quote = char;
+      continue;
+    }
+    if (char === '{') {
+      stack.push(index);
+      depth++;
+      continue;
+    }
+    if (char === '}') {
+      const open = stack.pop();
+      if (open === undefined) {
+        unmatchedCloseBraces.push(index);
+        continue;
+      }
+      depth = Math.max(0, depth - 1);
+      bracePairs.set(open, index);
+    }
   }
-  return depth;
+  depthBefore[source.length] = depth;
+  return { bracePairs, codeOffsets, depthBefore, unmatchedCloseBraces, unmatchedOpenBraces: stack };
+}
+
+function isLineLeadingWhitespace(source, offset) {
+  for (let index = offset - 1; index >= 0 && source[index] !== '\n'; index--) {
+    if (!/\s/.test(source[index])) return false;
+  }
+  return true;
+}
+
+function utf8ByteLength(source) {
+  if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(source).length;
+  return unescape(encodeURIComponent(source)).length;
 }
 
 function sourcePosition(source, offset) {

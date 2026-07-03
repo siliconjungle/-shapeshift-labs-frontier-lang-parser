@@ -230,11 +230,11 @@ import { inspectFrontierSourceSyntax } from '@shapeshift-labs/frontier-lang-pars
 const report = inspectFrontierSourceSyntax(source);
 
 if (report.summary.failClosed) {
-  console.error(report.summary.unknownKinds);
+  console.error(report.summary.unknownKinds, report.diagnostics);
 }
 ```
 
-Nested child syntax such as `render` blocks inside a `view` is not reported as an unknown top-level block; the parent parser owns those child rows. The report is evidence about parser coverage only. It keeps `autoMergeClaim` and `semanticEquivalenceClaim` false.
+Nested child syntax such as `render` blocks inside a `view` is not reported as an unknown top-level block; the parent parser owns those child rows. The report ignores braces inside quoted strings and comments when finding authored declaration boundaries, reports UTF-8 `sourceBytes`, and fails closed for malformed or unterminated blocks through `diagnostics`. The report is evidence about parser coverage only. It keeps `autoMergeClaim` and `semanticEquivalenceClaim` false.
 
 ## Authored view render graph syntax
 
