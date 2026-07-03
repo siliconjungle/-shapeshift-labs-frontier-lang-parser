@@ -1,47 +1,7 @@
-export const FrontierSourceBlockKinds = Object.freeze([
-  'entity',
-  'state',
-  'action',
-  'view',
-  'migration',
-  'capability',
-  'effect',
-  'type',
-  'extern',
-  'lattice',
-  'nativeSource',
-  'target',
-  'proof',
-  'paradigm',
-  'paradigmSemantics',
-  'operations',
-  'semanticOperations',
-  'conversion',
-  'universalConversionPlan',
-  'constraintSpace',
-  'possibilitySpace',
-  'decisionGraph',
-  'admissionGraph',
-  'dialectRegistry',
-  'universalDialectRegistry',
-  'interlingua',
-  'universalInterlingua',
-  'resourceGraph',
-  'semanticResourceGraph',
-  'packageManifest',
-  'packageGraph',
-  'packageSurface',
-  'canvasSurface',
-  'canvasGraph',
-  'applicationSurface',
-  'appHost',
-  'plugin',
-  'pluginSurface',
-  'pluginContract',
-  'runtimeCapabilities',
-  'runtimeCapabilityMatrix',
-  'runtimeHosts'
-]);
+import { readSourceSyntaxChildren } from './source-syntax-children.js';
+import { FrontierSourceBlockKinds } from './source-block-kinds.js';
+
+export { FrontierSourceBlockKinds };
 
 const FrontierSourceBlockKindSet = new Set(FrontierSourceBlockKinds);
 
@@ -51,13 +11,18 @@ export function inspectFrontierSourceSyntax(source, options = {}) {
   const structure = scanFrontierStructure(source);
   const blocks = readCandidateDeclarationBlocks(source, structure).map((block) => ({
     ...block,
-    recognized: FrontierSourceBlockKindSet.has(block.kind)
+    recognized: FrontierSourceBlockKindSet.has(block.kind),
+    children: readSourceSyntaxChildren(source, block, { ...options, documentId })
   }));
+  for (const block of blocks) {
+    if (!block.children.length) delete block.children;
+  }
   const recognizedBlocks = blocks.filter((block) => block.recognized);
   const unknownBlocks = blocks.filter((block) => !block.recognized).map((block) => ({
     ...block,
     reason: 'unsupported-top-level-block'
   }));
+  const childRecords = blocks.flatMap((block) => block.children ?? []);
   const malformedBlockOpenOffsets = new Set(blocks.filter((block) => block.malformed).map((block) => block.bodyStartOffset - 1));
   const diagnostics = [
     ...blocks.flatMap((block) => block.diagnostics ?? []),
@@ -87,8 +52,11 @@ export function inspectFrontierSourceSyntax(source, options = {}) {
       recognizedBlockCount: recognizedBlocks.length,
       unknownBlockCount: unknownBlocks.length,
       malformedBlockCount: malformedBlocks.length,
+      childCount: childRecords.length,
+      recognizedChildCount: childRecords.filter((child) => child.recognized).length,
       diagnosticCount: diagnostics.length,
       recognizedKinds: unique(recognizedBlocks.map((block) => block.kind)),
+      recognizedChildKinds: unique(childRecords.filter((child) => child.recognized).map((child) => child.kind)),
       unknownKinds: unique(unknownBlocks.map((block) => block.kind)),
       failClosed,
       unsupportedSyntax: unknownBlocks.length > 0
@@ -108,7 +76,8 @@ export function readFrontierSourceBlocks(source, options = {}) {
     kind: block.kind,
     header: block.header,
     body: source.slice(block.bodyStartOffset, block.bodyEndOffset),
-    syntax: block
+    syntax: block,
+    sourceSpan: (startOffset, endOffset) => sourceSpan(source, block, startOffset, endOffset, { ...options, documentId: report.documentId })
   }));
 }
 
@@ -310,9 +279,25 @@ function sourcePosition(source, offset) {
   return { line: lines.length, column: lines[lines.length - 1].length + 1, offset };
 }
 
+function sourceSpan(source, block, startOffset, endOffset, options = {}) {
+  return cleanRecord({
+    sourceId: options.documentId,
+    path: options.sourcePath,
+    blockId: block.id,
+    blockKind: block.kind,
+    startOffset,
+    endOffset,
+    start: sourcePosition(source, startOffset),
+    end: sourcePosition(source, endOffset)
+  });
+}
+
 function readName(source) { return /module\s+([A-Za-z_$][\w$]*)/.exec(source)?.[1]; }
 function readId(source) { return /module\s+[A-Za-z_$][\w$]*\s+@id\(\s*["']([^"']+)["']\s*\)/.exec(source)?.[1]; }
-function idFrom(header) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(header)?.[1]; }
+function idFrom(header, fallback) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(header)?.[1] ?? fallback; }
 function nameFrom(header) { return /^([A-Za-z_$][\w$]*)/.exec(header)?.[1] ?? 'Unnamed'; }
 function unique(values) { return [...new Set(values.filter(Boolean))]; }
 function escapeRegExp(value) { return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function cleanRecord(record) {
+  return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined && (!Array.isArray(value) || value.length > 0)));
+}

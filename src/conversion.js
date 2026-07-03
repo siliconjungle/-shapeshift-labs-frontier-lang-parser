@@ -3,8 +3,8 @@ import { FAMILIES, parseConstraintRecord } from './conversion-constraint-record.
 export function parseConversionBlock(block) {
   const name = nameFrom(block.header);
   const plan = { id: idFrom(block.header, `conversion_${name}`), targets: [], metadata: { name } };
-  for (const rawLine of block.body.split('\n')) {
-    const line = rawLine.trim();
+  for (const authoredLine of readAuthoredLines(block)) {
+    const line = authoredLine.text;
     if (!line || line.startsWith('#')) continue;
     const target = /^target\s+([^\s,]+)/.exec(line)?.[1];
     const sourceLanguage = /^sourceLanguage\s+([^\s,]+)/.exec(line)?.[1] ?? /^source\s+([^\s,]+)/.exec(line)?.[1];
@@ -21,7 +21,7 @@ export function parseConversionBlock(block) {
     else if (runtimeRequirement) addRuntimeRequirement(plan, runtimeRequirement[1], runtimeRequirement[2]);
     else if (dialect) addDialectRecord(plan, dialect[1], dialect[2], false);
     else if (extern) addDialectRecord(plan, extern[1], extern[2], true);
-    else if (constraint) addConstraint(plan, constraint[1], constraint[2], constraint[3]);
+    else if (constraint) addConstraint(plan, constraint[1], constraint[2], constraint[3], authoredLine);
   }
   return cleanRecord({ ...plan, targets: unique(plan.targets) });
 }
@@ -79,15 +79,19 @@ function addDialectRecord(plan, name, text, isExtern) {
   }
 }
 
-function addConstraint(plan, family, name, text) {
+function addConstraint(plan, family, name, text, authoredLine = {}) {
   const config = FAMILIES[family] ?? { field: family.endsWith('s') ? family : `${family}Constraints`, sourceKey: 'sourceRecords', targetKey: 'targetRecords' };
   const role = readInlineWord('role', text) ?? 'source';
-  const record = parseConstraintRecord(name, text, role);
+  const explicitSourceSpan = parseSpan(readInlineWord('sourceSpan', text), readInlineWord('sourcePath', text) ?? readInlineWord('path', text));
+  const sourceSpan = explicitSourceSpan ?? authoredLine.sourceSpan;
+  const record = parseConstraintRecord(name, text, role, { sourceSpan, authoredSourceSpan: authoredLine.sourceSpan });
   const entry = cleanRecord({
     id: idFrom(text, `${config.field}_${name}`),
     sourceLanguage: readInlineWord('sourceLanguage', text) ?? plan.sourceLanguage,
     target: readInlineWord('targetLanguage', text) ?? plan.targets[0],
     mode: readInlineWord('mode', text),
+    sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan,
     sourceMapIds: readInlineList(text, 'sourceMap', 'sourceMaps', 'sourceMapId', 'sourceMapIds'),
     sourceMapMappingIds: readInlineList(text, 'sourceMapMapping', 'sourceMapMappings', 'sourceMapMappingId', 'sourceMapMappingIds'),
     proofObligationIds: readInlineList(text, 'proofObligation', 'proofObligations', 'proofObligationId', 'proofObligationIds', 'obligation', 'obligations'),
@@ -111,12 +115,16 @@ function resourceGraphFromRecord(record, entry) {
   const tokens = lowerTokens(record);
   const resourceId = record.resourceId ?? record.symbolId ?? `${record.id}_resource`;
   const evidenceIds = record.evidenceIds ?? entry.evidenceIds;
+  const sourceSpan = record.sourceSpan ?? entry.sourceSpan;
+  const authoredSourceSpan = record.authoredSourceSpan ?? entry.authoredSourceSpan;
   return cleanRecord({
     id: `${record.id}_resource_graph`,
     sourceLanguage: entry.sourceLanguage,
     target: entry.target,
     sourcePath: record.sourcePath,
     sourceHash: record.sourceHash,
+    sourceSpan,
+    authoredSourceSpan,
     evidenceIds,
     sourceMapIds: record.sourceMapIds ?? entry.sourceMapIds,
     sourceMapMappingIds: record.sourceMapMappingIds ?? entry.sourceMapMappingIds,
@@ -129,6 +137,8 @@ function resourceGraphFromRecord(record, entry) {
       resourceKind: record.resourceKind ?? record.kind ?? record.constraintKind,
       sourcePath: record.sourcePath,
       sourceHash: record.sourceHash,
+      sourceSpan,
+      authoredSourceSpan,
       evidenceIds,
       metadata: { factKinds: record.factKinds, constraintKinds: record.constraintKinds }
     }],
@@ -137,6 +147,8 @@ function resourceGraphFromRecord(record, entry) {
       resourceId,
       ownerId: record.ownerId ?? record.symbolId ?? `${resourceId}:owner`,
       ownerKind: record.ownerKind ?? tokenKind(tokens, /owner|single-owner/) ?? 'owner',
+      sourceSpan,
+      authoredSourceSpan,
       evidenceIds
     }] : undefined,
     loans: needsLoan(tokens, record) ? [{
@@ -144,30 +156,40 @@ function resourceGraphFromRecord(record, entry) {
       resourceId,
       mode: record.mode ?? loanMode(tokens),
       lifetimeRegionId: record.lifetimeRegionId,
+      sourceSpan,
+      authoredSourceSpan,
       evidenceIds
     }] : undefined,
     aliases: tokenMatches(tokens, /alias/) ? [{
       id: `${record.id}_alias`,
       resourceId,
       aliasKind: record.aliasKind ?? tokenKind(tokens, /alias/) ?? 'alias',
+      sourceSpan,
+      authoredSourceSpan,
       evidenceIds
     }] : undefined,
     moves: tokenMatches(tokens, /move|transfer/) ? [{
       id: `${record.id}_move`,
       resourceId,
       moveKind: record.moveKind ?? tokenKind(tokens, /move|transfer/) ?? 'move',
+      sourceSpan,
+      authoredSourceSpan,
       evidenceIds
     }] : undefined,
     drops: tokenMatches(tokens, /drop/) ? [{
       id: `${record.id}_drop`,
       resourceId,
       dropKind: record.dropKind ?? tokenKind(tokens, /drop/) ?? 'drop',
+      sourceSpan,
+      authoredSourceSpan,
       evidenceIds
     }] : undefined,
     lifetimeRegions: record.lifetimeKind || record.lifetimeRegionId || tokenMatches(tokens, /lifetime/) ? [{
       id: record.lifetimeRegionId ?? `${record.id}_lifetime`,
       resourceId,
       lifetimeKind: record.lifetimeKind ?? tokenKind(tokens, /lifetime/) ?? record.regionKind,
+      sourceSpan,
+      authoredSourceSpan,
       evidenceIds
     }] : undefined,
     borrowScopes: needsLoan(tokens, record) || record.scopeKind ? [{
@@ -176,15 +198,40 @@ function resourceGraphFromRecord(record, entry) {
       scopeKind: record.scopeKind ?? record.kind,
       lifetimeRegionId: record.lifetimeRegionId,
       constraintKinds: record.constraintKinds,
+      sourceSpan,
+      authoredSourceSpan,
       evidenceIds
     }] : undefined,
     unsafeBoundaries: tokenMatches(tokens, /unsafe|raw/) ? [{
       id: `${record.id}_unsafe`,
       resourceId,
       kind: tokenKind(tokens, /unsafe|raw/) ?? 'unsafe-boundary',
+      sourceSpan,
+      authoredSourceSpan,
       evidenceIds
     }] : undefined
   });
+}
+
+function readAuthoredLines(block) {
+  const lines = block.body.split('\n');
+  const records = [];
+  let lineStart = block.syntax?.bodyStartOffset ?? 0;
+  for (const rawLine of lines) {
+    const rawEnd = lineStart + rawLine.length;
+    const leading = /^\s*/.exec(rawLine)?.[0].length ?? 0;
+    const trailing = /\s*$/.exec(rawLine)?.[0].length ?? 0;
+    const startOffset = lineStart + leading;
+    const endOffset = Math.max(startOffset, rawEnd - trailing);
+    records.push({
+      text: rawLine.trim(),
+      startOffset,
+      endOffset,
+      sourceSpan: typeof block.sourceSpan === 'function' ? block.sourceSpan(startOffset, endOffset) : undefined
+    });
+    lineStart = rawEnd + 1;
+  }
+  return records;
 }
 
 function lowerTokens(record) {
@@ -212,6 +259,18 @@ function readInlineList(text, ...labels) {
     if (value) return value.split(/[|,]/).map((item) => item.trim()).filter(Boolean);
   }
   return undefined;
+}
+function parseSpan(value, fallbackPath) {
+  if (!value) return undefined;
+  const match = /^(.+):(\d+):(\d+)-(\d+):(\d+)$/.exec(value);
+  if (!match) return undefined;
+  return cleanRecord({
+    path: match[1] || fallbackPath,
+    startLine: Number(match[2]),
+    startColumn: Number(match[3]),
+    endLine: Number(match[4]),
+    endColumn: Number(match[5])
+  });
 }
 function cleanRecord(record) {
   return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined && (!Array.isArray(value) || value.length > 0)));

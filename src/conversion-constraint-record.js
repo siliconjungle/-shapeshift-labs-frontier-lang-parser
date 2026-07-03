@@ -133,13 +133,15 @@ export const FAMILIES = Object.freeze(Object.fromEntries(FAMILY_ROWS.flatMap(([n
   return [name, ...aliases].map((alias) => [alias, config]);
 })));
 
-export function parseConstraintRecord(name, text, role) {
+export function parseConstraintRecord(name, text, role, context = {}) {
   const kind = wordAny(text, 'kind', 'constraintKind');
   return cleanRecord({
     id: wordAny(text, 'recordId') ?? idFrom(text, `constraint_record_${name}`),
     role,
     kind,
     name: wordAny(text, 'name') ?? name,
+    sourceSpan: context.sourceSpan,
+    authoredSourceSpan: context.authoredSourceSpan,
     constraintKind: wordAny(text, 'constraintKind'),
     constraintKinds: listAny(text, 'constraint', 'constraints', 'constraintKind', 'constraintKinds') ?? (kind ? [kind] : undefined),
     ...readMapped(text, WORD_FIELDS, wordAny),

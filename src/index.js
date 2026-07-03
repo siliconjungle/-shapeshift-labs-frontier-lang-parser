@@ -72,7 +72,7 @@ export function parseFrontierSource(source, options = {}) {
   return createDocument({ id: documentId, name: documentName, nodes, ...(metadata ? { metadata } : {}) });
 }
 
-export function parseFrontierFile(name, source) { return parseFrontierSource(source, { name: name.replace(/\.frontier$/, '') }); }
+export function parseFrontierFile(name, source) { return parseFrontierSource(source, { name: name.replace(/\.frontier$/, ''), sourcePath: name }); }
 
 function readName(source) { return /module\s+([A-Za-z_$][\w$]*)/.exec(source)?.[1]; }
 function readId(source) { return /module\s+[A-Za-z_$][\w$]*\s+@id\(\s*["']([^"']+)["']\s*\)/.exec(source)?.[1]; }

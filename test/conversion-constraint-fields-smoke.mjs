@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { parseFrontierSource } from '../src/index.js';
 
-const doc = parseFrontierSource(`
+const source = `
 module RichConversion @id("mod_rich_conversion")
 
 conversion JsToRust @id("conversion_js_rust") {
@@ -11,7 +11,7 @@ conversion JsToRust @id("conversion_js_rust") {
   constraint module-constraint todoModule @id("module_constraint_todo") role source kind module-boundary sourcePath src/todo.ts specifier ./todo importedName addTodo exportedName addTodo packageName @app/todo packageSubpath ./todo packageCondition import resolutionKind node16 resolvedPath src/todo.ts packageExportKey ./todo importAttributes type-json publicContract evidence evidence_module
   constraint scope-binding todoLocal @id("scope_binding_todo") role source kind lexical-binding localName todo bindingId binding:todo referenceId ref:todo scopeId scope:handler resolvedBindingId binding:todo lookupKind lexical namespace value closure captured typeOnly evidence evidence_scope
   constraint memory-model todoMemory @id("memory_model_todo") role source kind stable-reference resource TodoDb.todos memoryKind shared-memory operationKind atomic-load memoryOrder acquire lockId lock:todo synchronizationKey todo-lock lifetimeKind lexical regionKind heap shared atomic evidence evidence_memory
-  constraint effect-constraint todoWrite @id("effect_constraint_todo_write") role source kind storage-write effectKind storage-write capability storage.write resource TodoDb.todos reads TodoDb.todos writes TodoDb.todos effectTarget TodoDb.todos fact writes|deterministic adapterRequired sourceMap source_map_effect sourceMapMapping map_effect_write proofObligation proof_effect_write proofEvidence proof_evidence_effect missingEvidence effect-proof-missing failClosed evidence evidence_effect
+  constraint effect-constraint todoWrite @id("effect_constraint_todo_write") role source kind storage-write effectKind storage-write capability storage.write resource TodoDb.todos reads TodoDb.todos writes TodoDb.todos effectTarget TodoDb.todos fact writes|deterministic adapterRequired sourcePath src/todo.ts sourceSpan src/todo.ts:10:3-10:21 sourceMap source_map_effect sourceMapMapping map_effect_write proofObligation proof_effect_write proofEvidence proof_evidence_effect missingEvidence effect-proof-missing failClosed evidence evidence_effect
   constraint host-environment browserFetch @id("host_environment_fetch") role source kind browser-api hostKind browser-api capability fetch apiName fetch globalName window permission network resource https://api.example.test adapterRequired evidence evidence_host
   constraint callable-boundary saveUserCall @id("callable_boundary_save_user") role source kind method-call callableKind function functionName saveUser signatureHash sig_save_user parameterCount 2 requiredParameterCount 1 optionalParameterCount 1 parameterOrder user|options restParameter rest receiverKind module thisBinding this:return returnKind promise asyncKind async dispatchKind dynamic callingConvention js exceptionModel throws effectKind network variadic evidence evidence_callable
   constraint adt-pattern userResult @id("adt_pattern_user_result") role source kind tagged-union adtKind union typeName UserResult variantNames Ok|Err payloadFieldNames value|error tagFieldNames kind matchArmNames ok|err guardKinds predicate destructuringKinds object exhaustivenessKinds total fallbackKinds wildcard genericParameterNames T evidence evidence_adt
@@ -31,12 +31,20 @@ conversion JsToRust @id("conversion_js_rust") {
   constraint object-model userClass @id("object_model_user_class") role source kind class objectKind class classId class:User prototypeId proto:User methodId method:save fieldId field:name constructorId ctor:User dispatchKind virtual inheritanceKind single receiverKind this referenceSemantics reference virtual reflection evidence evidence_object
   constraint protocol serializable @id("protocol_serializable") role target kind trait-bound protocolKind trait traitName Serializable subjectName User requirementNames serialize|deserialize associatedTypeNames Error genericParameterNames T boundNames Display|Debug implementationKinds blanket dispatchKinds static coherenceKinds orphan-rule evidence evidence_protocol
 }
-`);
+`;
+
+const doc = parseFrontierSource(source);
 
 const plan = doc.metadata.universalConversionPlan;
 const targetType = plan.typeConstraints[0].targetTypes[0];
 assert.equal(targetType.symbolId, 'symbol:addTodoRust');
 assert.equal(targetType.target, undefined);
+assert.equal(plan.typeConstraints[0].sourceSpan.sourceId, 'mod_rich_conversion');
+assert.equal(plan.typeConstraints[0].sourceSpan.blockId, 'conversion_js_rust');
+assert.equal(targetType.sourceSpan.sourceId, 'mod_rich_conversion');
+assert.equal(targetType.sourceSpan.blockKind, 'conversion');
+assert.equal(targetType.authoredSourceSpan.sourceId, 'mod_rich_conversion');
+assert.equal(source.slice(targetType.sourceSpan.startOffset, targetType.sourceSpan.endOffset).startsWith('constraint type rustApi'), true);
 
 const moduleRecord = plan.moduleConstraints[0].sourceModules[0];
 assert.equal(moduleRecord.specifier, './todo');
@@ -88,6 +96,16 @@ assert.deepEqual(effectRecord.proofObligationIds, ['proof_effect_write']);
 assert.deepEqual(effectRecord.proofEvidenceIds, ['proof_evidence_effect']);
 assert.deepEqual(effectRecord.missingEvidence, ['effect-proof-missing']);
 assert.equal(effectRecord.failClosed, true);
+assert.deepEqual(effectEntry.sourceSpan, {
+  path: 'src/todo.ts',
+  startLine: 10,
+  startColumn: 3,
+  endLine: 10,
+  endColumn: 21
+});
+assert.deepEqual(effectRecord.sourceSpan, effectEntry.sourceSpan);
+assert.equal(effectRecord.authoredSourceSpan.sourceId, 'mod_rich_conversion');
+assert.equal(source.slice(effectRecord.authoredSourceSpan.startOffset, effectRecord.authoredSourceSpan.endOffset).startsWith('constraint effect-constraint todoWrite'), true);
 
 const hostRecord = plan.hostEnvironmentConstraints[0].sourceHosts[0];
 assert.equal(plan.hostEnvironmentConstraints[0].sourceHostEnvironmentRecords[0], hostRecord);
@@ -143,6 +161,7 @@ assert.deepEqual(layoutStyleRecord.sourceMapMappingIds, ['map_style_button']);
 assert.deepEqual(layoutStyleRecord.proofObligationIds, ['proof_style']);
 assert.deepEqual(layoutStyleRecord.proofEvidenceIds, ['proof_evidence_style']);
 assert.equal(layoutStyleRecord.failClosed, true);
+assert.equal(source.slice(layoutStyleRecord.sourceSpan.startOffset, layoutStyleRecord.sourceSpan.endOffset).startsWith('constraint layout-style buttonStyle'), true);
 assert.equal(plan.styleConstraints, undefined);
 assert.equal(plan.layoutConstraints, undefined);
 const targetStyleRecord = plan.layoutStyleConstraints[1].targetLayoutStyles[0];

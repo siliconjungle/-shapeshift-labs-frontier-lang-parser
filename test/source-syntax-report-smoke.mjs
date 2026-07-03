@@ -76,3 +76,24 @@ action Save @id("action_save") {
 assert.equal(robustParseDoc.nodes.view_detail.renders[0].text, '}');
 assert.equal(robustParseDoc.nodes.view_detail.renders[0].props[0].value, '{literal}');
 assert.equal(robustParseDoc.nodes.action_save.name, 'Save');
+
+const conversionSyntaxSource = `module ConversionSyntaxProbe @id("mod_conversion_syntax_probe") {
+conversion JsToRust @id("conversion_js_rust") {
+  sourceLanguage javascript
+  target rust
+  constraint type publicApi @id("type_constraint_public_api") role source kind public-function symbol symbol:addTodo evidence evidence_type
+  constraint resourceTransfer todoStore @id("resource_transfer_todo_store") role source kind owner resource TodoStore evidence evidence_resource
+}
+}`;
+const conversionSyntaxReport = inspectFrontierSourceSyntax(conversionSyntaxSource, { sourcePath: 'conversion-syntax.frontier' });
+const conversionBlock = conversionSyntaxReport.recognizedBlocks.find((block) => block.id === 'conversion_js_rust');
+assert.equal(conversionSyntaxReport.summary.childCount, 2);
+assert.equal(conversionSyntaxReport.summary.recognizedChildCount, 2);
+assert.deepEqual(conversionSyntaxReport.summary.recognizedChildKinds, ['conversionConstraint']);
+assert.equal(conversionBlock.children[0].kind, 'conversionConstraint');
+assert.equal(conversionBlock.children[0].family, 'type');
+assert.equal(conversionBlock.children[0].id, 'type_constraint_public_api');
+assert.equal(conversionBlock.children[0].sourceSpan.path, 'conversion-syntax.frontier');
+assert.equal(conversionBlock.children[0].sourceSpan.sourceId, 'mod_conversion_syntax_probe');
+assert.equal(conversionBlock.children[0].sourceSpan.blockId, 'conversion_js_rust');
+assert.equal(conversionSyntaxSource.slice(conversionBlock.children[0].startOffset, conversionBlock.children[0].endOffset).startsWith('constraint type publicApi'), true);
