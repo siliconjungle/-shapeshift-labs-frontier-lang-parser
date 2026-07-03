@@ -65,3 +65,46 @@ assert.equal(standaloneElse.summary.unknownChildCount, 1);
 assert.equal(standaloneElse.unknownChildren[0].id, 'standalone_else');
 assert.equal(standaloneElse.unknownChildren[0].rowKind, 'else');
 assert.equal(standaloneElse.unknownChildren[0].reason, 'unsupported-action-body-row');
+
+const elseIfSource = `module ActionElseIfProbe @id("mod_action_else_if_probe") {
+action AddTodo @id("action_add_todo") {
+  body {
+    if ready @id("guard_ready") condition input.ready {
+      set status @id("patch_status_ready") path /todos/status value "ready"
+    } else if blocked @id("guard_blocked") condition input.blocked {
+      set status @id("patch_status_blocked") path /todos/status value "blocked"
+    } else final @id("else_final") {
+      set status @id("patch_status_pending") path /todos/status value "pending"
+    }
+  }
+}
+}`;
+const elseIfAction = parseFrontierSource(elseIfSource).nodes.action_add_todo;
+assert.equal(elseIfAction.body[0].id, 'guard_ready');
+assert.equal(elseIfAction.body[0].elseBody[0].id, 'guard_blocked');
+assert.equal(elseIfAction.body[0].elseBody[0].elseId, 'else_final');
+assert.equal(elseIfAction.body[0].elseBody[0].elseBody[0].id, 'patch_status_pending');
+
+const elseIfReport = inspectFrontierSourceSyntax(elseIfSource);
+assert.equal(elseIfReport.summary.failClosed, false);
+assert.equal(elseIfReport.summary.unknownChildCount, 0);
+const elseIfBlock = elseIfReport.recognizedBlocks.find((block) => block.id === 'action_add_todo');
+assert.equal(elseIfBlock.children.find((child) => child.id === 'guard_blocked').parentActionBodyId, 'guard_ready');
+assert.equal(elseIfBlock.children.find((child) => child.id === 'patch_status_blocked').parentActionBodyId, 'guard_blocked');
+assert.equal(elseIfBlock.children.find((child) => child.id === 'else_final').parentActionBodyId, 'guard_blocked');
+assert.equal(elseIfBlock.children.find((child) => child.id === 'patch_status_pending').parentActionBodyId, 'else_final');
+
+const standaloneElseIfSource = `module StandaloneElseIf @id("mod_standalone_else_if") {
+action AddTodo @id("action_add_todo") {
+  body {
+    else if blocked @id("standalone_else_if") condition input.blocked {
+      set status @id("nested_else_if_patch_should_not_escape") path /todos/status value "blocked"
+    }
+  }
+}
+}`;
+assert.equal((parseFrontierSource(standaloneElseIfSource).nodes.action_add_todo.body ?? []).length, 0);
+const standaloneElseIf = inspectFrontierSourceSyntax(standaloneElseIfSource);
+assert.equal(standaloneElseIf.summary.failClosed, true);
+assert.equal(standaloneElseIf.summary.unknownChildCount, 1);
+assert.equal(standaloneElseIf.unknownChildren[0].id, 'standalone_else_if');

@@ -32,14 +32,12 @@ function parseActionBodyRecords(source, state) {
       const index = state.index++;
       const record = parseActionIfBlock(ifHeader[1].trim(), source.slice(open + 1, close), index, state, elseBlock);
       if (record) records.push(record);
-      offset = elseBlock ? elseBlock.close + 1 : close + 1;
+      offset = elseBlock ? elseBlock.end : close + 1;
       continue;
     }
-    const elseHeader = /^else\b([^{\n]*)\{/.exec(source.slice(offset));
-    if (elseHeader) {
-      const open = offset + elseHeader[0].length - 1;
-      const close = findMatchingBrace(source, open);
-      offset = close < 0 ? source.length : close + 1;
+    const elseBlock = readElseHeaderBlock(source, offset, source.length, { skipWhitespace: skipWhitespaceAndComments, findMatchingBrace });
+    if (elseBlock) {
+      offset = elseBlock.end;
       continue;
     }
     const lineEnd = source.indexOf('\n', offset);
@@ -57,7 +55,7 @@ function parseActionBodyRecords(source, state) {
 function parseActionIfBlock(header, body, index, state, elseBlock) {
   const details = parseActionIfHeader(header, index);
   if (!details.condition) return undefined;
-  const elseDetails = elseBlock ? parseActionElseHeader(elseBlock.header, index) : undefined;
+  const elseDetails = parseActionElseBlock(elseBlock, state, index);
   return compactRecord({
     kind: 'if',
     id: details.id,
@@ -68,8 +66,18 @@ function parseActionIfBlock(header, body, index, state, elseBlock) {
     body: parseActionBodyRecords(body, state),
     elseId: elseDetails?.id,
     elseName: elseDetails?.name,
-    elseBody: elseBlock ? parseActionBodyRecords(elseBlock.body, state) : undefined
+    elseBody: elseDetails?.body
   });
+}
+
+function parseActionElseBlock(elseBlock, state, index) {
+  if (!elseBlock) return undefined;
+  if (elseBlock.isElseIf) {
+    const nested = parseActionIfBlock(elseBlock.header, elseBlock.body, state.index++, state, elseBlock.tail);
+    return nested ? { id: nested.id, name: nested.name, body: [nested] } : undefined;
+  }
+  const details = parseActionElseHeader(elseBlock.header, index);
+  return { ...details, body: parseActionBodyRecords(elseBlock.body, state) };
 }
 
 function parseActionIfHeader(header, index) {

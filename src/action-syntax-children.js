@@ -36,14 +36,15 @@ function readActionSyntaxRows(source, block, options, state, startOffset, endOff
       children.push(...readActionSyntaxRows(source, block, options, state, open + 1, close, child.id));
       const elseBlock = readElseHeaderBlock(source, close + 1, endOffset, { skipWhitespace: skipWhitespaceAndLineComments, findMatchingBrace });
       if (elseBlock) {
-        const elseChild = actionSyntaxChild(source, block, options, {
-          text: source.slice(elseBlock.start, elseBlock.open + 1).trim(),
-          startOffset: elseBlock.start,
-          endOffset: elseBlock.open + 1
-        }, state, child.id, { recognized: elseBlock.supported });
-        children.push(elseChild);
-        if (elseBlock.supported) children.push(...readActionSyntaxRows(source, block, options, state, elseBlock.open + 1, elseBlock.close, elseChild.id));
-        offset = elseBlock.close + 1;
+        let branch = elseBlock, parentId = child.id;
+        while (branch) {
+          const elseChild = actionSyntaxChild(source, block, options, { text: source.slice(branch.start, branch.open + 1).trim(), startOffset: branch.start, endOffset: branch.open + 1 }, state, parentId, { recognized: branch.supported });
+          children.push(elseChild);
+          if (branch.supported) children.push(...readActionSyntaxRows(source, block, options, state, branch.open + 1, branch.close, elseChild.id));
+          parentId = elseChild.id;
+          branch = branch.tail;
+        }
+        offset = elseBlock.end;
         continue;
       }
       offset = close + 1;
@@ -56,7 +57,7 @@ function readActionSyntaxRows(source, block, options, state, startOffset, endOff
         startOffset: elseBlock.start,
         endOffset: elseBlock.open + 1
       }, state, parentActionBodyId));
-      offset = elseBlock.close + 1;
+      offset = elseBlock.end;
       continue;
     }
     const lineEnd = source.indexOf('\n', offset);
