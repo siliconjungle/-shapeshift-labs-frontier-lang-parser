@@ -11,6 +11,10 @@ action AddTodo @id("action_add_todo") {
   throws ValidationError, StorageError
   body {
     set title @id("patch_set_title") path /todos/title value input.title
+    if valid @id("guard_valid_title") condition input.enabled {
+      set status @id("patch_set_status") path /todos/status value "ready"
+      callEffect persistWhenValid @id("effect_call_valid_persist") capability storage.write input input
+    }
     insert item @id("patch_insert_item") path /todos value input
     merge meta @id("patch_merge_meta") path /todos/meta value "created"
     remove oldTitle @id("patch_remove_old_title") path /todos/oldTitle
@@ -29,7 +33,7 @@ assert.deepEqual(action.reads, ['TodoDb.todos']);
 assert.deepEqual(action.writes, ['TodoDb.todos']);
 assert.deepEqual(action.uses, ['Clock']);
 assert.deepEqual(action.throws, ['ValidationError', 'StorageError']);
-assert.equal(action.body.length, 6);
+assert.equal(action.body.length, 7);
 assert.deepEqual(action.body[0], {
   kind: 'patch',
   op: 'set',
@@ -38,18 +42,27 @@ assert.deepEqual(action.body[0], {
   path: '/todos/title',
   value: { expression: 'input.title' }
 });
-assert.deepEqual(action.body[2].value, { value: 'created' });
-assert.equal(action.body[3].op, 'remove');
-assert.equal(action.body[4].kind, 'callEffect');
-assert.equal(action.body[4].capability, 'storage.write');
-assert.deepEqual(action.body[4].input, { expression: 'input' });
-assert.equal(action.body[5].kind, 'return');
-assert.deepEqual(action.body[5].value, { expression: 'patches' });
+assert.equal(action.body[1].kind, 'if');
+assert.equal(action.body[1].id, 'guard_valid_title');
+assert.equal(action.body[1].name, 'valid');
+assert.deepEqual(action.body[1].condition, { expression: 'input.enabled' });
+assert.equal(action.body[1].body.length, 2);
+assert.equal(action.body[1].body[0].id, 'patch_set_status');
+assert.deepEqual(action.body[1].body[0].value, { value: 'ready' });
+assert.equal(action.body[1].body[1].kind, 'callEffect');
+assert.equal(action.body[1].body[1].capability, 'storage.write');
+assert.deepEqual(action.body[3].value, { value: 'created' });
+assert.equal(action.body[4].op, 'remove');
+assert.equal(action.body[5].kind, 'callEffect');
+assert.equal(action.body[5].capability, 'storage.write');
+assert.deepEqual(action.body[5].input, { expression: 'input' });
+assert.equal(action.body[6].kind, 'return');
+assert.deepEqual(action.body[6].value, { expression: 'patches' });
 
 const report = inspectFrontierSourceSyntax(source, { sourcePath: 'action-body.frontier' });
 assert.equal(report.summary.failClosed, false);
-assert.equal(report.summary.childCount, 6);
-assert.equal(report.summary.recognizedChildCount, 6);
+assert.equal(report.summary.childCount, 9);
+assert.equal(report.summary.recognizedChildCount, 9);
 assert.deepEqual(report.summary.recognizedChildKinds, ['actionBodyRow']);
 const actionBlock = report.recognizedBlocks.find((block) => block.id === 'action_add_todo');
 assert.ok(actionBlock);
@@ -57,11 +70,18 @@ assert.equal(actionBlock.children[0].id, 'patch_set_title');
 assert.equal(actionBlock.children[0].sourceSpan.path, 'action-body.frontier');
 assert.equal(actionBlock.children[0].sourceSpan.blockId, 'action_add_todo');
 assert.equal(source.slice(actionBlock.children[0].startOffset, actionBlock.children[0].endOffset), 'set title @id("patch_set_title") path /todos/title value input.title');
+const guardChild = actionBlock.children.find((child) => child.id === 'guard_valid_title');
+assert.equal(guardChild.rowKind, 'if');
+assert.equal(guardChild.name, 'valid');
+const nestedPatchChild = actionBlock.children.find((child) => child.id === 'patch_set_status');
+assert.equal(nestedPatchChild.parentActionBodyId, 'guard_valid_title');
 
 const unsupported = inspectFrontierSourceSyntax(`module UnsupportedActionBody @id("mod_unsupported_action_body") {
 action AddTodo @id("action_add_todo") {
   body {
-    mutateEverything danger @id("unsupported_action_body_row") value unknown
+    if guarded @id("guard_unsupported") condition input.enabled {
+      mutateEverything danger @id("unsupported_action_body_row") value unknown
+    }
   }
 }
 }`);
@@ -69,3 +89,4 @@ assert.equal(unsupported.summary.failClosed, true);
 assert.equal(unsupported.summary.unknownChildCount, 1);
 assert.equal(unsupported.unknownChildren[0].id, 'unsupported_action_body_row');
 assert.equal(unsupported.unknownChildren[0].reason, 'unsupported-action-body-row');
+assert.equal(unsupported.blocks[0].children.find((child) => child.id === 'guard_unsupported').recognized, true);

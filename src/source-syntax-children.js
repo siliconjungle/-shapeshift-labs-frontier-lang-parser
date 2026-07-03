@@ -1,3 +1,4 @@
+import { readActionSyntaxChildren } from './action-syntax-children.js';
 import { ROW_SYNTAX_CONFIG } from './source-syntax-row-config.js';
 
 const ROW_NAME_PATTERN = '([A-Za-z_$@./:*+-][\\w$./@:*+-]*)';
@@ -13,48 +14,6 @@ export function readSourceSyntaxChildren(source, block, options = {}) {
   const rowConfig = ROW_SYNTAX_CONFIG[block.kind];
   if (rowConfig) return readGenericRowSyntaxChildren(source, block, options, rowConfig);
   return [];
-}
-
-const ACTION_BODY_ROWS = new Set(['set', 'insert', 'remove', 'merge', 'callEffect', 'return']);
-
-function readActionSyntaxChildren(source, block, options) {
-  const children = [];
-  const body = source.slice(block.bodyStartOffset, block.bodyEndOffset);
-  const bodyBlocks = readNestedBodyBlocks('body', body);
-  let rowIndex = 0;
-  for (const bodyBlock of bodyBlocks) {
-    const bodyStartOffset = block.bodyStartOffset + bodyBlock.bodyStart;
-    const bodyEndOffset = block.bodyStartOffset + bodyBlock.bodyEnd;
-    for (const line of readTextLines(source, bodyStartOffset, bodyEndOffset)) {
-      if (!line.text || line.text.startsWith('#')) continue;
-      const row = /^([A-Za-z_$][\w$-]*)(?:\s+([A-Za-z_$@./:*+-][\w$./@:*+-]*))?(.*)$/.exec(line.text);
-      const rowKind = row?.[1] ?? 'unknown';
-      const name = row?.[2] && !row[2].startsWith('@') ? row[2] : `${rowKind}_${rowIndex}`;
-      const rest = row?.[2]?.startsWith('@') ? ` ${row[2]}${row[3] ?? ''}` : (row?.[3] ?? '');
-      const recognized = ACTION_BODY_ROWS.has(rowKind);
-      children.push(cleanRecord({
-        kind: recognized ? 'actionBodyRow' : 'actionUnknownRow',
-        rowKind,
-        normalizedRowKind: recognized ? rowKind : 'unknown',
-        name,
-        id: idFrom(rest, `action_body_${safeId(rowKind)}_${safeId(name)}_${rowIndex}`),
-        header: line.text,
-        startOffset: line.startOffset,
-        endOffset: line.endOffset,
-        location: sourcePosition(source, line.startOffset),
-        parentKind: block.kind,
-        parentId: block.id,
-        parentName: block.name,
-        moduleId: block.moduleId,
-        moduleName: block.moduleName,
-        sourceSpan: sourceSpan(source, block, line.startOffset, line.endOffset, options),
-        recognized,
-        reason: recognized ? undefined : 'unsupported-action-body-row'
-      }));
-      rowIndex++;
-    }
-  }
-  return children;
 }
 
 function readConversionSyntaxChildren(source, block, options) {
@@ -194,79 +153,6 @@ function readTextLines(source, startOffset, endOffset) {
     lineStart = rawEnd + 1;
   }
   return records;
-}
-
-function readNestedBodyBlocks(kind, source) {
-  const blocks = [];
-  const header = new RegExp('\\b' + kind.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:\\s+([^{}\\n]+?))?\\s*\\{', 'g');
-  let match;
-  while ((match = header.exec(source))) {
-    const open = header.lastIndex - 1;
-    const close = findMatchingBrace(source, open);
-    if (close < 0) continue;
-    blocks.push({
-      header: (match[1] ?? '').trim(),
-      start: match.index,
-      bodyStart: open + 1,
-      bodyEnd: close,
-      end: close + 1
-    });
-    header.lastIndex = close + 1;
-  }
-  return blocks;
-}
-
-function findMatchingBrace(source, open) {
-  let depth = 0;
-  let state = 'code';
-  let quote = '';
-  for (let index = open; index < source.length; index++) {
-    const char = source[index];
-    const next = source[index + 1];
-    if (state === 'line-comment') {
-      if (char === '\n') state = 'code';
-      continue;
-    }
-    if (state === 'block-comment') {
-      if (char === '*' && next === '/') {
-        index++;
-        state = 'code';
-      }
-      continue;
-    }
-    if (state === 'string') {
-      if (char === '\\') {
-        index++;
-        continue;
-      }
-      if (char === quote) {
-        state = 'code';
-        quote = '';
-      }
-      continue;
-    }
-    if (char === '/' && next === '/') {
-      index++;
-      state = 'line-comment';
-      continue;
-    }
-    if (char === '/' && next === '*') {
-      index++;
-      state = 'block-comment';
-      continue;
-    }
-    if (char === '"' || char === "'") {
-      state = 'string';
-      quote = char;
-      continue;
-    }
-    if (char === '{') depth++;
-    if (char === '}') {
-      depth--;
-      if (depth === 0) return index;
-    }
-  }
-  return -1;
 }
 
 function sourcePosition(source, offset) {
