@@ -17,6 +17,7 @@ import { parseRuntimeCapabilityBlock } from './runtime-capability.js';
 import { parseNativeSourceBlock } from './source-evidence.js';
 import { parseTargetProjectionMetadata } from './target-projection.js';
 import { parseOptionalTypeExpression, parseTypeExpression } from './type-expressions.js';
+import { readTypeParameterNames, readTypeParameterRecords } from './type-parameters.js';
 import { readVariantPayloadFields } from './type-variants.js';
 import { parseViewBlock } from './view.js';
 import { FrontierSourceBlockKinds, readFrontierSourceBlocks } from './source-syntax-report.js';
@@ -168,7 +169,17 @@ function parseCapability(block) {
 function parseType(block) {
   const name = nameFrom(block.header);
   const alias = /^\s*=\s*([^\n]+)/m.exec(block.body)?.[1]?.trim();
-  return typeNode({ id: idFrom(block.header, `type_${name}`), name, parameters: readTypeParameters(block.header), type: alias ? parseTypeExpression(alias) : undefined, fields: readTypeFields(block.body), variants: readVariants(block.body), invariants: readList('invariants', block.body) });
+  const typeParameters = readTypeParameterRecords(block.header);
+  return typeNode({
+    id: idFrom(block.header, `type_${name}`),
+    name,
+    parameters: typeParameters?.map((parameter) => parameter.name) ?? readTypeParameterNames(block.header),
+    ...(typeParameters ? { typeParameters } : {}),
+    type: alias ? parseTypeExpression(alias) : undefined,
+    fields: readTypeFields(block.body),
+    variants: readVariants(block.body),
+    invariants: readList('invariants', block.body)
+  });
 }
 function parseExtern(block) {
   const name = nameFrom(block.header);
@@ -280,9 +291,6 @@ function parseSemantic(text) {
   if (crdtType) return { kind: 'crdt', latticeId, crdt: { type: crdtType } };
   if (latticeId) return { kind: 'lattice', latticeId };
   return undefined;
-}
-function readTypeParameters(header) {
-  return /<([^>]+)>/.exec(header)?.[1]?.split(',').map((item) => item.trim()).filter(Boolean);
 }
 function readTypeFields(body) {
   const fields = [];
