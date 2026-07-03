@@ -4,6 +4,7 @@ import './action-body-smoke.mjs';
 import './application-surface-smoke.mjs';
 import './runtime-capability-smoke.mjs';
 import './sem-edit-records-smoke.mjs';
+import './gate-admission-evidence-smoke.mjs';
 import './source-syntax-report-smoke.mjs';
 
 const doc = parseFrontierSource(`module TodoApp @id("mod_todo") {
@@ -56,7 +57,7 @@ capability HttpRequest @id("cap_http_request") {
   returns Json
   adapter typescript symbol fetch platform node package undici kind library
   adapter rust symbol reqwest::Client::execute platform native package reqwest kind library
-  unsupported c platform embedded reason "requires a host socket adapter"
+  unsupported c platform embedded reason "host socket adapter needed"
 }
 effect PersistTodo @id("effect_persist_todo") {
   capability storage.write
@@ -79,7 +80,7 @@ nativeSource TodoTs @id("native_todo_ts") {
   sourceHash sha256:example
   symbol Todo
   frontierNodes ent_todo, action_add
-  evidence todoTitleProbe @id("artifact_todo_title_probe") kind test status passed path reports/todo-title.json summary "Todo title source map is exact."
+  evidence todoTitleProbe @id("artifact_todo_title_probe") kind test status passed path reports/todo-title.json summary "Exact source map."
   sourceMap todoProjection @id("sourcemap_todo_ts") target typescript targetPath src/generated/todo.ts evidence artifact_todo_title_probe
   mapping todoTitle @id("map_todo_title") sourceMap sourcemap_todo_ts semanticNode field_title nativeSource native_todo_ts semanticSymbol symbol:Todo.title sourceSpan src/todo.ts:1:1-1:12 generatedSpan src/generated/todo.ts:1:1-1:20 precision exact evidence artifact_todo_title_probe
   mergeCandidate todoTitle @id("candidate_todo_title") symbol symbol:Todo.title semanticNode field_title conflictKey symbol:Todo.title readiness ready evidence artifact_todo_title_probe sourceMap sourcemap_todo_ts sourceMapMapping map_todo_title reason "exact source map"
@@ -99,7 +100,7 @@ paradigm TodoSemantics @id("paradigm_todo") {
   lowering todoTitleTypescript @id("lowering_todo_title_ts") kind projection subject field_title sourceRecord binding_todo_title targetRecord type_constraint_todo_title language typescript evidence artifact_todo_title_probe
 }
 operations TodoOperations @id("semantic_ops_todo") {
-  operation addTodoWrite @id("op_add_todo_write") op effect language frontier semanticNode action_add semanticSymbol symbol:addTodo write TodoDb.todos effect effect_persist_todo ownerKey action:addTodo conflictKey state:TodoDb.todos readiness ready evidence artifact_todo_title_probe summary "Add todo writes the todos collection."
+  operation addTodoWrite @id("op_add_todo_write") op effect language frontier semanticNode action_add semanticSymbol symbol:addTodo write TodoDb.todos effect effect_persist_todo ownerKey action:addTodo conflictKey state:TodoDb.todos readiness ready evidence artifact_todo_title_probe summary "Writes todos."
   operation titleProjection @id("op_title_projection") op projection language typescript semanticNode ent_todo semanticSymbol symbol:Todo nativeAstNode ts_node_title readiness needs-review evidence contract_todo_title
 }
 decisionGraph TodoAdmission @id("decision_graph_todo") {
@@ -148,7 +149,7 @@ possibilitySpace TodoProjectionSpace @id("space_todo_projection") {
   soft bundleSize @id("space_constraint_bundle_size") kind bundle-budget family runtime target typescript variable space_variable_ui_surface predicate "bundle < 50kb" evidence artifact_todo_title_probe
   preference nativeControls @id("space_preference_native_controls") kind platform-idiom target rust weight 0.8 variable space_variable_ui_surface prefer native-controls reason "native affordances when target supports them"
   collapse rustWorker @id("space_collapse_rust_worker") strategy evidence-first target rust variable space_variable_ui_surface requires identity|runtime-proof produces action_add_rust evidence artifact_todo_title_probe admission space_admission_merge_safe status open
-  admission mergeSafe @id("space_admission_merge_safe") kind semantic-merge status open subject action_add target rust requires hardConstraints|runtimeProof evidence artifact_todo_title_probe decision review failClosed reason "runtime proof is required before auto admission"
+  admission mergeSafe @id("space_admission_merge_safe") kind semantic-merge status open subject action_add target rust requires hardConstraints|runtimeProof evidence artifact_todo_title_probe decision review failClosed reason "runtime proof required"
 }
 action addTodo @id("action_add") {
   input TodoInput

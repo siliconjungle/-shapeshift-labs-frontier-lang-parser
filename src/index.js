@@ -6,6 +6,7 @@ import { parseApplicationSurfaceBlock } from './application-surface.js';
 import { parseCanvasSurfaceBlock } from './canvas-surface.js';
 import { parseDecisionGraphBlock } from './decision-graph.js';
 import { parseDialectRegistryBlock } from './dialect-registry.js';
+import { parseGateAdmissionEvidenceBlock } from './gate-admission-evidence.js';
 import { parseInterlinguaBlock } from './interlingua.js';
 import { createParsedMetadata } from './metadata.js';
 import { parseEntityBlock, parseStateBlock, readTypeFields } from './member-records.js';
@@ -34,6 +35,7 @@ export function parseFrontierSource(source, options = {}) {
   const conversionBlocks = [];
   const constraintSpaceBlocks = [];
   const decisionGraphBlocks = [];
+  const gateAdmissionEvidenceBlocks = [];
   const dialectRegistryBlocks = [];
   const interlinguaBlocks = [];
   const resourceGraphBlocks = [];
@@ -68,6 +70,7 @@ export function parseFrontierSource(source, options = {}) {
     if (block.kind === 'conversion' || block.kind === 'universalConversionPlan') conversionBlocks.push(parseConversionBlock(block));
     if (block.kind === 'constraintSpace' || block.kind === 'possibilitySpace') constraintSpaceBlocks.push(parseConstraintSpaceBlock(block));
     if (block.kind === 'decisionGraph' || block.kind === 'admissionGraph') decisionGraphBlocks.push(parseDecisionGraphBlock(block));
+    if (block.kind === 'gateEvidence' || block.kind === 'admissionEvidence' || block.kind === 'routeEvidence') gateAdmissionEvidenceBlocks.push(parseGateAdmissionEvidenceBlock(block));
     if (block.kind === 'dialectRegistry' || block.kind === 'universalDialectRegistry') dialectRegistryBlocks.push(parseDialectRegistryBlock(block));
     if (block.kind === 'interlingua' || block.kind === 'universalInterlingua') interlinguaBlocks.push(parseInterlinguaBlock(block));
     if (block.kind === 'resourceGraph' || block.kind === 'semanticResourceGraph') resourceGraphBlocks.push(parseResourceGraphBlock(block));
@@ -76,7 +79,7 @@ export function parseFrontierSource(source, options = {}) {
     if (block.kind === 'applicationSurface' || block.kind === 'appHost' || block.kind === 'plugin' || block.kind === 'pluginSurface' || block.kind === 'pluginContract') applicationSurfaceBlocks.push(parseApplicationSurfaceBlock(block));
     if (block.kind === 'runtimeCapabilities' || block.kind === 'runtimeCapabilityMatrix' || block.kind === 'runtimeHosts') runtimeCapabilityBlocks.push(parseRuntimeCapabilityBlock(block));
   }
-  const metadata = createParsedMetadata({ proofBlocks, paradigmBlocks, operationBlocks, semanticEditBlocks, conversionBlocks, constraintSpaceBlocks, decisionGraphBlocks, dialectRegistryBlocks, interlinguaBlocks, resourceGraphBlocks, nativeSourceBlocks, packageManifestBlocks, canvasSurfaceBlocks, applicationSurfaceBlocks, runtimeCapabilityBlocks, targetProjectionTargets });
+  const metadata = createParsedMetadata({ proofBlocks, paradigmBlocks, operationBlocks, semanticEditBlocks, conversionBlocks, constraintSpaceBlocks, decisionGraphBlocks, gateAdmissionEvidenceBlocks, dialectRegistryBlocks, interlinguaBlocks, resourceGraphBlocks, nativeSourceBlocks, packageManifestBlocks, canvasSurfaceBlocks, applicationSurfaceBlocks, runtimeCapabilityBlocks, targetProjectionTargets });
   return createDocument({ id: documentId, name: documentName, nodes, ...(metadata ? { metadata } : {}) });
 }
 

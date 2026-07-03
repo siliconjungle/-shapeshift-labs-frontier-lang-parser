@@ -6,6 +6,7 @@ const interlinguaRows = words('layer constraint edge obligation proofObligation 
 const packageRows = words('metadata dependency script export gap proofGap evidence proofEvidence');
 const runtimeRows = words('host runtimeHost hostProfile sourceHost targetHost capability hostCapability hostBinding binding requirement runtimeRequirement requiredRuntime evidence proofEvidence gap proofGap');
 const semanticEditRows = words('script semanticEditScript projection semanticEditProjection replay semanticEditReplay');
+const gateAdmissionRows = words('gate evidence proofEvidence admission admissionDecision gap proofGap');
 
 export const ROW_SYNTAX_CONFIG = Object.freeze({
   interlingua: rowConfig('interlinguaRow', 'interlingua_row', interlinguaRows, normalizeInterlinguaRow),
@@ -32,6 +33,9 @@ export const ROW_SYNTAX_CONFIG = Object.freeze({
   possibilitySpace: rowConfig('constraintSpaceRow', 'constraint_space_row', constraintRows, normalizeConstraintSpaceRow),
   decisionGraph: rowConfig('decisionGraphRow', 'decision_graph_row', words('node edge chunk gate evidence semanticChange change patchEvent patch admissionDecision admission candidateDecision candidate mergeDecision merge replay tournament tournamentCandidate panelProjection panel rsiLoop improvementFeedback feedback'), normalizeDecisionGraphRow),
   admissionGraph: rowConfig('decisionGraphRow', 'decision_graph_row', words('node edge chunk gate evidence semanticChange change patchEvent patch admissionDecision admission candidateDecision candidate mergeDecision merge replay tournament tournamentCandidate panelProjection panel rsiLoop improvementFeedback feedback'), normalizeDecisionGraphRow),
+  gateEvidence: rowConfig('gateAdmissionEvidenceRow', 'gate_admission_evidence_row', gateAdmissionRows, normalizeGateAdmissionRow),
+  admissionEvidence: rowConfig('gateAdmissionEvidenceRow', 'gate_admission_evidence_row', gateAdmissionRows, normalizeGateAdmissionRow),
+  routeEvidence: rowConfig('gateAdmissionEvidenceRow', 'gate_admission_evidence_row', gateAdmissionRows, normalizeGateAdmissionRow),
   operations: rowConfig('semanticOperationRow', 'semantic_operation_row', words('operation op'), normalizeOperationRow),
   semanticOperations: rowConfig('semanticOperationRow', 'semantic_operation_row', words('operation op'), normalizeOperationRow),
   semanticEdits: rowConfig('semanticEditRecordRow', 'semantic_edit_record_row', semanticEditRows, normalizeSemanticEditRow),
@@ -125,6 +129,13 @@ function normalizeSemanticEditRow(rowKind) {
   if (rowKind === 'semanticEditScript') return 'script';
   if (rowKind === 'semanticEditProjection') return 'projection';
   if (rowKind === 'semanticEditReplay') return 'replay';
+  return rowKind;
+}
+
+function normalizeGateAdmissionRow(rowKind) {
+  if (rowKind === 'proofEvidence') return 'evidence';
+  if (rowKind === 'admissionDecision') return 'admission';
+  if (rowKind === 'gap') return 'proofGap';
   return rowKind;
 }
 
