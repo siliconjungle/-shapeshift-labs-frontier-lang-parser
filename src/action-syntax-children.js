@@ -1,12 +1,14 @@
 import { parseActionValue } from './action-expression.js';
 import { readElseHeaderBlock } from './action-else-block.js';
+import { findActionMatchingBrace, readActionNestedBlocks, skipActionWhitespaceAndComments } from './action-source-blocks.js';
+import { readMatchBranchBlock, readMatchHeaderBlock, validateActionMatchBranchHeader, validateActionMatchHeader } from './action-match-block.js';
 
-const ACTION_BODY_ROWS = new Set(['set', 'insert', 'remove', 'merge', 'callEffect', 'return', 'if', 'let']);
+const ACTION_BODY_ROWS = new Set(['set', 'insert', 'remove', 'merge', 'callEffect', 'return', 'if', 'let', 'match']);
 
 export function readActionSyntaxChildren(source, block, options) {
   const body = source.slice(block.bodyStartOffset, block.bodyEndOffset);
-  const bodyBlocks = readNestedBodyBlocks('body', body);
-  const state = { rowIndex: 0 };
+  const bodyBlocks = readActionNestedBlocks('body', body);
+  const state = { rowIndex: 0, rowKinds: new Map() };
   const children = [];
   for (const bodyBlock of bodyBlocks) {
     const bodyStartOffset = block.bodyStartOffset + bodyBlock.bodyStart;
@@ -20,12 +22,20 @@ function readActionSyntaxRows(source, block, options, state, startOffset, endOff
   const children = [];
   let offset = startOffset;
   while (offset < endOffset) {
-    offset = skipWhitespaceAndLineComments(source, offset, endOffset);
+    offset = skipActionWhitespaceAndComments(source, offset, endOffset);
     if (offset >= endOffset) break;
+    const matchBlock = readMatchHeaderBlock(source, offset, endOffset);
+    if (matchBlock) {
+      const child = actionSyntaxChild(source, block, options, { text: source.slice(offset, matchBlock.open + 1).trim(), startOffset: offset, endOffset: matchBlock.open + 1 }, state, parentActionBodyId);
+      children.push(child);
+      if (child.recognized) children.push(...readActionSyntaxRows(source, block, options, state, matchBlock.open + 1, matchBlock.close, child.id));
+      offset = matchBlock.end;
+      continue;
+    }
     const ifHeader = /^if\b([^{\n]*)\{/.exec(source.slice(offset, endOffset));
     if (ifHeader) {
       const open = offset + ifHeader[0].length - 1;
-      const close = findMatchingBrace(source, open);
+      const close = findActionMatchingBrace(source, open);
       if (close < 0 || close > endOffset) break;
       const child = actionSyntaxChild(source, block, options, {
         text: source.slice(offset, open + 1).trim(),
@@ -34,7 +44,7 @@ function readActionSyntaxRows(source, block, options, state, startOffset, endOff
       }, state, parentActionBodyId);
       children.push(child);
       children.push(...readActionSyntaxRows(source, block, options, state, open + 1, close, child.id));
-      const elseBlock = readElseHeaderBlock(source, close + 1, endOffset, { skipWhitespace: skipWhitespaceAndLineComments, findMatchingBrace });
+      const elseBlock = readElseHeaderBlock(source, close + 1, endOffset, { skipWhitespace: skipActionWhitespaceAndComments, findMatchingBrace: findActionMatchingBrace });
       if (elseBlock) {
         let branch = elseBlock, parentId = child.id;
         while (branch) {
@@ -50,7 +60,19 @@ function readActionSyntaxRows(source, block, options, state, startOffset, endOff
       offset = close + 1;
       continue;
     }
-    const elseBlock = readElseHeaderBlock(source, offset, endOffset, { skipWhitespace: skipWhitespaceAndLineComments, findMatchingBrace });
+    const branchBlock = readMatchBranchBlock(source, offset, endOffset);
+    if (branchBlock) {
+      const parentKind = state.rowKinds.get(parentActionBodyId);
+      const validation = parentKind === 'match'
+        ? validateActionMatchBranchHeader(branchBlock.kind, source.slice(branchBlock.start, branchBlock.open + 1).trim())
+        : { ok: false, reason: 'unsupported-action-body-row' };
+      const child = actionSyntaxChild(source, block, options, { text: source.slice(branchBlock.start, branchBlock.open + 1).trim(), startOffset: branchBlock.start, endOffset: branchBlock.open + 1 }, state, parentActionBodyId, { recognized: validation.ok, reason: validation.reason });
+      children.push(child);
+      if (child.recognized) children.push(...readActionSyntaxRows(source, block, options, state, branchBlock.open + 1, branchBlock.close, child.id));
+      offset = branchBlock.end;
+      continue;
+    }
+    const elseBlock = readElseHeaderBlock(source, offset, endOffset, { skipWhitespace: skipActionWhitespaceAndComments, findMatchingBrace: findActionMatchingBrace });
     if (elseBlock) {
       children.push(actionSyntaxChild(source, block, options, {
         text: source.slice(elseBlock.start, elseBlock.open + 1).trim(),
@@ -84,7 +106,7 @@ function actionSyntaxChild(source, block, options, line, state, parentActionBody
   const rest = row?.[2]?.startsWith('@') ? ` ${row[2]}${row[3] ?? ''}` : (row?.[3] ?? '');
   const validation = validateActionRow(rowKind, row?.[2], rest, line.text);
   const recognized = overrides.recognized ?? (ACTION_BODY_ROWS.has(rowKind) && validation.ok);
-  return cleanRecord({
+  const child = cleanRecord({
     kind: recognized ? 'actionBodyRow' : 'actionUnknownRow',
     rowKind,
     normalizedRowKind: recognized ? rowKind : 'unknown',
@@ -102,8 +124,10 @@ function actionSyntaxChild(source, block, options, line, state, parentActionBody
     parentActionBodyId,
     sourceSpan: sourceSpan(source, block, line.startOffset, line.endOffset, options),
     recognized,
-    reason: recognized ? undefined : validation.reason
+    reason: recognized ? undefined : overrides.reason ?? validation.reason
   });
+  state.rowKinds?.set(child.id, child.rowKind);
+  return child;
 }
 
 function actionRowName(rowKind, rawName, rowIndex) {
@@ -116,6 +140,7 @@ function actionRowName(rowKind, rawName, rowIndex) {
 function validateActionRow(rowKind, rawName, rest, header) {
   if (!ACTION_BODY_ROWS.has(rowKind)) return { ok: false, reason: 'unsupported-action-body-row' };
   if (rowKind === 'if') return validateActionExpressionText(readIfCondition(header), { comparisonType: readInlineComparisonType(header), callType: readInlineCallType(header) });
+  if (rowKind === 'match') return validateActionMatchHeader(header);
   if (rowKind === 'set' || rowKind === 'insert' || rowKind === 'merge') {
     if (!readInlineWord('path', rest)) return { ok: false, reason: 'missing-action-path' };
     return validateActionExpressionText(readInlineValue('value', rest), { valueType: readInlineType(rest), comparisonType: readInlineComparisonType(rest), callType: readInlineCallType(rest) });
@@ -208,90 +233,6 @@ function isActionExpressionAdmissionReason(reason) {
     || reason === 'unsupported-action-expression-ref'
     || reason === 'malformed-action-expression'
     || reason === 'missing-action-expression';
-}
-
-function readNestedBodyBlocks(kind, source) {
-  const blocks = [];
-  const header = new RegExp('\\b' + kind.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:\\s+([^{}\\n]+?))?\\s*\\{', 'g');
-  let match;
-  while ((match = header.exec(source))) {
-    const open = header.lastIndex - 1;
-    const close = findMatchingBrace(source, open);
-    if (close < 0) continue;
-    blocks.push({
-      header: (match[1] ?? '').trim(),
-      start: match.index,
-      bodyStart: open + 1,
-      bodyEnd: close,
-      end: close + 1
-    });
-    header.lastIndex = close + 1;
-  }
-  return blocks;
-}
-
-function skipWhitespaceAndLineComments(source, offset, endOffset) {
-  let index = offset;
-  while (index < endOffset) {
-    while (index < endOffset && /\s/.test(source[index])) index++;
-    if (source[index] !== '#') return index;
-    const lineEnd = source.indexOf('\n', index);
-    index = lineEnd < 0 || lineEnd > endOffset ? endOffset : lineEnd + 1;
-  }
-  return index;
-}
-
-function findMatchingBrace(source, open) {
-  let depth = 0;
-  let state = 'code';
-  let quote = '';
-  for (let index = open; index < source.length; index++) {
-    const char = source[index];
-    const next = source[index + 1];
-    if (state === 'line-comment') {
-      if (char === '\n') state = 'code';
-      continue;
-    }
-    if (state === 'block-comment') {
-      if (char === '*' && next === '/') {
-        index++;
-        state = 'code';
-      }
-      continue;
-    }
-    if (state === 'string') {
-      if (char === '\\') {
-        index++;
-        continue;
-      }
-      if (char === quote) {
-        state = 'code';
-        quote = '';
-      }
-      continue;
-    }
-    if (char === '/' && next === '/') {
-      index++;
-      state = 'line-comment';
-      continue;
-    }
-    if (char === '/' && next === '*') {
-      index++;
-      state = 'block-comment';
-      continue;
-    }
-    if (char === '"' || char === "'" || char === '`') {
-      state = 'string';
-      quote = char;
-      continue;
-    }
-    if (char === '{') depth++;
-    if (char === '}') {
-      depth--;
-      if (depth === 0) return index;
-    }
-  }
-  return -1;
 }
 
 function sourcePosition(source, offset) {

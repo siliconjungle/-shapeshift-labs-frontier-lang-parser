@@ -1,6 +1,16 @@
 import { readFrontierNestedBlocks } from './source-syntax-report.js';
 import { readActionValue } from './action-expression.js';
 import { readElseHeaderBlock } from './action-else-block.js';
+import { findActionMatchingBrace, skipActionWhitespaceAndComments } from './action-source-blocks.js';
+import {
+  readActionMatchCaseHeader,
+  readActionMatchDefaultHeader,
+  readActionMatchHeader,
+  readMatchBranchBlock,
+  readMatchBranchBlocks,
+  readMatchHeaderBlock,
+  validateActionMatchBranchHeader
+} from './action-match-block.js';
 
 export function readActionBodyRecords(body) {
   const records = [];
@@ -21,23 +31,31 @@ function parseActionBodyRecords(source, state) {
   const records = [];
   let offset = 0;
   while (offset < source.length) {
-    offset = skipWhitespaceAndComments(source, offset);
+    offset = skipActionWhitespaceAndComments(source, offset);
     if (offset >= source.length) break;
+    const matchBlock = readMatchHeaderBlock(source, offset, source.length);
+    if (matchBlock) {
+      const record = parseActionMatchBlock(matchBlock.header, matchBlock.body, state.index++, state);
+      if (record) records.push(record);
+      offset = matchBlock.end;
+      continue;
+    }
     const ifHeader = /^if\b([^{\n]*)\{/.exec(source.slice(offset));
     if (ifHeader) {
       const open = offset + ifHeader[0].length - 1;
-      const close = findMatchingBrace(source, open);
+      const close = findActionMatchingBrace(source, open);
       if (close < 0) break;
-      const elseBlock = readElseHeaderBlock(source, close + 1, source.length, { skipWhitespace: skipWhitespaceAndComments, findMatchingBrace });
+      const elseBlock = readElseHeaderBlock(source, close + 1, source.length, { skipWhitespace: skipActionWhitespaceAndComments, findMatchingBrace: findActionMatchingBrace });
       const index = state.index++;
       const record = parseActionIfBlock(ifHeader[1].trim(), source.slice(open + 1, close), index, state, elseBlock);
       if (record) records.push(record);
       offset = elseBlock ? elseBlock.end : close + 1;
       continue;
     }
-    const elseBlock = readElseHeaderBlock(source, offset, source.length, { skipWhitespace: skipWhitespaceAndComments, findMatchingBrace });
-    if (elseBlock) {
-      offset = elseBlock.end;
+    const branchBlock = readMatchBranchBlock(source, offset, source.length);
+    const elseBlock = readElseHeaderBlock(source, offset, source.length, { skipWhitespace: skipActionWhitespaceAndComments, findMatchingBrace: findActionMatchingBrace });
+    if (branchBlock || elseBlock) {
+      offset = branchBlock?.end ?? elseBlock.end;
       continue;
     }
     const lineEnd = source.indexOf('\n', offset);
@@ -50,6 +68,42 @@ function parseActionBodyRecords(source, state) {
     offset = end + 1;
   }
   return records;
+}
+
+function parseActionMatchBlock(header, body, index, state) {
+  const details = readActionMatchHeader(header, index);
+  if (!details.value) return undefined;
+  const branches = readMatchBranchBlocks(body, 0, body.length);
+  const cases = [];
+  let defaultRecord;
+  for (const branch of branches) {
+    const branchIndex = state.index++;
+    if (branch.kind === 'case') {
+      const validation = validateActionMatchBranchHeader('case', branch.header);
+      const caseDetails = readActionMatchCaseHeader(branch.header, branchIndex);
+      const { valueText: _valueText, ...caseRecord } = caseDetails;
+      if (validation.ok) cases.push({ ...caseRecord, body: parseActionBodyRecords(branch.body, state) });
+      continue;
+    }
+    if (!defaultRecord) {
+      const defaultDetails = readActionMatchDefaultHeader(branch.header, branchIndex);
+      defaultRecord = { ...defaultDetails, body: parseActionBodyRecords(branch.body, state) };
+    }
+  }
+  if (!cases.length) return undefined;
+  return compactRecord({
+    kind: 'match',
+    id: details.id,
+    name: details.name,
+    valueType: details.valueType,
+    comparisonType: details.comparisonType,
+    callType: details.callType,
+    value: details.value,
+    cases,
+    defaultId: defaultRecord?.id,
+    defaultName: defaultRecord?.name,
+    defaultBody: defaultRecord?.body
+  });
 }
 
 function parseActionIfBlock(header, body, index, state, elseBlock) {
@@ -169,70 +223,6 @@ function readReturnDetails(rawName, rest) {
     comparisonType,
     callType
   };
-}
-
-function skipWhitespaceAndComments(source, offset) {
-  let index = offset;
-  while (index < source.length) {
-    while (index < source.length && /\s/.test(source[index])) index++;
-    if (source[index] !== '#') return index;
-    const lineEnd = source.indexOf('\n', index);
-    index = lineEnd < 0 ? source.length : lineEnd + 1;
-  }
-  return index;
-}
-
-function findMatchingBrace(source, open) {
-  let depth = 0;
-  let state = 'code';
-  let quote = '';
-  for (let index = open; index < source.length; index++) {
-    const char = source[index];
-    const next = source[index + 1];
-    if (state === 'line-comment') {
-      if (char === '\n') state = 'code';
-      continue;
-    }
-    if (state === 'block-comment') {
-      if (char === '*' && next === '/') {
-        index++;
-        state = 'code';
-      }
-      continue;
-    }
-    if (state === 'string') {
-      if (char === '\\') {
-        index++;
-        continue;
-      }
-      if (char === quote) {
-        state = 'code';
-        quote = '';
-      }
-      continue;
-    }
-    if (char === '/' && next === '/') {
-      index++;
-      state = 'line-comment';
-      continue;
-    }
-    if (char === '/' && next === '*') {
-      index++;
-      state = 'block-comment';
-      continue;
-    }
-    if (char === '"' || char === "'" || char === '`') {
-      state = 'string';
-      quote = char;
-      continue;
-    }
-    if (char === '{') depth++;
-    if (char === '}') {
-      depth--;
-      if (depth === 0) return index;
-    }
-  }
-  return -1;
 }
 
 function readInlineActionValue(label, text, options = {}) {
