@@ -208,3 +208,44 @@ assert.equal(rowChild('possibility_projection', 'possibility_hard_identity').nor
 assert.equal(rowChild('native_source_ts', 'native_source_map_api').normalizedRowKind, 'sourceMap');
 assert.equal(rowChild('native_source_ts', 'native_candidate_display').normalizedRowKind, 'mergeCandidate');
 assert.equal(rowChild('operations_edit', 'operation_extract').normalizedRowKind, 'operation');
+
+const duplicateGenericRowSource = `module DuplicateGenericRowProbe @id("mod_duplicate_generic_row_probe") {
+packageManifest Package @id("package_manifest_duplicate_rows") {
+  dependency react @id("package_dependency_react") range ^19
+  dependency react @id("package_dependency_react_duplicate_name") range ^20
+  script build @id("package_dependency_react") command vite
+}
+canvasSurface Canvas @id("canvas_surface_duplicate_rows") {
+  command fill @id("canvas_command_fill") category draw
+  state fill @id("canvas_state_fill") category state
+  command stroke @id("canvas_command_fill") category draw
+}
+runtimeCapabilities Runtime @id("runtime_duplicate_rows") {
+  host browser @id("runtime_host_browser") kind browser
+  host browser @id("runtime_host_browser_duplicate_name") kind browser
+}
+}`;
+
+const duplicateGenericRowReport = inspectFrontierSourceSyntax(duplicateGenericRowSource);
+assert.equal(duplicateGenericRowReport.summary.failClosed, true);
+assert.equal(duplicateGenericRowReport.summary.unknownChildCount, 2);
+assert.deepEqual(
+  duplicateGenericRowReport.unknownChildren.map((child) => child.reason),
+  ['duplicate-generic-row-id', 'duplicate-generic-row-id']
+);
+assert.equal(
+  duplicateGenericRowReport
+    .recognizedBlocks
+    .find((block) => block.id === 'package_manifest_duplicate_rows')
+    .children
+    .some((child) => child.id === 'package_dependency_react_duplicate_name' && child.recognized),
+  true
+);
+assert.equal(
+  duplicateGenericRowReport
+    .recognizedBlocks
+    .find((block) => block.id === 'runtime_duplicate_rows')
+    .children
+    .some((child) => child.id === 'runtime_host_browser_duplicate_name' && child.recognized),
+  true
+);

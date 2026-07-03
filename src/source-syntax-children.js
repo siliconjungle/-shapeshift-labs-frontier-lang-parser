@@ -222,6 +222,7 @@ function conversionChild(source, block, options, line, child) {
 
 function readGenericRowSyntaxChildren(source, block, options, config) {
   const children = [];
+  const seenIds = new Set();
   const rowPattern = new RegExp('^([A-Za-z_$][\\w$-]*)\\s+' + ROW_NAME_PATTERN + '(.*)$');
   for (const line of readBodyLines(source, block)) {
     if (!line.text || line.text.startsWith('#')) continue;
@@ -230,12 +231,22 @@ function readGenericRowSyntaxChildren(source, block, options, config) {
     const [, rowKind, name, rest] = row;
     if (!config.rowKinds.has(rowKind)) continue;
     const normalizedRowKind = config.normalize?.(rowKind) ?? rowKind;
+    const id = idFrom(rest, `${config.idPrefix}_${safeId(normalizedRowKind)}_${safeId(name)}`);
+    let recognized = true;
+    let reason;
+    if (seenIds.has(id)) {
+      recognized = false;
+      reason = 'duplicate-generic-row-id';
+    }
+    if (recognized) {
+      seenIds.add(id);
+    }
     children.push(cleanRecord({
       kind: config.childKind,
       rowKind,
       normalizedRowKind,
       name,
-      id: idFrom(rest, `${config.idPrefix}_${safeId(normalizedRowKind)}_${safeId(name)}`),
+      id,
       header: line.text,
       startOffset: line.startOffset,
       endOffset: line.endOffset,
@@ -246,7 +257,8 @@ function readGenericRowSyntaxChildren(source, block, options, config) {
       moduleId: block.moduleId,
       moduleName: block.moduleName,
       sourceSpan: sourceSpan(source, block, line.startOffset, line.endOffset, options),
-      recognized: true
+      recognized,
+      reason
     }));
   }
   return children;
