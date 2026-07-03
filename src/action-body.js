@@ -1,6 +1,7 @@
 import { readFrontierNestedBlocks } from './source-syntax-report.js';
 import { readActionValue } from './action-expression.js';
 import { readElseHeaderBlock } from './action-else-block.js';
+import { readActionForInHeader, readForInHeaderBlock, validateActionForInHeader } from './action-for-in-block.js';
 import { findActionMatchingBrace, skipActionWhitespaceAndComments } from './action-source-blocks.js';
 import {
   readActionMatchCaseHeader,
@@ -33,6 +34,13 @@ function parseActionBodyRecords(source, state) {
   while (offset < source.length) {
     offset = skipActionWhitespaceAndComments(source, offset);
     if (offset >= source.length) break;
+    const forBlock = readForInHeaderBlock(source, offset, source.length);
+    if (forBlock) {
+      const record = parseActionForInBlock(forBlock.header, forBlock.body, state.index++, state);
+      if (record) records.push(record);
+      offset = forBlock.end;
+      continue;
+    }
     const matchBlock = readMatchHeaderBlock(source, offset, source.length);
     if (matchBlock) {
       const record = parseActionMatchBlock(matchBlock.header, matchBlock.body, state.index++, state);
@@ -68,6 +76,20 @@ function parseActionBodyRecords(source, state) {
     offset = end + 1;
   }
   return records;
+}
+
+function parseActionForInBlock(header, body, index, state) {
+  const validation = validateActionForInHeader(header);
+  if (!validation.ok) return undefined;
+  const details = readActionForInHeader(header, index);
+  return compactRecord({
+    kind: 'forIn',
+    id: details.id,
+    name: details.name,
+    itemName: details.itemName,
+    collection: details.collection,
+    body: parseActionBodyRecords(body, state)
+  });
 }
 
 function parseActionMatchBlock(header, body, index, state) {
