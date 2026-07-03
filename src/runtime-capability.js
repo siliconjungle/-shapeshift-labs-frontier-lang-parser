@@ -1,4 +1,5 @@
 import { hashSemanticValue } from '@shapeshift-labs/frontier-lang-kernel';
+import { createRowIdentityTracker } from './row-identity.js';
 import {
   cleanRecord,
   hostIds,
@@ -21,6 +22,7 @@ import {
 
 export function parseRuntimeCapabilityBlock(block) {
   const name = nameFrom(block.header);
+  const rowIdentity = createRowIdentityTracker();
   const matrix = {
     kind: 'frontier.lang.authoredRuntimeCapabilityMatrixInput',
     version: 1,
@@ -34,6 +36,7 @@ export function parseRuntimeCapabilityBlock(block) {
     runtimeRequirements: [],
     evidence: [],
     proofGaps: [],
+    parser: { status: 'authored', errors: rowIdentity.errors },
     claims: runtimeFalseClaims(),
     metadata: { authoredName: name, authoredBlockKind: block.kind }
   };
@@ -46,26 +49,35 @@ export function parseRuntimeCapabilityBlock(block) {
     if (!match) continue;
     const [, rowKind, rowName, rest] = match;
     if (rowKind === 'gap' || rowKind === 'proofGap') {
-      matrix.proofGaps.push(runtimeProofGap(rowName, rest));
+      rowIdentity.push(matrix.proofGaps, runtimeProofGap(rowName, rest), { rowKind, normalizedRowKind: 'proofGap', name: rowName });
       continue;
     }
     if (rowKind === 'evidence' || rowKind === 'proofEvidence') {
-      matrix.evidence.push(runtimeEvidence(rowName, rest));
+      rowIdentity.push(matrix.evidence, runtimeEvidence(rowName, rest), { rowKind, normalizedRowKind: 'evidence', name: rowName });
       continue;
     }
     if (rowKind === 'requirement' || rowKind === 'runtimeRequirement' || rowKind === 'requiredRuntime') {
-      matrix.runtimeRequirements.push(runtimeRequirement(rowName, rest));
+      rowIdentity.push(matrix.runtimeRequirements, runtimeRequirement(rowName, rest), { rowKind, normalizedRowKind: 'runtimeRequirement', name: rowName });
       continue;
     }
     if (rowKind === 'capability' || rowKind === 'hostCapability') {
-      attachCapability(hostMap, matrix, rowName, rest);
+      const capabilityRecord = runtimeHostCapability(rowName, rest);
+      if (capabilityRecord && rowIdentity.accept(capabilityRecord, { rowKind, normalizedRowKind: 'hostCapability', name: rowName })) {
+        attachCapability(hostMap, matrix, capabilityRecord, rest);
+      }
       continue;
     }
     if (rowKind === 'hostBinding' || rowKind === 'binding') {
-      matrix.hostBindings.push(runtimeHostBinding(rowName, rest));
+      rowIdentity.push(matrix.hostBindings, runtimeHostBinding(rowName, rest), { rowKind, normalizedRowKind: 'hostBinding', name: rowName });
       continue;
     }
     const profile = runtimeHostProfile(rowKind, rowName, rest);
+    rowIdentity.preserve(profile, {
+      rowKind,
+      normalizedRowKind: 'hostProfile',
+      name: rowName,
+      disposition: 'preserved-runtime-host-profile-upsert'
+    });
     upsertHost(hostMap, matrix, profile, rowKind);
   }
 
@@ -115,6 +127,7 @@ export function mergeRuntimeCapabilityBlocks(blocks) {
   const runtimeRequirements = uniqueRecords(blocks.flatMap((block) => block.runtimeRequirements ?? []));
   const evidence = uniqueRecords(blocks.flatMap((block) => block.evidence ?? []));
   const proofGaps = uniqueRecords(blocks.flatMap((block) => block.proofGaps ?? []));
+  const parser = { status: 'authored', errors: blocks.flatMap((block) => block.parser?.errors ?? []) };
   return {
     kind: 'frontier.lang.authoredRuntimeCapabilityMatrixInput',
     version: 1,
@@ -129,6 +142,7 @@ export function mergeRuntimeCapabilityBlocks(blocks) {
     runtimeRequirements,
     evidence,
     proofGaps,
+    parser,
     hostProfileIds: ids(hostProfiles),
     sourceHostIds: hostIds(sourceHosts),
     targetHostIds: hostIds(targetHosts),
@@ -137,7 +151,7 @@ export function mergeRuntimeCapabilityBlocks(blocks) {
     runtimeRequirementIds: ids(runtimeRequirements),
     evidenceIds: ids(evidence),
     proofGapCodes: [...new Set(proofGaps.map((gap) => gap.code).filter(Boolean))],
-    summary: summarizeRuntimeCapabilities({ hostProfiles, sourceHosts, targetHosts, hostCapabilities, hostBindings, runtimeRequirements, evidence, proofGaps }),
+    summary: summarizeRuntimeCapabilities({ hostProfiles, sourceHosts, targetHosts, hostCapabilities, hostBindings, runtimeRequirements, evidence, proofGaps, parser }),
     claims: runtimeFalseClaims(),
     metadata: { authoredRuntimeCapabilityBlockIds: ids(blocks) }
   };
@@ -177,13 +191,32 @@ function upsertHost(hostMap, matrix, profile, rowKind) {
   if (rowKind === 'targetHost' || merged.role === 'target') matrix.targetHosts.push(merged.id);
 }
 
-function attachCapability(hostMap, matrix, name, text) {
-  const hostId = readInlineWord('host', text) ?? readInlineWord('hostId', text) ?? readInlineWord('sourceHost', text) ?? readInlineWord('targetHost', text);
-  if (!hostId) return;
+function attachCapability(hostMap, matrix, capabilityRecord, text) {
+  const hostId = capabilityRecord.hostId;
   const profile = hostMap.get(hostId) ?? runtimeHostProfile('host', hostId, '');
+  const capability = capabilityRecord.capability;
+  const normalized = cleanRecord({
+    kind: capability,
+    support: capabilityRecord.support,
+    binding: capabilityRecord.binding ?? `${hostId}.${capability}`,
+    notes: readInlineList(text, 'note', 'notes'),
+    evidenceIds: capabilityRecord.evidenceIds,
+    sourcePath: capabilityRecord.sourcePath,
+    sourceHash: capabilityRecord.sourceHash
+  });
+  profile.capabilities = { ...(profile.capabilities ?? {}), [capability]: normalized };
+  hostMap.set(hostId, profile);
+  matrix.hostCapabilities.push(capabilityRecord);
+  if (readInlineFlag('source', text) || readInlineWord('role', text) === 'source') matrix.sourceHosts.push(hostId);
+  if (readInlineFlag('target', text) || readInlineWord('role', text) === 'target') matrix.targetHosts.push(hostId);
+}
+
+function runtimeHostCapability(name, text) {
+  const hostId = readInlineWord('host', text) ?? readInlineWord('hostId', text) ?? readInlineWord('sourceHost', text) ?? readInlineWord('targetHost', text);
+  if (!hostId) return undefined;
   const capability = readInlineWord('capability', text) ?? readInlineWord('kind', text) ?? name;
   const bindingId = readInlineWord('bindingId', text) ?? readInlineWord('binding', text);
-  const capabilityRecord = cleanRecord({
+  return cleanRecord({
     kind: 'frontier.lang.runtimeCapability.hostCapability',
     id: idFrom(text, `runtime_capability_${safeId(hostId)}_${safeId(capability)}`),
     name,
@@ -204,20 +237,6 @@ function attachCapability(hostMap, matrix, name, text) {
     failClosed: true,
     claims: runtimeFalseClaims()
   });
-  const normalized = cleanRecord({
-    kind: capability,
-    support: capabilityRecord.support,
-    binding: capabilityRecord.binding ?? `${hostId}.${capability}`,
-    notes: readInlineList(text, 'note', 'notes'),
-    evidenceIds: capabilityRecord.evidenceIds,
-    sourcePath: capabilityRecord.sourcePath,
-    sourceHash: capabilityRecord.sourceHash
-  });
-  profile.capabilities = { ...(profile.capabilities ?? {}), [capability]: normalized };
-  hostMap.set(hostId, profile);
-  matrix.hostCapabilities.push(capabilityRecord);
-  if (readInlineFlag('source', text) || readInlineWord('role', text) === 'source') matrix.sourceHosts.push(hostId);
-  if (readInlineFlag('target', text) || readInlineWord('role', text) === 'target') matrix.targetHosts.push(hostId);
 }
 
 function runtimeHostBinding(name, text) {

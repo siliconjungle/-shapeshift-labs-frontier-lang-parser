@@ -9,7 +9,8 @@ export function summarizeRuntimeCapabilities(matrix) {
     capabilityCount: matrix.hostProfiles.reduce((total, profile) => total + Object.keys(profile.capabilities ?? {}).length, 0),
     runtimeRequirementCount: matrix.runtimeRequirements.length,
     evidenceCount: matrix.evidence.length,
-    proofGapCount: matrix.proofGaps.length
+    proofGapCount: matrix.proofGaps.length,
+    parseErrors: matrix.parser?.errors?.length ?? 0
   };
 }
 

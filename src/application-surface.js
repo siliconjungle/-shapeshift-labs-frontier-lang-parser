@@ -1,4 +1,5 @@
 import { hashSemanticValue } from '@shapeshift-labs/frontier-lang-kernel';
+import { createRowIdentityTracker } from './row-identity.js';
 
 export function parseApplicationSurfaceBlock(block) {
   const name = nameFrom(block.header);
@@ -6,26 +7,32 @@ export function parseApplicationSurfaceBlock(block) {
   const role = readLine('role', block.body) ?? defaultRole(surfaceKind);
   const sourcePath = readLine('sourcePath', block.body) ?? readLine('path', block.body);
   const sourceHash = readLine('sourceHash', block.body);
-  const evidence = parseEvidenceRows(block.body);
+  const rowIdentity = createRowIdentityTracker();
+  const evidence = [];
   const records = [];
   const proofGaps = [];
   for (const rawLine of block.body.split('\n')) {
     const line = rawLine.trim();
     if (!line || line.startsWith('#') || isPropertyLine(line)) continue;
-    const match = /^(mount|provide|provides|required|requires|require|route|event|asset|gate|gap|proofGap)\s+([A-Za-z_$@/.*][\w$./@:*+-]*)(.*)$/.exec(line);
+    const match = /^(mount|provide|provides|required|requires|require|route|event|asset|gate|evidence|proofEvidence|gap|proofGap)\s+([A-Za-z_$@/.*][\w$./@:*+-]*)(.*)$/.exec(line);
     if (!match) continue;
     const [, rowKind, rowName, rest] = match;
-    if (rowKind === 'gap' || rowKind === 'proofGap') {
-      proofGaps.push(applicationProofGap(rowName, rest));
+    if (rowKind === 'evidence' || rowKind === 'proofEvidence') {
+      rowIdentity.push(evidence, applicationEvidence(rowName, rest), { rowKind, normalizedRowKind: 'evidence', name: rowName });
       continue;
     }
-    records.push(applicationRecord(normalizeRowKind(rowKind), rowName, rest, {
+    if (rowKind === 'gap' || rowKind === 'proofGap') {
+      rowIdentity.push(proofGaps, applicationProofGap(rowName, rest), { rowKind, normalizedRowKind: 'proofGap', name: rowName });
+      continue;
+    }
+    const normalizedRowKind = normalizeRowKind(rowKind);
+    rowIdentity.push(records, applicationRecord(normalizedRowKind, rowName, rest, {
       surfaceId: idFrom(block.header, `application_surface_${safeId(name)}`),
       surfaceName: name,
       role,
       sourcePath,
       sourceHash
-    }));
+    }), { rowKind, normalizedRowKind, name: rowName });
   }
   const allGaps = [...records.flatMap((record) => record.proofGaps ?? []), ...proofGaps];
   const tree = {
@@ -41,7 +48,7 @@ export function parseApplicationSurfaceBlock(block) {
     records,
     proofGaps: allGaps,
     evidence,
-    parser: { status: 'authored', errors: [] },
+    parser: { status: 'authored', errors: rowIdentity.errors },
     claims: applicationFalseClaims(),
     metadata: { authoredName: name, authoredBlockKind: block.kind }
   };
@@ -200,22 +207,15 @@ function applicationProofGap(name, text) {
   });
 }
 
-function parseEvidenceRows(body) {
-  const records = [];
-  for (const rawLine of body.split('\n')) {
-    const line = rawLine.trim();
-    const match = /^(?:evidence|proofEvidence)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
-    if (!match) continue;
-    records.push(cleanRecord({
-      id: idFrom(match[2], `evidence_${match[1]}`),
-      kind: readInlineWord('kind', match[2]) ?? 'note',
-      status: readInlineWord('status', match[2]) ?? 'unknown',
-      path: readInlineWord('path', match[2]),
-      summary: readInlineQuoted('summary', match[2]),
-      metadata: { name: match[1] }
-    }));
-  }
-  return records;
+function applicationEvidence(name, text) {
+  return cleanRecord({
+    id: idFrom(text, `evidence_${name}`),
+    kind: readInlineWord('kind', text) ?? 'note',
+    status: readInlineWord('status', text) ?? 'unknown',
+    path: readInlineWord('path', text),
+    summary: readInlineQuoted('summary', text),
+    metadata: { name }
+  });
 }
 
 function summarizeApplicationSurface(tree) {
@@ -280,7 +280,7 @@ function defaultRole(surfaceKind) {
 function count(records, kind) { return records.filter((record) => record.recordKind === kind).length; }
 function ids(records = []) { return records.map((record) => record?.id).filter(Boolean); }
 function idsByRecordKind(records = [], kind) { return ids(records.filter((record) => record?.recordKind === kind)); }
-function isPropertyLine(line) { return /^(role|host|hostId|sourcePath|path|sourceHash|evidence|proofEvidence)\s+/.test(line); }
+function isPropertyLine(line) { return /^(role|host|hostId|sourcePath|path|sourceHash)\s+/.test(line); }
 function idFrom(text, fallback) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(text)?.[1] ?? fallback; }
 function nameFrom(header) { return /^([A-Za-z_$][\w$-]*)/.exec(header)?.[1] ?? 'ApplicationSurface'; }
 function readLine(label, body) { return new RegExp('^\\s*' + label + '\\s+([^\\n]+)', 'm').exec(body)?.[1]?.trim(); }

@@ -1,3 +1,5 @@
+import { createRowIdentityTracker } from './row-identity.js';
+
 const GROUPS = {
   resource: 'resources',
   owner: 'owners',
@@ -16,6 +18,7 @@ const GROUPS = {
 
 export function parseResourceGraphBlock(block) {
   const name = nameFrom(block.header);
+  const rowIdentity = createRowIdentityTracker();
   const graph = {
     kind: 'frontier.lang.semanticResourceGraph',
     version: 1,
@@ -40,6 +43,7 @@ export function parseResourceGraphBlock(block) {
     unsafeBoundaries: [],
     conflicts: [],
     proofObligations: [],
+    parser: { status: 'authored', errors: rowIdentity.errors },
     claims: {
       borrowCheckerClaim: false,
       aliasSafetyClaim: false,
@@ -59,7 +63,7 @@ export function parseResourceGraphBlock(block) {
     const normalized = normalizeRowKind(rowKind);
     const record = parseResourceRecord(normalized, rowName, rest, graph);
     const group = GROUPS[normalized];
-    if (record && group) graph[group].push(record);
+    if (record && group) rowIdentity.push(graph[group], record, { rowKind, normalizedRowKind: normalized, name: rowName });
   }
 
   graph.outlives = graph.lifetimeRelations;
@@ -133,6 +137,7 @@ function summarize(graph) {
     conflicts: graph.conflicts.length,
     proofObligations: graph.proofObligations.length,
     unsafeBoundariesWithoutProof: graph.unsafeBoundaries.filter((record) => record.proofStatus !== 'passed').length,
+    parseErrors: graph.parser?.errors?.length ?? 0,
     reasonCodes: unique(graph.conflicts.map((record) => record.reasonCode))
   };
 }

@@ -1,24 +1,30 @@
 import { hashSemanticValue } from '@shapeshift-labs/frontier-lang-kernel';
+import { createRowIdentityTracker } from './row-identity.js';
 
 export function parsePackageManifestBlock(block) {
   const name = nameFrom(block.header);
   const sourcePath = readLine('sourcePath', block.body) ?? readLine('path', block.body) ?? 'package.json';
   const sourceHash = readLine('sourceHash', block.body);
-  const evidence = parseEvidenceRows(block.body);
+  const rowIdentity = createRowIdentityTracker();
+  const evidence = [];
   const records = [];
   const proofGaps = [];
   for (const rawLine of block.body.split('\n')) {
     const line = rawLine.trim();
     if (!line || line.startsWith('#') || isPropertyLine(line)) continue;
-    const match = /^(metadata|dependency|script|export|gap|proofGap)\s+([A-Za-z_$.*@/][\w$./@*-]*)(.*)$/.exec(line);
+    const match = /^(metadata|dependency|script|export|evidence|proofEvidence|gap|proofGap)\s+([A-Za-z_$.*@/][\w$./@*-]*)(.*)$/.exec(line);
     if (!match) continue;
     const [, rowKind, rowName, rest] = match;
+    if (rowKind === 'evidence' || rowKind === 'proofEvidence') {
+      rowIdentity.push(evidence, packageEvidence(rowName, rest), { rowKind, normalizedRowKind: 'evidence', name: rowName });
+      continue;
+    }
     if (rowKind === 'gap' || rowKind === 'proofGap') {
-      proofGaps.push(packageProofGap(rowName, rest));
+      rowIdentity.push(proofGaps, packageProofGap(rowName, rest), { rowKind, normalizedRowKind: 'proofGap', name: rowName });
       continue;
     }
     const record = packageRecord(rowKind, rowName, rest, { sourcePath, sourceHash, evidence });
-    if (record) records.push(record);
+    rowIdentity.push(records, record, { rowKind, normalizedRowKind: rowKind, name: rowName });
   }
   const recordGaps = records.flatMap((record) => record.proofGaps ?? []);
   const allGaps = [...recordGaps, ...proofGaps];
@@ -33,7 +39,7 @@ export function parsePackageManifestBlock(block) {
     records,
     proofGaps: allGaps,
     evidence,
-    parser: { status: 'authored', errors: [] },
+    parser: { status: 'authored', errors: rowIdentity.errors },
     claims: {
       autoMergeClaim: false,
       semanticEquivalenceClaim: false,
@@ -99,22 +105,15 @@ function packageProofGap(name, text) {
   });
 }
 
-function parseEvidenceRows(body) {
-  const records = [];
-  for (const rawLine of body.split('\n')) {
-    const line = rawLine.trim();
-    const match = /^(?:evidence|proofEvidence)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
-    if (!match) continue;
-    records.push(cleanRecord({
-      id: idFrom(match[2], `evidence_${match[1]}`),
-      kind: readInlineWord('kind', match[2]) ?? 'note',
-      status: readInlineWord('status', match[2]) ?? 'unknown',
-      path: readInlineWord('path', match[2]),
-      summary: readInlineQuoted('summary', match[2]),
-      metadata: { name: match[1] }
-    }));
-  }
-  return records;
+function packageEvidence(name, text) {
+  return cleanRecord({
+    id: idFrom(text, `evidence_${name}`),
+    kind: readInlineWord('kind', text) ?? 'note',
+    status: readInlineWord('status', text) ?? 'unknown',
+    path: readInlineWord('path', text),
+    summary: readInlineQuoted('summary', text),
+    metadata: { name }
+  });
 }
 
 function summarizePackageManifest(tree) {
@@ -133,7 +132,7 @@ function hashableRecord(record) {
 }
 
 function isPropertyLine(line) {
-  return /^(sourcePath|path|sourceHash|packageManager|evidence|proofEvidence)\s+/.test(line);
+  return /^(sourcePath|path|sourceHash|packageManager)\s+/.test(line);
 }
 
 function idFrom(text, fallback) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(text)?.[1] ?? fallback; }
