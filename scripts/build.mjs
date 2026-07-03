@@ -23,6 +23,7 @@ await copyFile("src/runtime-capability-records.js", "dist/runtime-capability-rec
 await copyFile("src/source-block-kinds.js", "dist/source-block-kinds.js");
 await copyFile("src/source-evidence.js", "dist/source-evidence.js");
 await copyFile("src/source-syntax-children.js", "dist/source-syntax-children.js");
+await copyFile("src/source-syntax-row-config.js", "dist/source-syntax-row-config.js");
 await copyFile("src/source-syntax-report.js", "dist/source-syntax-report.js");
 await copyFile("src/target-projection.js", "dist/target-projection.js");
 await copyFile("src/target-projection-aggregate.js", "dist/target-projection-aggregate.js");

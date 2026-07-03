@@ -1,8 +1,14 @@
+import { ROW_SYNTAX_CONFIG } from './source-syntax-row-config.js';
+
+const ROW_NAME_PATTERN = '([A-Za-z_$@./:*+-][\\w$./@:*+-]*)';
+
 export function readSourceSyntaxChildren(source, block, options = {}) {
   if (block.malformed) return [];
   if (block.kind === 'conversion' || block.kind === 'universalConversionPlan') {
     return readConversionSyntaxChildren(source, block, options);
   }
+  const rowConfig = ROW_SYNTAX_CONFIG[block.kind];
+  if (rowConfig) return readGenericRowSyntaxChildren(source, block, options, rowConfig);
   return [];
 }
 
@@ -19,6 +25,38 @@ function readConversionSyntaxChildren(source, block, options) {
       id: idFrom(rest, `conversion_constraint_${family}_${name}`),
       family,
       role: readInlineWord('role', rest) ?? 'source',
+      header: line.text,
+      startOffset: line.startOffset,
+      endOffset: line.endOffset,
+      location: sourcePosition(source, line.startOffset),
+      parentKind: block.kind,
+      parentId: block.id,
+      parentName: block.name,
+      moduleId: block.moduleId,
+      moduleName: block.moduleName,
+      sourceSpan: sourceSpan(source, block, line.startOffset, line.endOffset, options),
+      recognized: true
+    }));
+  }
+  return children;
+}
+
+function readGenericRowSyntaxChildren(source, block, options, config) {
+  const children = [];
+  const rowPattern = new RegExp('^([A-Za-z_$][\\w$-]*)\\s+' + ROW_NAME_PATTERN + '(.*)$');
+  for (const line of readBodyLines(source, block)) {
+    if (!line.text || line.text.startsWith('#')) continue;
+    const row = rowPattern.exec(line.text);
+    if (!row) continue;
+    const [, rowKind, name, rest] = row;
+    if (!config.rowKinds.has(rowKind)) continue;
+    const normalizedRowKind = config.normalize?.(rowKind) ?? rowKind;
+    children.push(cleanRecord({
+      kind: config.childKind,
+      rowKind,
+      normalizedRowKind,
+      name,
+      id: idFrom(rest, `${config.idPrefix}_${safeId(normalizedRowKind)}_${safeId(name)}`),
       header: line.text,
       startOffset: line.startOffset,
       endOffset: line.endOffset,
@@ -72,6 +110,7 @@ function sourceSpan(source, block, startOffset, endOffset, options = {}) {
 
 function idFrom(header, fallback) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(header)?.[1] ?? fallback; }
 function readInlineWord(label, text) { return new RegExp('(?:^|\\s)' + label + '\\s+([^\\s,]+)').exec(text)?.[1]?.trim(); }
+function safeId(value) { return String(value).replace(/[^A-Za-z0-9_$-]+/g, '_').replace(/^_+|_+$/g, '') || 'row'; }
 function cleanRecord(record) {
   return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined && (!Array.isArray(value) || value.length > 0)));
 }

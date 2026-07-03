@@ -97,3 +97,114 @@ assert.equal(conversionBlock.children[0].sourceSpan.path, 'conversion-syntax.fro
 assert.equal(conversionBlock.children[0].sourceSpan.sourceId, 'mod_conversion_syntax_probe');
 assert.equal(conversionBlock.children[0].sourceSpan.blockId, 'conversion_js_rust');
 assert.equal(conversionSyntaxSource.slice(conversionBlock.children[0].startOffset, conversionBlock.children[0].endOffset).startsWith('constraint type publicApi'), true);
+
+const rowSyntaxSource = `module RowSyntaxProbe @id("mod_row_syntax_probe") {
+interlingua JsToRust @id("interlingua_js_rust") {
+  layer symbols @id("interlingua_layer_symbols") kind binding
+  lowering rustAdapter @id("interlingua_lowering_rust") target rust
+  sourceLift tsAst @id("interlingua_source_lift_ts") source typescript
+}
+dialectRegistry RuntimeDialects @id("dialects_runtime") {
+  dialect nodeProcess @id("dialect_node_process") language javascript
+  extern viteRoutes @id("dialect_vite_routes") source vite
+}
+runtimeCapabilities WebRuntime @id("runtime_web") {
+  host browser @id("runtime_host_browser") kind browser
+  capability fetch @id("runtime_capability_fetch") host browser
+  proofGap layout @id("runtime_gap_layout") reason runtime-layout
+}
+resourceGraph BorrowGraph @id("resource_borrow_graph") {
+  resource todoStore @id("resource_todo_store") owner app
+  borrow todoBorrow @id("resource_borrow_todo") from todoStore
+  proof borrowProof @id("resource_proof_borrow") gate ownership
+}
+applicationSurface PluginHost @id("app_plugin_host") {
+  mount dashboard @id("app_mount_dashboard") path /dashboard
+  provide WeatherPanel @id("app_provide_weather") capability view
+  require fetch @id("app_require_fetch") capability network
+}
+target rust @id("target_rust") {
+  projection api @id("target_projection_api") kind module
+  layer ownership @id("target_layer_ownership") source resourceGraph
+}
+packageManifest Package @id("package_manifest") {
+  dependency react @id("package_dependency_react") range ^19
+  script build @id("package_script_build") command vite
+}
+canvasSurface Canvas @id("canvas_surface") {
+  element chart @id("canvas_element_chart") kind path
+  trace drawTrace @id("canvas_trace_draw") command draw
+}
+proof Safety @id("proof_safety") {
+  contract auth @id("proof_contract_auth") requires policy
+  obligation authProof @id("proof_obligation_auth") gate auth
+}
+paradigm RustLike @id("paradigm_rust_like") {
+  bindingScope root @id("paradigm_binding_root") kind lexical
+  ownership borrow @id("paradigm_ownership_borrow") model affine
+}
+operations EditOps @id("operations_edit") {
+  operation rename @id("operation_rename") kind symbol
+  op extract @id("operation_extract") kind function
+}
+nativeSource TsSource @id("native_source_ts") {
+  sourceMap apiMap @id("native_source_map_api") generated api.ts
+  candidate displayName @id("native_candidate_display") kind merge
+}
+possibilitySpace ProjectionSpace @id("possibility_projection") {
+  variable surface @id("possibility_variable_surface") domain ui
+  hard identity @id("possibility_hard_identity") kind stable
+}
+decisionGraph Admission @id("decision_admission") {
+  node patch @id("decision_node_patch") kind patch
+  admission accept @id("decision_admission_accept") result accepted
+}
+}`;
+
+const rowSyntaxReport = inspectFrontierSourceSyntax(rowSyntaxSource, { sourcePath: 'row-syntax.frontier' });
+assert.equal(rowSyntaxReport.summary.unknownBlockCount, 0);
+assert.equal(rowSyntaxReport.summary.failClosed, false);
+assert.equal(rowSyntaxReport.summary.childCount, 32);
+assert.equal(rowSyntaxReport.summary.recognizedChildCount, 32);
+for (const childKind of [
+  'interlinguaRow',
+  'dialectRegistryRow',
+  'runtimeCapabilityRow',
+  'resourceGraphRow',
+  'applicationSurfaceRow',
+  'targetProjectionRow',
+  'packageManifestRow',
+  'canvasSurfaceRow',
+  'proofRow',
+  'paradigmRow',
+  'semanticOperationRow',
+  'nativeSourceRow',
+  'constraintSpaceRow',
+  'decisionGraphRow'
+]) {
+  assert.equal(rowSyntaxReport.summary.recognizedChildKinds.includes(childKind), true, childKind);
+}
+
+function rowChild(blockId, id) {
+  const block = rowSyntaxReport.recognizedBlocks.find((candidate) => candidate.id === blockId);
+  assert.ok(block, blockId);
+  const child = block.children.find((candidate) => candidate.id === id);
+  assert.ok(child, id);
+  assert.equal(child.sourceSpan.path, 'row-syntax.frontier');
+  assert.equal(child.sourceSpan.sourceId, 'mod_row_syntax_probe');
+  assert.equal(child.sourceSpan.blockId, blockId);
+  return child;
+}
+
+assert.equal(rowSyntaxSource.slice(
+  rowChild('interlingua_js_rust', 'interlingua_layer_symbols').startOffset,
+  rowChild('interlingua_js_rust', 'interlingua_layer_symbols').endOffset
+).startsWith('layer symbols'), true);
+assert.equal(rowChild('interlingua_js_rust', 'interlingua_lowering_rust').normalizedRowKind, 'lowering');
+assert.equal(rowChild('interlingua_js_rust', 'interlingua_source_lift_ts').normalizedRowKind, 'lift');
+assert.equal(rowChild('app_plugin_host', 'app_provide_weather').normalizedRowKind, 'provided-surface');
+assert.equal(rowChild('app_plugin_host', 'app_require_fetch').normalizedRowKind, 'required-capability');
+assert.equal(rowChild('possibility_projection', 'possibility_hard_identity').normalizedRowKind, 'constraint');
+assert.equal(rowChild('native_source_ts', 'native_source_map_api').normalizedRowKind, 'sourceMap');
+assert.equal(rowChild('native_source_ts', 'native_candidate_display').normalizedRowKind, 'mergeCandidate');
+assert.equal(rowChild('operations_edit', 'operation_extract').normalizedRowKind, 'operation');

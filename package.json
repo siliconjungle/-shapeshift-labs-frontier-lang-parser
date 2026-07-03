@@ -1,6 +1,6 @@
 {
   "name": "@shapeshift-labs/frontier-lang-parser",
-  "version": "0.3.38",
+  "version": "0.3.39",
   "description": "Parser for the first Frontier Lang .frontier syntax slice.",
   "type": "module",
   "main": "./dist/index.js",
