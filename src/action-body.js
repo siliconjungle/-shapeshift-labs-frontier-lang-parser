@@ -1,4 +1,5 @@
 import { readFrontierNestedBlocks } from './source-syntax-report.js';
+import { readActionValue } from './action-expression.js';
 
 export function readActionBodyRecords(body) {
   const records = [];
@@ -27,7 +28,8 @@ function parseActionBodyRecords(source, state) {
       const close = findMatchingBrace(source, open);
       if (close < 0) break;
       const index = state.index++;
-      records.push(parseActionIfBlock(ifHeader[1].trim(), source.slice(open + 1, close), index, state));
+      const record = parseActionIfBlock(ifHeader[1].trim(), source.slice(open + 1, close), index, state);
+      if (record) records.push(record);
       offset = close + 1;
       continue;
     }
@@ -45,6 +47,7 @@ function parseActionBodyRecords(source, state) {
 
 function parseActionIfBlock(header, body, index, state) {
   const details = parseActionIfHeader(header, index);
+  if (!details.condition) return undefined;
   return compactRecord({
     kind: 'if',
     id: details.id,
@@ -74,13 +77,21 @@ function parseActionBodyLine(line, index) {
   const name = rawName && !rawName.startsWith('@') ? rawName : `${rowKind}_${index}`;
   const rest = rawName?.startsWith('@') ? ` ${rawName}${rawRest ?? ''}` : (rawRest ?? '');
   if (rowKind === 'set' || rowKind === 'insert' || rowKind === 'merge') {
-    return compactRecord({ kind: 'patch', op: rowKind, id: idFrom(rest, `action_body_${rowKind}_${name}`), name, path: readInlineWord('path', rest), value: readInlineActionValue('value', rest) });
+    const path = readInlineWord('path', rest);
+    const value = readInlineActionValue('value', rest);
+    if (!path || !value) return undefined;
+    return compactRecord({ kind: 'patch', op: rowKind, id: idFrom(rest, `action_body_${rowKind}_${name}`), name, path, value });
   }
   if (rowKind === 'remove') {
-    return compactRecord({ kind: 'patch', op: 'remove', id: idFrom(rest, `action_body_remove_${name}`), name, path: readInlineWord('path', rest) });
+    const path = readInlineWord('path', rest);
+    if (!path) return undefined;
+    return compactRecord({ kind: 'patch', op: 'remove', id: idFrom(rest, `action_body_remove_${name}`), name, path });
   }
   if (rowKind === 'callEffect') {
-    return compactRecord({ kind: 'callEffect', id: idFrom(rest, `action_body_callEffect_${name}`), name, capability: readInlineWord('capability', rest) ?? readInlineWord('effect', rest) ?? name, input: readInlineActionValue('input', rest) });
+    const inputText = readInlineValue('input', rest);
+    const input = inputText ? readActionValue(inputText) : undefined;
+    if (inputText && !input) return undefined;
+    return compactRecord({ kind: 'callEffect', id: idFrom(rest, `action_body_callEffect_${name}`), name, capability: readInlineWord('capability', rest) ?? readInlineWord('effect', rest) ?? name, input });
   }
   if (rowKind === 'let') {
     const value = readInlineActionBindingValue('value', rest);
@@ -88,8 +99,10 @@ function parseActionBodyLine(line, index) {
     return compactRecord({ kind: 'let', id: idFrom(rest, `action_body_let_${name}`), name, value });
   }
   if (rowKind === 'return') {
-    const valueText = rawName?.startsWith('@') ? rest.trim() : `${rawName ?? ''}${rest ?? ''}`.trim();
-    return compactRecord({ kind: 'return', id: idFrom(rest, `action_body_return_${index}`), value: valueText ? readActionValue(valueText) : undefined });
+    const valueText = stripIds(rawName?.startsWith('@') ? rest : `${rawName ?? ''}${rest ?? ''}`).trim();
+    const value = valueText ? readActionValue(valueText) : undefined;
+    if (valueText && !value) return undefined;
+    return compactRecord({ kind: 'return', id: idFrom(rest, `action_body_return_${index}`), value });
   }
   return undefined;
 }
@@ -159,30 +172,13 @@ function findMatchingBrace(source, open) {
 }
 
 function readInlineActionValue(label, text) {
-  const value = new RegExp('(?:^|\\s)' + label + '\\s+(.+?)(?=\\s+[A-Za-z_$][\\w$-]*\\s+|$)').exec(text)?.[1]?.trim();
+  const value = readInlineValue(label, text);
   return value ? readActionValue(value) : undefined;
 }
 
 function readInlineActionBindingValue(label, text) {
   const value = readInlineActionValue(label, text);
-  return isSupportedBindingValue(value) ? value : undefined;
-}
-
-function readActionValue(value) {
-  const text = value.trim();
-  const quoted = /^["']([^"']*)["']$/.exec(text);
-  if (quoted) return { value: quoted[1] };
-  if (text === 'true') return { value: true };
-  if (text === 'false') return { value: false };
-  if (text === 'null') return { value: null };
-  if (/^-?\d+(?:\.\d+)?$/.test(text)) return { value: Number(text) };
-  return { expression: text };
-}
-
-function isSupportedBindingValue(value) {
-  if (!value) return false;
-  if (Object.prototype.hasOwnProperty.call(value, 'value')) return true;
-  return /^[A-Za-z_$][\w$-]*(?:\.[A-Za-z_$][\w$-]*)*$/.test(String(value.expression ?? '').trim());
+  return value ?? undefined;
 }
 
 function isActionBindingName(value) {
@@ -191,5 +187,7 @@ function isActionBindingName(value) {
 
 function idFrom(header, fallback) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(header)?.[1] ?? fallback; }
 function readInlineWord(label, text) { return new RegExp('(?:^|\\s)' + label + '\\s+([^\\s,]+)').exec(text)?.[1]?.trim(); }
+function readInlineValue(label, text) { return new RegExp('(?:^|\\s)' + label + '\\s+(.+?)(?=\\s+[A-Za-z_$][\\w$-]*\\s+|$)').exec(text)?.[1]?.trim(); }
+function stripIds(text) { return String(text ?? '').replace(/@id\(\s*["'][^"']+["']\s*\)/g, '').trim(); }
 function firstIdentifier(text) { return /^([A-Za-z_$][\w$-]*)\b/.exec(text)?.[1]; }
 function compactRecord(record) { return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined && (!Array.isArray(value) || value.length > 0))); }

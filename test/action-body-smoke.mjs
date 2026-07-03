@@ -11,8 +11,9 @@ action AddTodo @id("action_add_todo") {
   throws ValidationError, StorageError
   body {
     let normalized_title @id("bind_normalized_title") value input.title
+    let can_write @id("bind_can_write") value input.enabled == true
     set title @id("patch_set_title") path /todos/title value normalized_title
-    if valid @id("guard_valid_title") condition input.enabled {
+    if valid @id("guard_valid_title") condition can_write && input.enabled {
       let status_text @id("bind_status_text") value "ready"
       set status @id("patch_set_status") path /todos/status value status_text
       callEffect persistWhenValid @id("effect_call_valid_persist") capability storage.write input input
@@ -35,48 +36,70 @@ assert.deepEqual(action.reads, ['TodoDb.todos']);
 assert.deepEqual(action.writes, ['TodoDb.todos']);
 assert.deepEqual(action.uses, ['Clock']);
 assert.deepEqual(action.throws, ['ValidationError', 'StorageError']);
-assert.equal(action.body.length, 8);
+assert.equal(action.body.length, 9);
 assert.deepEqual(action.body[0], {
   kind: 'let',
   id: 'bind_normalized_title',
   name: 'normalized_title',
-  value: { expression: 'input.title' }
+  value: { expression: 'input.title', expressionAst: { kind: 'ref', name: 'input.title', scope: 'input', path: ['title'] } }
 });
 assert.deepEqual(action.body[1], {
+  kind: 'let',
+  id: 'bind_can_write',
+  name: 'can_write',
+  value: {
+    expression: 'input.enabled == true',
+    expressionAst: {
+      kind: 'binary',
+      op: '==',
+      left: { kind: 'ref', name: 'input.enabled', scope: 'input', path: ['enabled'] },
+      right: { kind: 'literal', value: true }
+    }
+  }
+});
+assert.deepEqual(action.body[2], {
   kind: 'patch',
   op: 'set',
   id: 'patch_set_title',
   name: 'title',
   path: '/todos/title',
-  value: { expression: 'normalized_title' }
+  value: { expression: 'normalized_title', expressionAst: { kind: 'ref', name: 'normalized_title', scope: 'local', path: ['normalized_title'] } }
 });
-assert.equal(action.body[2].kind, 'if');
-assert.equal(action.body[2].id, 'guard_valid_title');
-assert.equal(action.body[2].name, 'valid');
-assert.deepEqual(action.body[2].condition, { expression: 'input.enabled' });
-assert.equal(action.body[2].body.length, 3);
-assert.deepEqual(action.body[2].body[0], {
+assert.equal(action.body[3].kind, 'if');
+assert.equal(action.body[3].id, 'guard_valid_title');
+assert.equal(action.body[3].name, 'valid');
+assert.deepEqual(action.body[3].condition, {
+  expression: 'can_write && input.enabled',
+  expressionAst: {
+    kind: 'logical',
+    op: '&&',
+    left: { kind: 'ref', name: 'can_write', scope: 'local', path: ['can_write'] },
+    right: { kind: 'ref', name: 'input.enabled', scope: 'input', path: ['enabled'] }
+  }
+});
+assert.equal(action.body[3].body.length, 3);
+assert.deepEqual(action.body[3].body[0], {
   kind: 'let',
   id: 'bind_status_text',
   name: 'status_text',
   value: { value: 'ready' }
 });
-assert.equal(action.body[2].body[1].id, 'patch_set_status');
-assert.deepEqual(action.body[2].body[1].value, { expression: 'status_text' });
-assert.equal(action.body[2].body[2].kind, 'callEffect');
-assert.equal(action.body[2].body[2].capability, 'storage.write');
-assert.deepEqual(action.body[4].value, { value: 'created' });
-assert.equal(action.body[5].op, 'remove');
-assert.equal(action.body[6].kind, 'callEffect');
-assert.equal(action.body[6].capability, 'storage.write');
-assert.deepEqual(action.body[6].input, { expression: 'input' });
-assert.equal(action.body[7].kind, 'return');
-assert.deepEqual(action.body[7].value, { expression: 'patches' });
+assert.equal(action.body[3].body[1].id, 'patch_set_status');
+assert.deepEqual(action.body[3].body[1].value, { expression: 'status_text', expressionAst: { kind: 'ref', name: 'status_text', scope: 'local', path: ['status_text'] } });
+assert.equal(action.body[3].body[2].kind, 'callEffect');
+assert.equal(action.body[3].body[2].capability, 'storage.write');
+assert.deepEqual(action.body[5].value, { value: 'created' });
+assert.equal(action.body[6].op, 'remove');
+assert.equal(action.body[7].kind, 'callEffect');
+assert.equal(action.body[7].capability, 'storage.write');
+assert.deepEqual(action.body[7].input, { expression: 'input', expressionAst: { kind: 'ref', name: 'input', scope: 'input', path: [] } });
+assert.equal(action.body[8].kind, 'return');
+assert.deepEqual(action.body[8].value, { expression: 'patches', expressionAst: { kind: 'ref', name: 'patches', scope: 'patches', path: [] } });
 
 const report = inspectFrontierSourceSyntax(source, { sourcePath: 'action-body.frontier' });
 assert.equal(report.summary.failClosed, false);
-assert.equal(report.summary.childCount, 11);
-assert.equal(report.summary.recognizedChildCount, 11);
+assert.equal(report.summary.childCount, 12);
+assert.equal(report.summary.recognizedChildCount, 12);
 assert.deepEqual(report.summary.recognizedChildKinds, ['actionBodyRow']);
 const actionBlock = report.recognizedBlocks.find((block) => block.id === 'action_add_todo');
 assert.ok(actionBlock);
@@ -134,3 +157,44 @@ action AddTodo @id("action_add_todo") {
 assert.equal(missingBindingValue.summary.failClosed, true);
 assert.equal(missingBindingValue.summary.unknownChildCount, 1);
 assert.equal(missingBindingValue.unknownChildren[0].reason, 'unsupported-action-binding-value');
+
+const unsupportedConditionSource = `module UnsupportedActionCondition @id("mod_unsupported_action_condition") {
+action AddTodo @id("action_add_todo") {
+  body {
+    if guarded @id("unsupported_action_condition") condition input.enabled === true {
+      set title @id("nested_patch") path /todos/title value input.title
+    }
+  }
+}
+}`;
+assert.equal((parseFrontierSource(unsupportedConditionSource).nodes.action_add_todo.body ?? []).length, 0);
+const unsupportedCondition = inspectFrontierSourceSyntax(unsupportedConditionSource);
+assert.equal(unsupportedCondition.summary.failClosed, true);
+assert.equal(unsupportedCondition.unknownChildren[0].id, 'unsupported_action_condition');
+assert.equal(unsupportedCondition.unknownChildren[0].reason, 'unsupported-action-expression-operator');
+
+const unsupportedPatchValueSource = `module UnsupportedActionPatchValue @id("mod_unsupported_action_patch_value") {
+action AddTodo @id("action_add_todo") {
+  body {
+    set total @id("unsupported_patch_value") path /todos/total value input.count + 1
+  }
+}
+}`;
+assert.equal((parseFrontierSource(unsupportedPatchValueSource).nodes.action_add_todo.body ?? []).length, 0);
+const unsupportedPatchValue = inspectFrontierSourceSyntax(unsupportedPatchValueSource);
+assert.equal(unsupportedPatchValue.summary.failClosed, true);
+assert.equal(unsupportedPatchValue.unknownChildren[0].id, 'unsupported_patch_value');
+assert.equal(unsupportedPatchValue.unknownChildren[0].reason, 'unsupported-action-expression-operator');
+
+const unsupportedRefSource = `module UnsupportedActionRef @id("mod_unsupported_action_ref") {
+action AddTodo @id("action_add_todo") {
+  body {
+    set enabled @id("unsupported_patch_ref") path /todos/enabled value input..enabled
+  }
+}
+}`;
+assert.equal((parseFrontierSource(unsupportedRefSource).nodes.action_add_todo.body ?? []).length, 0);
+const unsupportedRef = inspectFrontierSourceSyntax(unsupportedRefSource);
+assert.equal(unsupportedRef.summary.failClosed, true);
+assert.equal(unsupportedRef.unknownChildren[0].id, 'unsupported_patch_ref');
+assert.equal(unsupportedRef.unknownChildren[0].reason, 'unsupported-action-expression-ref');

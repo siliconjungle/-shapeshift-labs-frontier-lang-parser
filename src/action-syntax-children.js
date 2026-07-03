@@ -1,3 +1,5 @@
+import { parseActionValue } from './action-expression.js';
+
 const ACTION_BODY_ROWS = new Set(['set', 'insert', 'remove', 'merge', 'callEffect', 'return', 'if', 'let']);
 
 export function readActionSyntaxChildren(source, block, options) {
@@ -56,7 +58,7 @@ function actionSyntaxChild(source, block, options, line, state, parentActionBody
   const rowKind = row?.[1] ?? 'unknown';
   const name = actionRowName(rowKind, row?.[2], rowIndex);
   const rest = row?.[2]?.startsWith('@') ? ` ${row[2]}${row[3] ?? ''}` : (row?.[3] ?? '');
-  const validation = validateActionRow(rowKind, row?.[2], rest);
+  const validation = validateActionRow(rowKind, row?.[2], rest, line.text);
   const recognized = ACTION_BODY_ROWS.has(rowKind) && validation.ok;
   return cleanRecord({
     kind: recognized ? 'actionBodyRow' : 'actionUnknownRow',
@@ -87,15 +89,31 @@ function actionRowName(rowKind, rawName, rowIndex) {
   return rawName && !rawName.startsWith('@') ? rawName : `${rowKind}_${rowIndex}`;
 }
 
-function validateActionRow(rowKind, rawName, rest) {
+function validateActionRow(rowKind, rawName, rest, header) {
   if (!ACTION_BODY_ROWS.has(rowKind)) return { ok: false, reason: 'unsupported-action-body-row' };
-  if (rowKind !== 'let') return { ok: true };
-  if (!rawName || rawName.startsWith('@') || !/^[A-Za-z_$][\w$-]*$/.test(rawName)) {
-    return { ok: false, reason: 'unsupported-action-binding-name' };
+  if (rowKind === 'if') return validateActionExpressionText(readIfCondition(header));
+  if (rowKind === 'set' || rowKind === 'insert' || rowKind === 'merge') {
+    if (!readInlineWord('path', rest)) return { ok: false, reason: 'missing-action-path' };
+    return validateActionExpressionText(readInlineValue('value', rest));
   }
-  const value = readInlineValue('value', rest);
-  if (!value || !isSupportedBindingValue(value)) {
-    return { ok: false, reason: 'unsupported-action-binding-value' };
+  if (rowKind === 'remove') {
+    return readInlineWord('path', rest) ? { ok: true } : { ok: false, reason: 'missing-action-path' };
+  }
+  if (rowKind === 'callEffect') {
+    const input = readInlineValue('input', rest);
+    return input ? validateActionExpressionText(input) : { ok: true };
+  }
+  if (rowKind === 'return') {
+    const value = readReturnValue(rawName, rest);
+    return value ? validateActionExpressionText(value) : { ok: true };
+  }
+  if (rowKind === 'let') {
+    if (!rawName || rawName.startsWith('@') || !/^[A-Za-z_$][\w$-]*$/.test(rawName)) {
+      return { ok: false, reason: 'unsupported-action-binding-name' };
+    }
+    const value = readInlineValue('value', rest);
+    const parsed = value ? parseActionValue(value) : undefined;
+    return parsed?.ok ? { ok: true } : { ok: false, reason: 'unsupported-action-binding-value' };
   }
   return { ok: true };
 }
@@ -104,10 +122,28 @@ function readInlineValue(label, text) {
   return new RegExp('(?:^|\\s)' + label + '\\s+(.+?)(?=\\s+[A-Za-z_$][\\w$-]*\\s+|$)').exec(text)?.[1]?.trim();
 }
 
-function isSupportedBindingValue(value) {
-  if (/^["'][^"']*["']$/.test(value)) return true;
-  if (/^(true|false|null|-?\d+(?:\.\d+)?)$/.test(value)) return true;
-  return /^[A-Za-z_$][\w$-]*(?:\.[A-Za-z_$][\w$-]*)*$/.test(value);
+function readInlineWord(label, text) {
+  return new RegExp('(?:^|\\s)' + label + '\\s+([^\\s,]+)').exec(text)?.[1]?.trim();
+}
+
+function readIfCondition(header) {
+  const text = header.replace(/^if\b/, '').replace(/\{\s*$/, '').replace(/@id\(\s*["'][^"']+["']\s*\)/g, '').trim();
+  const explicit = /\bcondition\s+(.+)$/.exec(text);
+  return explicit ? explicit[1].trim() : text;
+}
+
+function readReturnValue(rawName, rest) {
+  if (rawName?.startsWith('@')) return stripIds(`${rawName}${rest ?? ''}`).trim();
+  return stripIds(`${rawName ?? ''}${rest ?? ''}`).trim();
+}
+
+function stripIds(text) {
+  return String(text ?? '').replace(/@id\(\s*["'][^"']+["']\s*\)/g, '').trim();
+}
+
+function validateActionExpressionText(text) {
+  const parsed = parseActionValue(text);
+  return parsed.ok ? { ok: true } : { ok: false, reason: parsed.reason };
 }
 
 function readNestedBodyBlocks(kind, source) {
