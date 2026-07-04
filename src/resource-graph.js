@@ -86,6 +86,7 @@ export function parseResourceGraphBlock(block) {
   graph.outlives = graph.lifetimeRelations;
   graph.borrowScopeRegions = graph.borrowScopes;
   graph.summary = summarize(graph);
+  graph.status = deriveGraphStatus(graph.status, graph.summary);
   graph.query = {
     resourceIds: ids(graph.resources),
     ownerIds: ids(graph.owners),
@@ -97,7 +98,7 @@ export function parseResourceGraphBlock(block) {
     lowLevelPrimitiveIds: ids([...graph.memoryRegions, ...graph.dataLayouts, ...graph.pointerEdges, ...graph.memoryAccesses, ...graph.abiBoundaries, ...graph.synchronizationEdges, ...graph.traps, ...graph.undefinedBehaviors]),
     sourcePaths: unique(allRecords(graph).map((record) => record.sourcePath)),
     evidenceIds: unique([...graph.evidenceIds, ...allRecords(graph).flatMap((record) => record.evidenceIds ?? [])]),
-    blockerReasonCodes: unique([...graph.conflicts, ...graph.synchronizationEdges, ...graph.traps, ...graph.undefinedBehaviors].map((record) => record.reasonCode))
+    blockerReasonCodes: blockerReasonCodes(graph)
   };
 
   return {
@@ -185,6 +186,22 @@ function summarize(graph) {
     synchronizationEdgesWithoutProof: graph.synchronizationEdges.filter((record) => record.proofStatus !== 'passed').length,
     reasonCodes: unique([...graph.conflicts, ...graph.synchronizationEdges, ...graph.traps, ...graph.undefinedBehaviors].map((record) => record.reasonCode))
   };
+}
+
+function deriveGraphStatus(authoredStatus, summary) {
+  if (
+    summary.conflicts > 0 ||
+    summary.unsafeBoundariesWithoutProof > 0 ||
+    summary.synchronizationEdgesWithoutProof > 0 ||
+    summary.trapsWithoutProof > 0 ||
+    summary.undefinedBehaviorsWithoutProof > 0
+  ) return 'blocked';
+  return authoredStatus ?? 'partial';
+}
+
+function blockerReasonCodes(graph) {
+  const unprovedSynchronizationEdges = graph.synchronizationEdges.filter((record) => record.proofStatus !== 'passed');
+  return unique([...graph.conflicts, ...unprovedSynchronizationEdges, ...graph.traps, ...graph.undefinedBehaviors].map((record) => record.reasonCode));
 }
 
 function allRecords(graph) {

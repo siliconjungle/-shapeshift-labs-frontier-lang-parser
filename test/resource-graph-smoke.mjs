@@ -24,7 +24,9 @@ resourceGraph TodoResources @id("resource_graph_todo") {
   access counterLoad @id("access_counter_load") resource resource_todos kind atomic-load operation load memoryOrder acquire atomic reads TodoCounter.value proofStatus missing evidence artifact_todo_title_probe
   abi ffiSave @id("abi_ffi_save") resource resource_todos callable saveTodo abi c callingConvention cdecl pointerWidth 64 endian little proofStatus missing evidence artifact_todo_title_probe
   synchronization counterRelease @id("sync_counter_release") resource resource_todos fromAccess access_counter_load toAccess access_counter_store kind happens-before memoryOrder release-acquire lock lock:todos sync todos-counter reasonCode synchronization-order-proof-missing proofStatus missing failClosed evidence artifact_todo_title_probe
-  fence seqCst @id("sync_seq_cst_fence") resource resource_todos fromAccess access_counter_load toAccess access_counter_store kind fence fenceKind seq-cst memoryOrder seq-cst scope thread proofStatus passed evidence artifact_todo_title_probe
+  fence seqCst @id("sync_seq_cst_fence") resource resource_todos fromAccess access_counter_load toAccess access_counter_store kind fence fenceKind seq-cst memoryOrder seq-cst scope thread reasonCode sync-passed-fence-proof proofStatus passed evidence artifact_todo_title_probe
+  happensBefore writerReader @id("sync_writer_reader") resource resource_todos fromAccess access_counter_load toAccess access_counter_store kind happens-before reasonCode happens-before-proof-missing proofStatus missing evidence artifact_todo_title_probe
+  barrier threadJoin @id("sync_thread_join") resource resource_todos fromAccess access_counter_load toAccess access_counter_store kind barrier scope thread reasonCode barrier-proof-missing proofStatus missing evidence artifact_todo_title_probe
   trap boundsCheck @id("trap_bounds_check") resource resource_todos memoryAccess access_counter_load kind bounds-check operation i32.load trapCode wasm-memory-oob reasonCode bounds-check-failed status open severity error condition "ptr + 4 exceeds memory" proofStatus missing failClosed message "Out of bounds access traps closed." evidence artifact_todo_title_probe
   undefinedBehavior signedOverflow @id("ub_signed_overflow") resource resource_todos pointer pointer_todos_ptr kind signed-overflow language c operation add reasonCode c-signed-overflow status blocked severity error condition "a + b overflows int32" proofStatus missing message "Signed overflow is undefined behavior." evidence artifact_todo_title_probe
   conflict aliasConflict @id("conflict_todos_alias") resource resource_todos loan loan_read_todos alias alias_todos reasonCode exclusive-resource-alias-overlap-requires-proof status open severity error message "Alias proof is required."
@@ -50,11 +52,11 @@ assert.equal(graphs.summary.dataLayoutCount, 1);
 assert.equal(graphs.summary.pointerEdgeCount, 1);
 assert.equal(graphs.summary.memoryAccessCount, 1);
 assert.equal(graphs.summary.abiBoundaryCount, 1);
-assert.equal(graphs.summary.synchronizationEdgeCount, 2);
+assert.equal(graphs.summary.synchronizationEdgeCount, 4);
 assert.equal(graphs.summary.trapCount, 1);
 assert.equal(graphs.summary.undefinedBehaviorCount, 1);
-assert.equal(graphs.summary.lowLevelPrimitiveCount, 9);
-assert.equal(graphs.summary.synchronizationEdgeWithoutProofCount, 1);
+assert.equal(graphs.summary.lowLevelPrimitiveCount, 11);
+assert.equal(graphs.summary.synchronizationEdgeWithoutProofCount, 3);
 assert.equal(graphs.summary.failClosedTrapCount, 1);
 assert.equal(graphs.summary.trapWithoutProofCount, 1);
 assert.equal(graphs.summary.undefinedBehaviorWithoutProofCount, 1);
@@ -71,10 +73,13 @@ assert.equal(graphs.memoryAccessIds[0], 'access_counter_load');
 assert.equal(graphs.abiBoundaryIds[0], 'abi_ffi_save');
 assert.equal(graphs.synchronizationEdgeIds[0], 'sync_counter_release');
 assert.equal(graphs.synchronizationEdgeIds[1], 'sync_seq_cst_fence');
+assert.equal(graphs.synchronizationEdgeIds[2], 'sync_writer_reader');
+assert.equal(graphs.synchronizationEdgeIds[3], 'sync_thread_join');
 assert.equal(graphs.trapIds[0], 'trap_bounds_check');
 assert.equal(graphs.undefinedBehaviorIds[0], 'ub_signed_overflow');
 assert.equal(graphs.proofObligationIds[0], 'proof_obligation_alias');
 assert.equal(graphs.graphs[0].kind, 'frontier.lang.semanticResourceGraph');
+assert.equal(graphs.graphs[0].status, 'blocked');
 assert.equal(graphs.graphs[0].claims.borrowCheckerClaim, false);
 assert.equal(graphs.graphs[0].query.resourceIds[0], 'resource_todos');
 assert.equal(graphs.graphs[0].query.lowLevelPrimitiveIds.includes('layout_todo_packet'), true);
@@ -90,6 +95,10 @@ assert.equal(graphs.graphs[0].synchronizationEdges[0].failClosed, true);
 assert.equal(graphs.graphs[0].synchronizationEdges[1].fenceKind, 'seq-cst');
 assert.equal(graphs.graphs[0].synchronizationEdges[1].memoryScope, 'thread');
 assert.equal(graphs.graphs[0].synchronizationEdges[1].proofStatus, 'passed');
+assert.equal(graphs.graphs[0].synchronizationEdges[2].id, 'sync_writer_reader');
+assert.equal(graphs.graphs[0].synchronizationEdges[2].synchronizationKind, 'happens-before');
+assert.equal(graphs.graphs[0].synchronizationEdges[3].id, 'sync_thread_join');
+assert.equal(graphs.graphs[0].synchronizationEdges[3].synchronizationKind, 'barrier');
 assert.equal(graphs.graphs[0].traps[0].trapCode, 'wasm-memory-oob');
 assert.equal(graphs.graphs[0].traps[0].memoryAccessId, 'access_counter_load');
 assert.equal(graphs.graphs[0].traps[0].trapKind, 'bounds-check');
@@ -109,3 +118,6 @@ assert.equal(graphs.graphs[0].query.blockerReasonCodes[0], 'exclusive-resource-a
 assert.equal(graphs.graphs[0].query.blockerReasonCodes.includes('bounds-check-failed'), true);
 assert.equal(graphs.graphs[0].query.blockerReasonCodes.includes('c-signed-overflow'), true);
 assert.equal(graphs.graphs[0].query.blockerReasonCodes.includes('synchronization-order-proof-missing'), true);
+assert.equal(graphs.graphs[0].query.blockerReasonCodes.includes('happens-before-proof-missing'), true);
+assert.equal(graphs.graphs[0].query.blockerReasonCodes.includes('barrier-proof-missing'), true);
+assert.equal(graphs.graphs[0].query.blockerReasonCodes.includes('sync-passed-fence-proof'), false);
