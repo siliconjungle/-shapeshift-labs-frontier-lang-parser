@@ -3,6 +3,7 @@ const canvasRows = words('element command state stateWrite trace gap proofGap ev
 const constraintRows = words('variable var constraint hard soft preference prefer collapse admission');
 const dialectRows = words('dialect record extern');
 const interlinguaRows = words('layer constraint edge obligation proofObligation proof lowering lower source sourceLift lift evidence');
+const machineRows = words('label directive register reg flag conditionFlag basicBlock block instruction inst instr op opcode operand arg memoryEffect memoryAccess load store atomic fence memory mem effect controlEdge edge branch call return ret interrupt irq exception proof proofObligation obligation gap proofGap evidence proofEvidence');
 const packageRows = words('metadata dependency script export gap proofGap evidence proofEvidence');
 const runtimeRows = words('host runtimeHost hostProfile sourceHost targetHost capability hostCapability hostBinding binding requirement runtimeRequirement requiredRuntime evidence proofEvidence gap proofGap');
 const semanticEditRows = words('script semanticEditScript projection semanticEditProjection replay semanticEditReplay');
@@ -18,6 +19,9 @@ export const ROW_SYNTAX_CONFIG = Object.freeze({
   runtimeHosts: rowConfig('runtimeCapabilityRow', 'runtime_capability_row', runtimeRows, normalizeRuntimeCapabilityRow),
   resourceGraph: rowConfig('resourceGraphRow', 'resource_graph_row', words('resource owner loan alias move drop escape lifetime lifetimeRegion life outlives lifetimeRelation lifeRelation borrow borrowScope borrowRegion unsafe unsafeBoundary memory memoryRegion region layout dataLayout pointer ptr address access memoryAccess atomic volatile abi abiBoundary callBoundary sync synchronization synchronisation synchronizationEdge synchronisationEdge happensBefore hb fence fenceEdge barrier barrierEdge trap traps undefined undefinedBehavior undefinedBehaviour ub conflict proof proofObligation obligation'), normalizeResourceGraphRow),
   semanticResourceGraph: rowConfig('resourceGraphRow', 'resource_graph_row', words('resource owner loan alias move drop escape lifetime lifetimeRegion life outlives lifetimeRelation lifeRelation borrow borrowScope borrowRegion unsafe unsafeBoundary memory memoryRegion region layout dataLayout pointer ptr address access memoryAccess atomic volatile abi abiBoundary callBoundary sync synchronization synchronisation synchronizationEdge synchronisationEdge happensBefore hb fence fenceEdge barrier barrierEdge trap traps undefined undefinedBehavior undefinedBehaviour ub conflict proof proofObligation obligation'), normalizeResourceGraphRow),
+  machineGraph: rowConfig('machineGraphRow', 'machine_graph_row', machineRows, normalizeMachineGraphRow),
+  executionGraph: rowConfig('machineGraphRow', 'machine_graph_row', machineRows, normalizeMachineGraphRow),
+  lowLevelGraph: rowConfig('machineGraphRow', 'machine_graph_row', machineRows, normalizeMachineGraphRow),
   applicationSurface: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow),
   appHost: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow),
   plugin: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow),
@@ -88,6 +92,22 @@ function normalizeResourceGraphRow(rowKind) {
   if (rowKind === 'traps') return 'trap';
   if (rowKind === 'undefined' || rowKind === 'undefinedBehaviour' || rowKind === 'ub') return 'undefinedBehavior';
   if (rowKind === 'proof' || rowKind === 'proofObligation') return 'obligation';
+  return rowKind;
+}
+
+function normalizeMachineGraphRow(rowKind) {
+  if (rowKind === 'reg') return 'register';
+  if (rowKind === 'conditionFlag') return 'flag';
+  if (rowKind === 'block') return 'basicBlock';
+  if (rowKind === 'inst' || rowKind === 'instr' || rowKind === 'op' || rowKind === 'opcode') return 'instruction';
+  if (rowKind === 'arg') return 'operand';
+  if (rowKind === 'memory' || rowKind === 'mem' || rowKind === 'memoryAccess' || rowKind === 'effect' || rowKind === 'load' || rowKind === 'store' || rowKind === 'atomic' || rowKind === 'fence') return 'memoryEffect';
+  if (rowKind === 'edge') return 'controlEdge';
+  if (rowKind === 'ret') return 'return';
+  if (rowKind === 'irq' || rowKind === 'exception') return 'interrupt';
+  if (rowKind === 'proof' || rowKind === 'obligation') return 'proofObligation';
+  if (rowKind === 'gap') return 'proofGap';
+  if (rowKind === 'proofEvidence') return 'evidence';
   return rowKind;
 }
 

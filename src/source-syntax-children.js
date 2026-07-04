@@ -227,9 +227,9 @@ function readGenericRowSyntaxChildren(source, block, options, config) {
   for (const line of readBodyLines(source, block)) {
     if (!line.text || line.text.startsWith('#')) continue;
     const row = rowPattern.exec(line.text);
-    if (!row) { if (config.childKind === 'gateAdmissionEvidenceRow') children.push(genericUnknownRowChild(source, block, options, line, config, undefined, undefined, 'unsupported-gate-admission-row')); continue; }
+    if (!row) { if (unknownGenericRowsFailClosed(config)) children.push(genericUnknownRowChild(source, block, options, line, config, undefined, undefined, unsupportedGenericRowReason(config))); continue; }
     const [, rowKind, name, rest] = row;
-    if (!config.rowKinds.has(rowKind)) { if (config.childKind === 'gateAdmissionEvidenceRow') children.push(genericUnknownRowChild(source, block, options, line, config, rowKind, name, 'unsupported-gate-admission-row')); continue; }
+    if (!config.rowKinds.has(rowKind)) { if (unknownGenericRowsFailClosed(config)) children.push(genericUnknownRowChild(source, block, options, line, config, rowKind, name, unsupportedGenericRowReason(config))); continue; }
     const normalizedRowKind = config.normalize?.(rowKind) ?? rowKind;
     const id = idFrom(rest, `${config.idPrefix}_${safeId(normalizedRowKind)}_${safeId(name)}`);
     let recognized = true;
@@ -268,12 +268,15 @@ function genericUnknownRowChild(source, block, options, line, config, rowKind, n
   const resolvedName = name ?? rowKind ?? 'unknown';
   return cleanRecord({
     kind: config.childKind === 'gateAdmissionEvidenceRow' ? 'gateAdmissionUnknownRow' : 'genericUnknownRow', rowKind,
-    normalizedRowKind: 'unknown', name: resolvedName, id: `gate_admission_unknown_${safeId(rowKind ?? 'row')}_${line.startOffset}`,
+    normalizedRowKind: 'unknown', name: resolvedName, id: `${config.idPrefix}_unknown_${safeId(rowKind ?? 'row')}_${line.startOffset}`,
     header: line.text, startOffset: line.startOffset, endOffset: line.endOffset, location: sourcePosition(source, line.startOffset),
     parentKind: block.kind, parentId: block.id, parentName: block.name, moduleId: block.moduleId, moduleName: block.moduleName,
     sourceSpan: sourceSpan(source, block, line.startOffset, line.endOffset, options), recognized: false, reason
   });
 }
+
+function unknownGenericRowsFailClosed(config) { return config.childKind === 'gateAdmissionEvidenceRow' || config.childKind === 'machineGraphRow'; }
+function unsupportedGenericRowReason(config) { return config.childKind === 'machineGraphRow' ? 'unsupported-machine-graph-row' : 'unsupported-gate-admission-row'; }
 
 function readBodyLines(source, block) { return readTextLines(source, block.bodyStartOffset, block.bodyEndOffset); }
 
@@ -294,10 +297,7 @@ function readTextLines(source, startOffset, endOffset) {
   return records;
 }
 
-function sourcePosition(source, offset) {
-  const lines = source.slice(0, offset).split('\n');
-  return { line: lines.length, column: lines[lines.length - 1].length + 1, offset };
-}
+function sourcePosition(source, offset) { const lines = source.slice(0, offset).split('\n'); return { line: lines.length, column: lines[lines.length - 1].length + 1, offset }; }
 
 function sourceSpan(source, block, startOffset, endOffset, options = {}) {
   return cleanRecord({
@@ -315,6 +315,4 @@ function sourceSpan(source, block, startOffset, endOffset, options = {}) {
 function idFrom(header, fallback) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(header)?.[1] ?? fallback; }
 function readInlineWord(label, text) { return new RegExp('(?:^|\\s)' + label + '\\s+([^\\s,]+)').exec(text)?.[1]?.trim(); }
 function safeId(value) { return String(value).replace(/[^A-Za-z0-9_$-]+/g, '_').replace(/^_+|_+$/g, '') || 'row'; }
-function cleanRecord(record) {
-  return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined && (!Array.isArray(value) || value.length > 0)));
-}
+function cleanRecord(record) { return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined && (!Array.isArray(value) || value.length > 0))); }

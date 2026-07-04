@@ -5,7 +5,7 @@ import { mergeTargetProjectionTargets } from './target-projection-aggregate.js';
 import { mergeConversionBlocks } from './conversion-metadata.js';
 import { mergeSemanticEditBlocks } from './semantic-edit-metadata.js';
 import { mergeGateAdmissionEvidenceBlocks } from './gate-admission-evidence.js';
-
+import { mergeMachineGraphBlocks } from './machine-graph-metadata.js';
 const PROOF_GROUPS = ['contracts', 'refinements', 'invariants', 'termination', 'temporal', 'obligations', 'artifacts', 'assumptions'];
 const PARADIGM_GROUPS = [
   'bindingScopes', 'bindings', 'patterns', 'typeConstraints', 'evaluationModels', 'memoryLocations', 'effectRegions',
@@ -13,7 +13,7 @@ const PARADIGM_GROUPS = [
   'clockModels', 'objectModels', 'macroExpansions', 'reflectionBoundaries', 'loweringRecords'
 ];
 
-export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], semanticEditBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], decisionGraphBlocks = [], gateAdmissionEvidenceBlocks = [], dialectRegistryBlocks = [], interlinguaBlocks = [], resourceGraphBlocks = [], nativeSourceBlocks = [], packageManifestBlocks = [], canvasSurfaceBlocks = [], applicationSurfaceBlocks = [], runtimeCapabilityBlocks = [], targetProjectionTargets = [] } = {}) {
+export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], semanticEditBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], decisionGraphBlocks = [], gateAdmissionEvidenceBlocks = [], dialectRegistryBlocks = [], interlinguaBlocks = [], resourceGraphBlocks = [], machineGraphBlocks = [], nativeSourceBlocks = [], packageManifestBlocks = [], canvasSurfaceBlocks = [], applicationSurfaceBlocks = [], runtimeCapabilityBlocks = [], targetProjectionTargets = [] } = {}) {
   const metadata = {};
   if (proofBlocks.length) metadata.proof = mergeProofBlocks(proofBlocks);
   if (paradigmBlocks.length) metadata.paradigmSemantics = mergeParadigmBlocks(paradigmBlocks);
@@ -26,6 +26,7 @@ export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], op
   if (dialectRegistryBlocks.length) metadata.dialects = mergeDialectRegistryBlocks(dialectRegistryBlocks);
   if (interlinguaBlocks.length) metadata.universalInterlingua = mergeInterlinguaBlocks(interlinguaBlocks);
   if (resourceGraphBlocks.length) metadata.semanticResourceGraphs = mergeResourceGraphBlocks(resourceGraphBlocks);
+  if (machineGraphBlocks.length) metadata.machineGraphs = mergeMachineGraphBlocks(machineGraphBlocks);
   if (packageManifestBlocks.length) metadata.packageManifests = mergePackageManifestBlocks(packageManifestBlocks);
   if (canvasSurfaceBlocks.length) metadata.canvasSurfaces = mergeCanvasSurfaceBlocks(canvasSurfaceBlocks);
   if (applicationSurfaceBlocks.length) metadata.applicationSurfaces = mergeApplicationSurfaceBlocks(applicationSurfaceBlocks);
