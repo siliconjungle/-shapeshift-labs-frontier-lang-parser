@@ -1,9 +1,9 @@
 import { readActionSyntaxChildren } from './action-syntax-children.js';
 import { ROW_SYNTAX_CONFIG } from './source-syntax-row-config.js';
 import { readTypeExpressionSyntaxChildren } from './source-syntax-type-expressions.js';
+import { readViewSyntaxChildren } from './source-syntax-view-children.js';
 import { inspectTypeExpressionSyntax } from './type-expressions.js';
 import { inspectVariantPayload } from './type-variants.js';
-
 const ROW_NAME_PATTERN = '([A-Za-z_$@./:*+-][\\w$./@:*+-]*)';
 
 export function readSourceSyntaxChildren(source, block, options = {}) {
@@ -31,6 +31,8 @@ export function readSourceSyntaxChildren(source, block, options = {}) {
       duplicateNameReason: 'duplicate-state-collection-name',
       duplicateIdReason: 'duplicate-state-collection-id'
     });
+  } else if (block.kind === 'view') {
+    children = readViewSyntaxChildren(source, block, options);
   } else {
     const rowConfig = ROW_SYNTAX_CONFIG[block.kind];
     if (rowConfig) children = readGenericRowSyntaxChildren(source, block, options, rowConfig);

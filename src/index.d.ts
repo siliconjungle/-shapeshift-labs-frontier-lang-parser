@@ -29,6 +29,14 @@ export interface FrontierSourceChildSyntaxRecord {
   readonly id?: string;
   readonly family?: string;
   readonly role?: string;
+  readonly parentRenderId?: string;
+  readonly typeSource?: string;
+  readonly action?: string;
+  readonly value?: string;
+  readonly values?: readonly string[];
+  readonly expression?: string;
+  readonly viewRenderKind?: string;
+  readonly optional?: boolean;
   readonly reason?: string;
   readonly header: string;
   readonly startOffset: number;
