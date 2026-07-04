@@ -1,4 +1,5 @@
 import { createRowIdentityTracker } from './row-identity.js';
+import { parseLowLevelResourceRecord } from './resource-graph-low-level.js';
 
 const GROUPS = {
   resource: 'resources',
@@ -17,6 +18,8 @@ const GROUPS = {
   pointerEdge: 'pointerEdges',
   memoryAccess: 'memoryAccesses',
   abiBoundary: 'abiBoundaries',
+  trap: 'traps',
+  undefinedBehavior: 'undefinedBehaviors',
   conflict: 'conflicts',
   proofObligation: 'proofObligations'
 };
@@ -51,6 +54,8 @@ export function parseResourceGraphBlock(block) {
     pointerEdges: [],
     memoryAccesses: [],
     abiBoundaries: [],
+    traps: [],
+    undefinedBehaviors: [],
     conflicts: [],
     proofObligations: [],
     parser: { status: 'authored', errors: rowIdentity.errors },
@@ -83,10 +88,13 @@ export function parseResourceGraphBlock(block) {
     resourceIds: ids(graph.resources),
     ownerIds: ids(graph.owners),
     lifetimeRegionIds: ids(graph.lifetimeRegions),
-    lowLevelPrimitiveIds: ids([...graph.memoryRegions, ...graph.dataLayouts, ...graph.pointerEdges, ...graph.memoryAccesses, ...graph.abiBoundaries]),
+    trapIds: ids(graph.traps),
+    undefinedBehaviorIds: ids(graph.undefinedBehaviors),
+    failClosedTrapIds: ids(graph.traps.filter((record) => record.failClosed)),
+    lowLevelPrimitiveIds: ids([...graph.memoryRegions, ...graph.dataLayouts, ...graph.pointerEdges, ...graph.memoryAccesses, ...graph.abiBoundaries, ...graph.traps, ...graph.undefinedBehaviors]),
     sourcePaths: unique(allRecords(graph).map((record) => record.sourcePath)),
     evidenceIds: unique([...graph.evidenceIds, ...allRecords(graph).flatMap((record) => record.evidenceIds ?? [])]),
-    blockerReasonCodes: unique(graph.conflicts.map((record) => record.reasonCode))
+    blockerReasonCodes: unique([...graph.conflicts, ...graph.traps, ...graph.undefinedBehaviors].map((record) => record.reasonCode))
   };
 
   return {
@@ -114,11 +122,8 @@ function parseResourceRecord(kind, name, text, graph, authoredLine = {}) {
   if (kind === 'lifetimeRelation') return cleanRecord({ ...common, relationKind: readInlineWord('relationKind', text) ?? readInlineWord('kind', text) ?? 'outlives', fromLifetimeId: readInlineWord('fromLifetime', text) ?? readInlineWord('fromLifetimeId', text) ?? readInlineWord('from', text), toLifetimeId: readInlineWord('toLifetime', text) ?? readInlineWord('toLifetimeId', text) ?? readInlineWord('to', text), from: readInlineWord('from', text), to: readInlineWord('to', text) });
   if (kind === 'borrowScope') return cleanRecord({ ...common, scopeKind: readInlineWord('scopeKind', text) ?? readInlineWord('kind', text) ?? 'borrow-scope', constraintKind: readInlineWord('constraintKind', text), constraintKinds: readInlineList(text, 'constraint', 'constraints', 'constraintKind', 'constraintKinds') ?? [], ownershipKind: readInlineWord('ownershipKind', text), lifetimeKind: readInlineWord('lifetimeKind', text), controlFlowKind: readInlineWord('controlFlowKind', text), sourceControlFlowId: readInlineWord('sourceControlFlow', text) ?? readInlineWord('sourceControlFlowId', text), lifetimeRegionId: readInlineWord('lifetime', text) ?? readInlineWord('lifetimeRegion', text) ?? readInlineWord('lifetimeRegionId', text), resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text) });
   if (kind === 'unsafeBoundary') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), unsafeBoundary: true, proofStatus: readInlineWord('proofStatus', text) ?? readInlineWord('status', text) ?? 'missing', kind: readInlineWord('kind', text) });
-  if (kind === 'memoryRegion') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), memoryKind: readInlineWord('memoryKind', text) ?? readInlineWord('kind', text) ?? name, regionKind: readInlineWord('regionKind', text), addressSpace: readInlineWord('addressSpace', text) ?? readInlineWord('space', text), address: readInlineWord('address', text) ?? readInlineWord('baseAddress', text), sizeBytes: readInlineNumber('sizeBytes', text) ?? readInlineNumber('size', text), alignmentBytes: readInlineNumber('alignmentBytes', text) ?? readInlineNumber('alignment', text), pointerWidth: readInlineNumber('pointerWidth', text), endian: readInlineWord('endian', text) ?? readInlineWord('endianness', text), volatile: readInlineFlag('volatile', text), atomic: readInlineFlag('atomic', text), shared: readInlineFlag('shared', text) });
-  if (kind === 'dataLayout') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), typeId: readInlineWord('type', text) ?? readInlineWord('typeId', text), structId: readInlineWord('struct', text) ?? readInlineWord('structId', text), fieldId: readInlineWord('field', text) ?? readInlineWord('fieldId', text), bitfieldId: readInlineWord('bitfield', text) ?? readInlineWord('bitfieldId', text), layoutKind: readInlineWord('layoutKind', text) ?? readInlineWord('kind', text), repr: readInlineWord('repr', text), abi: readInlineWord('abi', text), endian: readInlineWord('endian', text) ?? readInlineWord('endianness', text), sizeBytes: readInlineNumber('sizeBytes', text) ?? readInlineNumber('size', text), alignmentBytes: readInlineNumber('alignmentBytes', text) ?? readInlineNumber('alignment', text), offsetBytes: readInlineNumber('offsetBytes', text) ?? readInlineNumber('offset', text), bitWidth: readInlineNumber('bitWidth', text) ?? readInlineNumber('width', text), fieldOrder: readInlineList(text, 'fieldOrder', 'fields'), constraintKinds: readInlineList(text, 'constraint', 'constraints', 'constraintKind', 'constraintKinds') });
-  if (kind === 'pointerEdge') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), targetResourceId: readInlineWord('targetResource', text) ?? readInlineWord('targetResourceId', text) ?? readInlineWord('target', text), ownerId: readInlineWord('owner', text) ?? readInlineWord('ownerId', text), lifetimeRegionId: readInlineWord('lifetime', text) ?? readInlineWord('lifetimeRegion', text) ?? readInlineWord('lifetimeRegionId', text), pointerKind: readInlineWord('pointerKind', text) ?? readInlineWord('kind', text) ?? 'pointer', addressSpace: readInlineWord('addressSpace', text) ?? readInlineWord('space', text), pointerWidth: readInlineNumber('pointerWidth', text), aliasKind: readInlineWord('aliasKind', text), mode: readInlineWord('mode', text), provenance: readInlineWord('provenance', text), nullable: readInlineFlag('nullable', text), mutable: readInlineFlag('mutable', text) });
-  if (kind === 'memoryAccess') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), accessKind: readInlineWord('accessKind', text) ?? readInlineWord('kind', text) ?? name, operationKind: readInlineWord('operation', text) ?? readInlineWord('operationKind', text), memoryOrder: readInlineWord('memoryOrder', text) ?? readInlineWord('ordering', text), lockId: readInlineWord('lock', text) ?? readInlineWord('lockId', text), synchronizationKey: readInlineWord('sync', text) ?? readInlineWord('synchronizationKey', text), reads: readInlineList(text, 'read', 'reads'), writes: readInlineList(text, 'write', 'writes'), volatile: readInlineFlag('volatile', text), atomic: readInlineFlag('atomic', text), proofStatus: readInlineWord('proofStatus', text) ?? readInlineWord('status', text) ?? 'missing' });
-  if (kind === 'abiBoundary') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), callableId: readInlineWord('callable', text) ?? readInlineWord('callableId', text), functionId: readInlineWord('function', text) ?? readInlineWord('functionId', text), boundaryKind: readInlineWord('boundaryKind', text) ?? readInlineWord('kind', text) ?? 'abi-boundary', abi: readInlineWord('abi', text), abiKind: readInlineWord('abiKind', text), callingConvention: readInlineWord('callingConvention', text) ?? readInlineWord('convention', text), pointerWidth: readInlineNumber('pointerWidth', text), endian: readInlineWord('endian', text) ?? readInlineWord('endianness', text), ffiBoundary: readInlineWord('ffiBoundary', text), proofStatus: readInlineWord('proofStatus', text) ?? readInlineWord('status', text) ?? 'missing' });
+  const lowLevelRecord = parseLowLevelResourceRecord(kind, common, name, text);
+  if (lowLevelRecord) return lowLevelRecord;
   if (kind === 'conflict') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), ownerId: readInlineWord('owner', text) ?? readInlineWord('ownerId', text), loanId: readInlineWord('loan', text) ?? readInlineWord('loanId', text), aliasId: readInlineWord('alias', text) ?? readInlineWord('aliasId', text), unsafeBoundaryId: readInlineWord('unsafeBoundary', text) ?? readInlineWord('unsafeBoundaryId', text), reasonCode: readInlineWord('reasonCode', text), message: readInlineQuoted('message', text), status: readInlineWord('status', text) ?? 'open', severity: readInlineWord('severity', text) ?? 'error' });
   if (kind === 'proofObligation') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), conflictId: readInlineWord('conflict', text) ?? readInlineWord('conflictId', text), kind: readInlineWord('kind', text), status: readInlineWord('status', text) ?? 'open', statement: readInlineQuoted('statement', text) });
   return undefined;
@@ -163,11 +168,17 @@ function summarize(graph) {
     pointerEdges: graph.pointerEdges.length,
     memoryAccesses: graph.memoryAccesses.length,
     abiBoundaries: graph.abiBoundaries.length,
+    traps: graph.traps.length,
+    undefinedBehaviors: graph.undefinedBehaviors.length,
+    lowLevelPrimitives: graph.memoryRegions.length + graph.dataLayouts.length + graph.pointerEdges.length + graph.memoryAccesses.length + graph.abiBoundaries.length + graph.traps.length + graph.undefinedBehaviors.length,
     conflicts: graph.conflicts.length,
     proofObligations: graph.proofObligations.length,
     unsafeBoundariesWithoutProof: graph.unsafeBoundaries.filter((record) => record.proofStatus !== 'passed').length,
+    failClosedTraps: graph.traps.filter((record) => record.failClosed).length,
+    trapsWithoutProof: graph.traps.filter((record) => record.proofStatus !== 'passed').length,
+    undefinedBehaviorsWithoutProof: graph.undefinedBehaviors.filter((record) => record.proofStatus !== 'passed').length,
     parseErrors: graph.parser?.errors?.length ?? 0,
-    reasonCodes: unique(graph.conflicts.map((record) => record.reasonCode))
+    reasonCodes: unique([...graph.conflicts, ...graph.traps, ...graph.undefinedBehaviors].map((record) => record.reasonCode))
   };
 }
 
@@ -189,6 +200,8 @@ function allRecords(graph) {
     ...graph.pointerEdges,
     ...graph.memoryAccesses,
     ...graph.abiBoundaries,
+    ...graph.traps,
+    ...graph.undefinedBehaviors,
     ...graph.conflicts,
     ...graph.proofObligations
   ];
@@ -204,6 +217,8 @@ function normalizeRowKind(kind) {
   if (kind === 'pointer' || kind === 'ptr' || kind === 'address') return 'pointerEdge';
   if (kind === 'access' || kind === 'memoryAccess' || kind === 'atomic' || kind === 'volatile') return 'memoryAccess';
   if (kind === 'abi' || kind === 'abiBoundary' || kind === 'callBoundary') return 'abiBoundary';
+  if (kind === 'traps') return 'trap';
+  if (kind === 'undefined' || kind === 'ub' || kind === 'undefinedBehavior' || kind === 'undefinedBehaviour') return 'undefinedBehavior';
   if (kind === 'proof' || kind === 'obligation' || kind === 'proofObligation') return 'proofObligation';
   return kind;
 }
@@ -218,6 +233,7 @@ function recordKind(kind) {
   if (kind === 'pointerEdge') return 'pointer-edge';
   if (kind === 'memoryAccess') return 'memory-access';
   if (kind === 'abiBoundary') return 'abi-boundary';
+  if (kind === 'undefinedBehavior') return 'undefined-behavior';
   if (kind === 'proofObligation') return 'proof-obligation';
   return kind;
 }

@@ -269,6 +269,8 @@ function mergeResourceGraphBlocks(blocks) {
     pointerEdgeIds: blocks.flatMap((block) => ids(block.graph?.pointerEdges)),
     memoryAccessIds: blocks.flatMap((block) => ids(block.graph?.memoryAccesses)),
     abiBoundaryIds: blocks.flatMap((block) => ids(block.graph?.abiBoundaries)),
+    trapIds: blocks.flatMap((block) => ids(block.graph?.traps)),
+    undefinedBehaviorIds: blocks.flatMap((block) => ids(block.graph?.undefinedBehaviors)),
     conflictIds: blocks.flatMap((block) => ids(block.graph?.conflicts)),
     proofObligationIds: blocks.flatMap((block) => ids(block.graph?.proofObligations)),
     summary: {
@@ -290,9 +292,15 @@ function mergeResourceGraphBlocks(blocks) {
       pointerEdgeCount: sum(blocks, 'pointerEdges'),
       memoryAccessCount: sum(blocks, 'memoryAccesses'),
       abiBoundaryCount: sum(blocks, 'abiBoundaries'),
+      trapCount: sum(blocks, 'traps'),
+      undefinedBehaviorCount: sum(blocks, 'undefinedBehaviors'),
+      lowLevelPrimitiveCount: sum(blocks, 'lowLevelPrimitives'),
       conflictCount: sum(blocks, 'conflicts'),
       proofObligationCount: sum(blocks, 'proofObligations'),
-      unsafeBoundariesWithoutProof: sum(blocks, 'unsafeBoundariesWithoutProof')
+      unsafeBoundariesWithoutProof: sum(blocks, 'unsafeBoundariesWithoutProof'),
+      failClosedTrapCount: sum(blocks, 'failClosedTraps'),
+      trapWithoutProofCount: sum(blocks, 'trapsWithoutProof'),
+      undefinedBehaviorWithoutProofCount: sum(blocks, 'undefinedBehaviorsWithoutProof')
     },
     metadata: { authoredResourceGraphBlockIds: blocks.map((block) => block.id) }
   };

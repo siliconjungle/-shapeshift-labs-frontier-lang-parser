@@ -16,8 +16,8 @@ export const ROW_SYNTAX_CONFIG = Object.freeze({
   runtimeCapabilities: rowConfig('runtimeCapabilityRow', 'runtime_capability_row', runtimeRows, normalizeRuntimeCapabilityRow),
   runtimeCapabilityMatrix: rowConfig('runtimeCapabilityRow', 'runtime_capability_row', runtimeRows, normalizeRuntimeCapabilityRow),
   runtimeHosts: rowConfig('runtimeCapabilityRow', 'runtime_capability_row', runtimeRows, normalizeRuntimeCapabilityRow),
-  resourceGraph: rowConfig('resourceGraphRow', 'resource_graph_row', words('resource owner loan alias move drop escape lifetime lifetimeRegion life outlives lifetimeRelation lifeRelation borrow borrowScope borrowRegion unsafe unsafeBoundary memory memoryRegion region layout dataLayout pointer ptr address access memoryAccess atomic volatile abi abiBoundary callBoundary conflict proof proofObligation obligation'), normalizeResourceGraphRow),
-  semanticResourceGraph: rowConfig('resourceGraphRow', 'resource_graph_row', words('resource owner loan alias move drop escape lifetime lifetimeRegion life outlives lifetimeRelation lifeRelation borrow borrowScope borrowRegion unsafe unsafeBoundary memory memoryRegion region layout dataLayout pointer ptr address access memoryAccess atomic volatile abi abiBoundary callBoundary conflict proof proofObligation obligation'), normalizeResourceGraphRow),
+  resourceGraph: rowConfig('resourceGraphRow', 'resource_graph_row', words('resource owner loan alias move drop escape lifetime lifetimeRegion life outlives lifetimeRelation lifeRelation borrow borrowScope borrowRegion unsafe unsafeBoundary memory memoryRegion region layout dataLayout pointer ptr address access memoryAccess atomic volatile abi abiBoundary callBoundary trap traps undefined undefinedBehavior undefinedBehaviour ub conflict proof proofObligation obligation'), normalizeResourceGraphRow),
+  semanticResourceGraph: rowConfig('resourceGraphRow', 'resource_graph_row', words('resource owner loan alias move drop escape lifetime lifetimeRegion life outlives lifetimeRelation lifeRelation borrow borrowScope borrowRegion unsafe unsafeBoundary memory memoryRegion region layout dataLayout pointer ptr address access memoryAccess atomic volatile abi abiBoundary callBoundary trap traps undefined undefinedBehavior undefinedBehaviour ub conflict proof proofObligation obligation'), normalizeResourceGraphRow),
   applicationSurface: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow),
   appHost: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow),
   plugin: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow),
@@ -84,6 +84,8 @@ function normalizeResourceGraphRow(rowKind) {
   if (rowKind === 'pointer' || rowKind === 'ptr' || rowKind === 'address') return 'pointerEdge';
   if (rowKind === 'access' || rowKind === 'atomic' || rowKind === 'volatile') return 'memoryAccess';
   if (rowKind === 'abi' || rowKind === 'callBoundary') return 'abiBoundary';
+  if (rowKind === 'traps') return 'trap';
+  if (rowKind === 'undefined' || rowKind === 'undefinedBehaviour' || rowKind === 'ub') return 'undefinedBehavior';
   if (rowKind === 'proof' || rowKind === 'proofObligation') return 'obligation';
   return rowKind;
 }
