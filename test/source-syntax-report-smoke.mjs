@@ -117,6 +117,8 @@ resourceGraph BorrowGraph @id("resource_borrow_graph") {
   resource todoStore @id("resource_todo_store") owner app
   borrow todoBorrow @id("resource_borrow_todo") from todoStore
   memory heap @id("resource_memory_heap") kind heap pointerWidth 64
+  sync release @id("resource_sync_release") kind happens-before from resource_memory_heap to resource_trap_bounds
+  barrier acquire @id("resource_sync_barrier") kind fence
   trap bounds @id("resource_trap_bounds") kind out-of-bounds operation load
   undefined overflow @id("resource_ub_overflow") kind signed-overflow language c
   proof borrowProof @id("resource_proof_borrow") gate ownership
@@ -167,8 +169,8 @@ decisionGraph Admission @id("decision_admission") {
 const rowSyntaxReport = inspectFrontierSourceSyntax(rowSyntaxSource, { sourcePath: 'row-syntax.frontier' });
 assert.equal(rowSyntaxReport.summary.unknownBlockCount, 0);
 assert.equal(rowSyntaxReport.summary.failClosed, false);
-assert.equal(rowSyntaxReport.summary.childCount, 35);
-assert.equal(rowSyntaxReport.summary.recognizedChildCount, 35);
+assert.equal(rowSyntaxReport.summary.childCount, 37);
+assert.equal(rowSyntaxReport.summary.recognizedChildCount, 37);
 for (const childKind of [
   'interlinguaRow',
   'dialectRegistryRow',
@@ -212,6 +214,8 @@ assert.equal(rowChild('native_source_ts', 'native_source_map_api').normalizedRow
 assert.equal(rowChild('native_source_ts', 'native_candidate_display').normalizedRowKind, 'mergeCandidate');
 assert.equal(rowChild('operations_edit', 'operation_extract').normalizedRowKind, 'operation');
 assert.equal(rowChild('resource_borrow_graph', 'resource_memory_heap').normalizedRowKind, 'memoryRegion');
+assert.equal(rowChild('resource_borrow_graph', 'resource_sync_release').normalizedRowKind, 'synchronizationEdge');
+assert.equal(rowChild('resource_borrow_graph', 'resource_sync_barrier').normalizedRowKind, 'synchronizationEdge');
 assert.equal(rowChild('resource_borrow_graph', 'resource_trap_bounds').normalizedRowKind, 'trap');
 assert.equal(rowChild('resource_borrow_graph', 'resource_ub_overflow').normalizedRowKind, 'undefinedBehavior');
 

@@ -18,6 +18,7 @@ const GROUPS = {
   pointerEdge: 'pointerEdges',
   memoryAccess: 'memoryAccesses',
   abiBoundary: 'abiBoundaries',
+  synchronizationEdge: 'synchronizationEdges',
   trap: 'traps',
   undefinedBehavior: 'undefinedBehaviors',
   conflict: 'conflicts',
@@ -54,6 +55,7 @@ export function parseResourceGraphBlock(block) {
     pointerEdges: [],
     memoryAccesses: [],
     abiBoundaries: [],
+    synchronizationEdges: [],
     traps: [],
     undefinedBehaviors: [],
     conflicts: [],
@@ -91,10 +93,11 @@ export function parseResourceGraphBlock(block) {
     trapIds: ids(graph.traps),
     undefinedBehaviorIds: ids(graph.undefinedBehaviors),
     failClosedTrapIds: ids(graph.traps.filter((record) => record.failClosed)),
-    lowLevelPrimitiveIds: ids([...graph.memoryRegions, ...graph.dataLayouts, ...graph.pointerEdges, ...graph.memoryAccesses, ...graph.abiBoundaries, ...graph.traps, ...graph.undefinedBehaviors]),
+    synchronizationEdgeIds: ids(graph.synchronizationEdges),
+    lowLevelPrimitiveIds: ids([...graph.memoryRegions, ...graph.dataLayouts, ...graph.pointerEdges, ...graph.memoryAccesses, ...graph.abiBoundaries, ...graph.synchronizationEdges, ...graph.traps, ...graph.undefinedBehaviors]),
     sourcePaths: unique(allRecords(graph).map((record) => record.sourcePath)),
     evidenceIds: unique([...graph.evidenceIds, ...allRecords(graph).flatMap((record) => record.evidenceIds ?? [])]),
-    blockerReasonCodes: unique([...graph.conflicts, ...graph.traps, ...graph.undefinedBehaviors].map((record) => record.reasonCode))
+    blockerReasonCodes: unique([...graph.conflicts, ...graph.synchronizationEdges, ...graph.traps, ...graph.undefinedBehaviors].map((record) => record.reasonCode))
   };
 
   return {
@@ -168,9 +171,10 @@ function summarize(graph) {
     pointerEdges: graph.pointerEdges.length,
     memoryAccesses: graph.memoryAccesses.length,
     abiBoundaries: graph.abiBoundaries.length,
+    synchronizationEdges: graph.synchronizationEdges.length,
     traps: graph.traps.length,
     undefinedBehaviors: graph.undefinedBehaviors.length,
-    lowLevelPrimitives: graph.memoryRegions.length + graph.dataLayouts.length + graph.pointerEdges.length + graph.memoryAccesses.length + graph.abiBoundaries.length + graph.traps.length + graph.undefinedBehaviors.length,
+    lowLevelPrimitives: graph.memoryRegions.length + graph.dataLayouts.length + graph.pointerEdges.length + graph.memoryAccesses.length + graph.abiBoundaries.length + graph.synchronizationEdges.length + graph.traps.length + graph.undefinedBehaviors.length,
     conflicts: graph.conflicts.length,
     proofObligations: graph.proofObligations.length,
     unsafeBoundariesWithoutProof: graph.unsafeBoundaries.filter((record) => record.proofStatus !== 'passed').length,
@@ -178,7 +182,8 @@ function summarize(graph) {
     trapsWithoutProof: graph.traps.filter((record) => record.proofStatus !== 'passed').length,
     undefinedBehaviorsWithoutProof: graph.undefinedBehaviors.filter((record) => record.proofStatus !== 'passed').length,
     parseErrors: graph.parser?.errors?.length ?? 0,
-    reasonCodes: unique([...graph.conflicts, ...graph.traps, ...graph.undefinedBehaviors].map((record) => record.reasonCode))
+    synchronizationEdgesWithoutProof: graph.synchronizationEdges.filter((record) => record.proofStatus !== 'passed').length,
+    reasonCodes: unique([...graph.conflicts, ...graph.synchronizationEdges, ...graph.traps, ...graph.undefinedBehaviors].map((record) => record.reasonCode))
   };
 }
 
@@ -200,6 +205,7 @@ function allRecords(graph) {
     ...graph.pointerEdges,
     ...graph.memoryAccesses,
     ...graph.abiBoundaries,
+    ...graph.synchronizationEdges,
     ...graph.traps,
     ...graph.undefinedBehaviors,
     ...graph.conflicts,
@@ -217,6 +223,7 @@ function normalizeRowKind(kind) {
   if (kind === 'pointer' || kind === 'ptr' || kind === 'address') return 'pointerEdge';
   if (kind === 'access' || kind === 'memoryAccess' || kind === 'atomic' || kind === 'volatile') return 'memoryAccess';
   if (kind === 'abi' || kind === 'abiBoundary' || kind === 'callBoundary') return 'abiBoundary';
+  if (kind === 'sync' || kind === 'synchronization' || kind === 'synchronisation' || kind === 'synchronizationEdge' || kind === 'synchronisationEdge' || kind === 'happensBefore' || kind === 'happens-before' || kind === 'hb' || kind === 'fence' || kind === 'fenceEdge' || kind === 'barrier' || kind === 'barrierEdge') return 'synchronizationEdge';
   if (kind === 'traps') return 'trap';
   if (kind === 'undefined' || kind === 'ub' || kind === 'undefinedBehavior' || kind === 'undefinedBehaviour') return 'undefinedBehavior';
   if (kind === 'proof' || kind === 'obligation' || kind === 'proofObligation') return 'proofObligation';
@@ -233,6 +240,7 @@ function recordKind(kind) {
   if (kind === 'pointerEdge') return 'pointer-edge';
   if (kind === 'memoryAccess') return 'memory-access';
   if (kind === 'abiBoundary') return 'abi-boundary';
+  if (kind === 'synchronizationEdge') return 'synchronization-edge';
   if (kind === 'undefinedBehavior') return 'undefined-behavior';
   if (kind === 'proofObligation') return 'proof-obligation';
   return kind;
