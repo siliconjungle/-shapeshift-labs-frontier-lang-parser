@@ -80,7 +80,7 @@ interlingua JsToRust @id("interlingua_js_rust") {
   layer ownership @id("layer_ownership") kind semantic-ownership status missing missingEvidence translation-borrow-scope:borrow-across-await
   edge borrowAwait @id("constraint_borrow_await") family borrow-scope layer semantic-ownership status needs-evidence action collect-borrow-scope required shared-borrow-compatible|borrow-across-await represented shared-borrow-compatible missing borrow-across-await missingEvidence translation-borrow-scope:borrow-across-await evidence evidence_borrow_scope obligation obligation_borrow_await
   obligation borrowAwait @id("obligation_borrow_await") edge constraint_borrow_await family borrow-scope kind borrow-across-await status missing missingEvidence translation-borrow-scope:borrow-across-await evidence evidence_borrow_scope severity warning
-  lowering rustAdapter @id("lowering_rust_adapter") disposition target-adapter adapter fixture-js-rust adapterKind targetProjection readiness needs-review lossClass targetAdapterProjection proofEvidence proof_translation missingEvidence host-target-adapter-review review adapter-review
+  lowering rustAdapter @id("lowering_rust_adapter") disposition target-adapter adapter fixture-js-rust adapterKind targetProjection readiness needs-review lossClass targetAdapterProjection runtimeReadiness adapter-required runtimeRequiredCapability dom|fetch runtimeAdapterRequirement adapter_runtime_bridge dialectReadiness projection-required dialectRecord dialect_react dialectProjectionDisposition native-component|host-shim proofEvidence proof_translation missingEvidence host-target-adapter-review review adapter-review
   evidence translation @id("evidence_translation") kind conversion-replay-proof status passed path reports/conversion.json
 }
 }`);
@@ -106,8 +106,20 @@ assert.equal(interlingua.interlinguaRecords[0].constraints.families[0], 'borrow-
 assert.equal(interlingua.interlinguaRecords[0].constraints.requiredKinds.includes('borrow-across-await'), true);
 assert.equal(interlingua.interlinguaRecords[0].constraints.obligationKinds[0], 'borrow-across-await');
 assert.equal(interlingua.interlinguaRecords[0].lowering.disposition, 'target-adapter');
+assert.equal(interlingua.interlinguaRecords[0].loweringRecords[0].runtimeReadiness, 'adapter-required');
+assert.equal(interlingua.interlinguaRecords[0].lowering.runtimeRequiredCapabilities.includes('dom'), true);
+assert.equal(interlingua.interlinguaRecords[0].lowering.runtimeAdapterRequirementIds[0], 'adapter_runtime_bridge');
+assert.equal(interlingua.interlinguaRecords[0].lowering.dialectReadiness, 'projection-required');
+assert.equal(interlingua.interlinguaRecords[0].lowering.dialectRecordIds[0], 'dialect_react');
+assert.equal(interlingua.interlinguaRecords[0].lowering.dialectProjectionDispositions.includes('host-shim'), true);
 assert.equal(interlingua.interlinguaRecords[0].query.interlinguaProofEvidenceId, undefined);
 assert.equal(interlingua.interlinguaRecords[0].query.proofEvidenceIds[0], 'proof_translation');
+assert.equal(interlingua.interlinguaRecords[0].query.loweringRuntimeReadiness, 'adapter-required');
+assert.equal(interlingua.interlinguaRecords[0].query.loweringRuntimeRequiredCapabilities.includes('fetch'), true);
+assert.equal(interlingua.interlinguaRecords[0].query.loweringRuntimeAdapterRequirementIds[0], 'adapter_runtime_bridge');
+assert.equal(interlingua.interlinguaRecords[0].query.loweringDialectReadiness, 'projection-required');
+assert.equal(interlingua.interlinguaRecords[0].query.loweringDialectRecordIds[0], 'dialect_react');
+assert.equal(interlingua.interlinguaRecords[0].query.loweringDialectProjectionDispositions.includes('native-component'), true);
 assert.equal(interlingua.interlinguaRecords[0].query.constraintObligationMissingEvidence[0], 'translation-borrow-scope:borrow-across-await');
 assert.equal(interlingua.interlinguaRecords[0].lift.sourceImportIds[0], 'native_import_js');
 assert.equal(interlingua.interlinguaRecords[0].lift.proofIds[0], 'proof_translation');
