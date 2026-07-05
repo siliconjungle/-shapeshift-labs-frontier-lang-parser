@@ -1,5 +1,43 @@
 import assert from 'node:assert/strict';
-import { parseFrontierSource } from '../dist/index.js';
+import { inspectFrontierSourceSyntax, parseFrontierSource } from '../dist/index.js';
+
+const sourceSyntaxReport = inspectFrontierSourceSyntax(`module InterlinguaSourceSyntax @id("mod_interlingua_source_syntax") {
+universalInterlingua JsToRust @id("interlingua_source_syntax") {
+  edge borrowAwait @id("edge_borrow_await") family borrow-scope layer semantic-ownership status needs-evidence
+  constraintEdge dataLayout @id("edge_data_layout") family data-layout layer memory-model status represented
+  proof borrowAwait @id("proof_borrow_await") edge edge_borrow_await family borrow-scope kind borrow-across-await status missing
+  lower rustAdapter @id("lower_rust_adapter") disposition target-adapter adapter fixture-js-rust readiness needs-review
+  sourceLift jsSource @id("lift_js_source") sourceImport native_import_js sourcePath src/public-api.js
+  evidence translation @id("evidence_translation") kind conversion-replay-proof status passed
+}
+}`, { sourcePath: 'interlingua-source-syntax.frontier' });
+
+const interlinguaCounts = sourceSyntaxReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.universalInterlingua;
+assert.equal(sourceSyntaxReport.summary.failClosed, false);
+assert.equal(interlinguaCounts.constraint, 2);
+assert.equal(interlinguaCounts.obligation, 1);
+assert.equal(interlinguaCounts.lowering, 1);
+assert.equal(interlinguaCounts.lift, 1);
+assert.equal(interlinguaCounts.evidence, 1);
+
+const sourceSyntaxBlock = sourceSyntaxReport.recognizedBlocks.find((block) => block.id === 'interlingua_source_syntax');
+assert.equal(sourceSyntaxBlock.children.find((child) => child.rowKind === 'constraintEdge').normalizedRowKind, 'constraint');
+assert.equal(sourceSyntaxBlock.children.find((child) => child.rowKind === 'proof').normalizedRowKind, 'obligation');
+assert.equal(sourceSyntaxBlock.children.find((child) => child.rowKind === 'lower').normalizedRowKind, 'lowering');
+assert.equal(sourceSyntaxBlock.children.find((child) => child.rowKind === 'sourceLift').normalizedRowKind, 'lift');
+assert.equal(sourceSyntaxBlock.children[0].sourceSpan.path, 'interlingua-source-syntax.frontier');
+assert.equal(sourceSyntaxBlock.children[0].sourceSpan.blockKind, 'universalInterlingua');
+
+const unknownInterlingua = inspectFrontierSourceSyntax(`module UnknownInterlinguaRows @id("mod_unknown_interlingua_rows") {
+interlingua BrokenBridge @id("interlingua_broken") {
+  semanticPromise borrow @id("promise_borrow")
+}
+}`);
+
+assert.equal(unknownInterlingua.summary.failClosed, true);
+assert.equal(unknownInterlingua.summary.unknownChildCount, 1);
+assert.equal(unknownInterlingua.summary.sourceSyntaxRowFamilyCounts.semanticPromise, 1);
+assert.equal(unknownInterlingua.unknownChildren[0].reason, 'unsupported-interlingua-row');
 
 const doc = parseFrontierSource(`module InterlinguaProbe @id("mod_interlingua_probe") {
 interlingua JsToRust @id("interlingua_js_rust") {

@@ -2,7 +2,7 @@ const appRows = words('role sourcePath path sourceHash host hostId mount provide
 const canvasRows = words('sourcePath path sourceHash element command state stateWrite trace gap proofGap evidence proofEvidence');
 const constraintRows = words('variable var constraint hard soft preference prefer collapse admission');
 const dialectRows = words('dialect record extern');
-const interlinguaRows = words('layer constraint edge obligation proofObligation proof lowering lower source sourceLift lift evidence');
+const interlinguaRows = words('layer constraint constraintEdge edge obligation proofObligation proof lowering lower source sourceLift lift evidence');
 const machineRows = words('label directive register reg flag conditionFlag basicBlock block instruction inst instr op opcode operand arg memoryEffect memoryAccess load store atomic fence memory mem effect controlEdge edge branch call return ret interrupt irq exception proof proofObligation obligation gap proofGap evidence proofEvidence');
 const migrationRows = words('from fromVersion to toVersion change invariant invariants');
 const packageRows = words('sourcePath path sourceHash packageManager metadata dependency script export gap proofGap evidence proofEvidence');
@@ -15,8 +15,8 @@ const nativeSourceRows = words('language sourceLanguage parser parserVersion sou
 const coreFailClosed = (reason) => ({ failClosedUnknownRows: true, unknownRowReason: reason });
 
 export const ROW_SYNTAX_CONFIG = Object.freeze({
-  interlingua: rowConfig('interlinguaRow', 'interlingua_row', interlinguaRows, normalizeInterlinguaRow),
-  universalInterlingua: rowConfig('interlinguaRow', 'interlingua_row', interlinguaRows, normalizeInterlinguaRow),
+  interlingua: rowConfig('interlinguaRow', 'interlingua_row', interlinguaRows, normalizeInterlinguaRow, coreFailClosed('unsupported-interlingua-row')),
+  universalInterlingua: rowConfig('interlinguaRow', 'interlingua_row', interlinguaRows, normalizeInterlinguaRow, coreFailClosed('unsupported-interlingua-row')),
   dialectRegistry: rowConfig('dialectRegistryRow', 'dialect_registry_row', dialectRows, normalizeDialectRegistryRow),
   universalDialectRegistry: rowConfig('dialectRegistryRow', 'dialect_registry_row', dialectRows, normalizeDialectRegistryRow),
   runtimeCapabilities: rowConfig('runtimeCapabilityRow', 'runtime_capability_row', runtimeRows, normalizeRuntimeCapabilityRow),
@@ -67,7 +67,7 @@ function rowConfig(childKind, idPrefix, rowKinds, normalize, options = {}) {
 function words(source) { return source.split(/\s+/); }
 
 function normalizeInterlinguaRow(rowKind) {
-  if (rowKind === 'edge') return 'constraint';
+  if (rowKind === 'constraintEdge' || rowKind === 'edge') return 'constraint';
   if (rowKind === 'proof' || rowKind === 'proofObligation') return 'obligation';
   if (rowKind === 'lower' || rowKind === 'lowering') return 'lowering';
   if (rowKind === 'source' || rowKind === 'sourceLift') return 'lift';
