@@ -1,5 +1,6 @@
 import { createRowIdentityTracker } from './row-identity.js';
 import { pushSemanticUnknownRow } from './semantic-unknown-row.js';
+import { allMachineRecords, deriveMachineGraphStatus, machineBlockerReasonCodes, summarizeMachineGraph } from './machine-graph-summary.js';
 
 const GROUPS = {
   label: 'labels',
@@ -15,11 +16,14 @@ const GROUPS = {
   call: 'calls',
   return: 'returns',
   interrupt: 'interrupts',
+  trap: 'traps',
+  undefinedBehavior: 'undefinedBehaviors',
   proofObligation: 'proofObligations',
   proofGap: 'proofGaps',
-  evidence: 'evidence'
+  evidence: 'evidence',
+  sourceMap: 'sourceMaps',
+  missingEvidence: 'missingEvidence'
 };
-const RECORD_GROUPS = Object.values(GROUPS).concat('unknownRows');
 
 export function parseMachineGraphBlock(block) {
   const name = nameFrom(block.header);
@@ -48,9 +52,13 @@ export function parseMachineGraphBlock(block) {
     calls: [],
     returns: [],
     interrupts: [],
+    traps: [],
+    undefinedBehaviors: [],
     proofObligations: [],
     proofGaps: [],
     evidence: [],
+    sourceMaps: [],
+    missingEvidence: [],
     unknownRows: [],
     parser: { status: 'authored', errors: rowIdentity.errors },
     claims: {
@@ -95,15 +103,19 @@ export function parseMachineGraphBlock(block) {
     callIds: ids(graph.calls),
     returnIds: ids(graph.returns),
     interruptIds: ids(graph.interrupts),
+    trapIds: ids(graph.traps),
+    undefinedBehaviorIds: ids(graph.undefinedBehaviors),
     controlFlowEdgeIds: ids([...graph.controlEdges, ...graph.branches, ...graph.calls, ...graph.returns, ...graph.interrupts]),
     proofObligationIds: ids(graph.proofObligations),
     proofGapCodes: unique(graph.proofGaps.map((record) => record.code)),
     unknownRowIds: ids(graph.unknownRows),
-    missingEvidence: unique(graph.proofGaps.map((record) => record.code)),
+    missingEvidenceIds: ids(graph.missingEvidence),
+    missingEvidence: unique([...graph.missingEvidence.map((record) => record.reasonCode), ...graph.proofGaps.map((record) => record.code), ...allMachineRecords(graph).flatMap((record) => record.missingEvidence ?? [])]),
     evidenceIds: unique([...graph.evidenceIds, ...ids(graph.evidence), ...allMachineRecords(graph).flatMap((record) => record.evidenceIds ?? [])]),
     proofEvidenceIds: unique(allMachineRecords(graph).flatMap((record) => record.proofEvidenceIds ?? [])),
-    sourceMapIds: unique(allMachineRecords(graph).flatMap((record) => record.sourceMapIds ?? [])),
+    sourceMapIds: unique([...ids(graph.sourceMaps), ...allMachineRecords(graph).flatMap((record) => record.sourceMapIds ?? [])]),
     sourceMapMappingIds: unique(allMachineRecords(graph).flatMap((record) => record.sourceMapMappingIds ?? [])),
+    failClosedTrapIds: ids(graph.traps.filter((record) => record.failClosed)),
     conflictKeys: unique(allMachineRecords(graph).map((record) => record.conflictKey)),
     blockerReasonCodes: machineBlockerReasonCodes(graph)
   };
@@ -145,13 +157,17 @@ function parseMachineRecord(kind, name, text, graph, authoredLine = {}) {
   if (kind === 'operand') return cleanRecord({ ...common, instructionId: word('instruction', text) ?? word('instructionId', text), operandIndex: number('index', text) ?? number('operandIndex', text), operandKind: word('kind', text) ?? word('operandKind', text), value: quoted('value', text) ?? word('value', text), registerIds: list(text, 'register', 'registers', 'registerId', 'registerIds'), memoryReference: quoted('memoryReference', text) ?? word('memoryReference', text) ?? word('memory', text), address: word('address', text) ?? word('addr', text), addressMode: word('addressMode', text) ?? word('mode', text), immediate: word('immediate', text), widthBits: number('widthBits', text) ?? number('width', text) });
   if (kind === 'memoryEffect') return cleanRecord({ ...common, instructionId: word('instruction', text) ?? word('instructionId', text), resourceId: word('resource', text) ?? word('resourceId', text), memoryKind: word('memoryKind', text), effectKind: word('effectKind', text) ?? word('kind', text) ?? name, address: word('address', text) ?? word('addr', text), addressSpace: word('addressSpace', text) ?? word('space', text), widthBits: number('widthBits', text) ?? number('width', text), memoryOrder: word('memoryOrder', text) ?? word('ordering', text), reads: list(text, 'read', 'reads'), writes: list(text, 'write', 'writes'), bank: word('bank', text), volatile: flag('volatile', text), atomic: flag('atomic', text), io: flag('io', text), proofStatus: word('proofStatus', text) ?? word('status', text) ?? 'missing', semanticEquivalenceClaim: false, runtimeEquivalenceClaim: false });
   if (kind === 'controlEdge') return cleanRecord({ ...common, instructionId: word('instruction', text) ?? word('instructionId', text), fromInstructionId: word('fromInstruction', text) ?? word('fromInstructionId', text) ?? word('from', text), toInstructionId: word('toInstruction', text) ?? word('toInstructionId', text) ?? word('to', text), fromBlockId: word('fromBlock', text) ?? word('fromBlockId', text), toBlockId: word('toBlock', text) ?? word('toBlockId', text), targetId: word('target', text) ?? word('targetId', text), edgeKind: word('edgeKind', text) ?? word('kind', text) ?? name, condition: quoted('condition', text) ?? word('condition', text), flagIds: list(text, 'flag', 'flags', 'flagId', 'flagIds', 'conditionFlag', 'conditionFlags'), callTarget: word('callTarget', text), returnTarget: word('returnTarget', text), proofStatus: word('proofStatus', text) ?? word('status', text) ?? 'missing', semanticEquivalenceClaim: false, runtimeEquivalenceClaim: false });
-  if (kind === 'branch') return cleanRecord({ ...common, instructionId: word('instruction', text) ?? word('instructionId', text), fromInstructionId: word('fromInstruction', text) ?? word('fromInstructionId', text) ?? word('from', text), toInstructionId: word('toInstruction', text) ?? word('toInstructionId', text), targetId: word('target', text) ?? word('targetId', text) ?? word('to', text), branchKind: word('kind', text) ?? word('branchKind', text), condition: quoted('condition', text) ?? word('condition', text), flagIds: list(text, 'flag', 'flags', 'flagId', 'flagIds'), proofStatus: word('proofStatus', text) ?? word('status', text) ?? 'missing', semanticEquivalenceClaim: false, runtimeEquivalenceClaim: false });
+  if (kind === 'branch') return cleanRecord({ ...common, instructionId: word('instruction', text) ?? word('instructionId', text), fromInstructionId: word('fromInstruction', text) ?? word('fromInstructionId', text) ?? word('from', text), toInstructionId: word('toInstruction', text) ?? word('toInstructionId', text), targetId: word('target', text) ?? word('targetId', text) ?? word('to', text), branchKind: word('kind', text) ?? word('branchKind', text), condition: quoted('condition', text) ?? word('condition', text), flagIds: list(text, 'flag', 'flags', 'flagId', 'flagIds', 'conditionFlag', 'conditionFlags'), proofStatus: word('proofStatus', text) ?? word('status', text) ?? 'missing', semanticEquivalenceClaim: false, runtimeEquivalenceClaim: false });
   if (kind === 'call') return cleanRecord({ ...common, instructionId: word('instruction', text) ?? word('instructionId', text), targetId: word('target', text) ?? word('targetId', text), callableId: word('callable', text) ?? word('callableId', text), callingConvention: word('callingConvention', text) ?? word('convention', text), stackEffect: word('stackEffect', text), proofStatus: word('proofStatus', text) ?? word('status', text) ?? 'missing', semanticEquivalenceClaim: false, runtimeEquivalenceClaim: false });
   if (kind === 'return') return cleanRecord({ ...common, instructionId: word('instruction', text) ?? word('instructionId', text), fromCallableId: word('fromCallable', text) ?? word('fromCallableId', text) ?? word('from', text), stackEffect: word('stackEffect', text), proofStatus: word('proofStatus', text) ?? word('status', text) });
   if (kind === 'interrupt') return cleanRecord({ ...common, vector: word('vector', text), handlerId: word('handler', text) ?? word('handlerId', text), interruptKind: word('kind', text) ?? word('interruptKind', text), proofStatus: word('proofStatus', text) ?? word('status', text) ?? 'missing', semanticEquivalenceClaim: false, runtimeEquivalenceClaim: false });
+  if (kind === 'trap') return cleanRecord({ ...common, trapKind: word('kind', text) ?? word('trapKind', text) ?? name, instructionId: word('instruction', text) ?? word('instructionId', text), memoryEffectId: word('memoryEffect', text) ?? word('memoryEffectId', text), trapCode: word('trapCode', text) ?? word('code', text), condition: quoted('condition', text) ?? word('condition', text), vector: word('vector', text), status: word('status', text) ?? 'open', severity: word('severity', text) ?? 'error', reasonCode: word('reasonCode', text) ?? word('code', text) ?? common.reasonCode ?? `${name}-trap-proof-missing`, proofStatus: word('proofStatus', text) ?? 'missing', failClosed: common.failClosed ?? true, semanticEquivalenceClaim: false, binaryEquivalenceClaim: false, timingEquivalenceClaim: false, runtimeEquivalenceClaim: false });
+  if (kind === 'undefinedBehavior') return cleanRecord({ ...common, undefinedBehaviorKind: word('kind', text) ?? word('undefinedBehaviorKind', text) ?? word('behaviorKind', text) ?? name, instructionId: word('instruction', text) ?? word('instructionId', text), memoryEffectId: word('memoryEffect', text) ?? word('memoryEffectId', text), operation: word('operation', text), condition: quoted('condition', text) ?? word('condition', text), language: word('language', text) ?? graph.sourceLanguage, status: word('status', text) ?? 'blocked', severity: word('severity', text) ?? 'error', reasonCode: word('reasonCode', text) ?? word('code', text) ?? common.reasonCode ?? `${name}-undefined-behavior-proof-missing`, proofStatus: word('proofStatus', text) ?? 'missing', failClosed: common.failClosed ?? true, semanticEquivalenceClaim: false, binaryEquivalenceClaim: false, timingEquivalenceClaim: false, runtimeEquivalenceClaim: false });
   if (kind === 'proofObligation') return cleanRecord({ ...common, subjectId: word('subject', text) ?? word('subjectId', text), subjectKind: word('subjectKind', text), obligationKind: word('obligationKind', text) ?? word('kind', text) ?? name, status: word('status', text) ?? 'missing', statement: quoted('statement', text) ?? quoted('summary', text), evidenceIds: list(text, 'evidence', 'evidenceIds') ?? common.evidenceIds, missingEvidence: list(text, 'missingEvidence') ?? common.missingEvidence, semanticEquivalenceClaim: false, runtimeEquivalenceClaim: false });
   if (kind === 'proofGap') return cleanRecord({ ...common, code: word('code', text) ?? word('reasonCode', text) ?? name, status: word('status', text) ?? 'missing', summary: quoted('summary', text) ?? quoted('message', text), failClosed: common.failClosed ?? true, semanticEquivalenceClaim: false, binaryEquivalenceClaim: false, timingEquivalenceClaim: false, runtimeEquivalenceClaim: false });
   if (kind === 'evidence') return cleanRecord({ ...common, evidenceKind: word('kind', text) ?? word('evidenceKind', text), status: word('status', text) ?? 'unknown', path: word('path', text), command: quoted('command', text) ?? word('command', text), sourceHash: word('sourceHash', text), traceHash: word('traceHash', text), binaryHash: word('binaryHash', text) });
+  if (kind === 'sourceMap') return cleanRecord({ ...common, sourceRecordId: word('sourceRecord', text) ?? word('sourceRecordId', text), targetRecordId: word('targetRecord', text) ?? word('targetRecordId', text), generatedPath: word('generated', text) ?? word('generatedPath', text) ?? word('targetPath', text), originalPath: word('original', text) ?? word('originalPath', text) ?? word('sourcePath', text), mappingHash: word('mappingHash', text), status: word('status', text) ?? 'authored' });
+  if (kind === 'missingEvidence') return cleanRecord({ ...common, reasonCode: word('reason', text) ?? word('reasonCode', text) ?? word('code', text) ?? name, status: word('status', text) ?? 'missing', severity: word('severity', text) ?? 'warning', summary: quoted('summary', text) ?? quoted('message', text), failClosed: common.failClosed ?? true, semanticEquivalenceClaim: false, binaryEquivalenceClaim: false, timingEquivalenceClaim: false, runtimeEquivalenceClaim: false });
   return undefined;
 }
 
@@ -179,67 +195,6 @@ function commonRecord(kind, name, text, graph, authoredLine = {}) {
   });
 }
 
-function summarizeMachineGraph(graph) {
-  return {
-    records: allMachineRecords(graph).length,
-    labels: graph.labels.length,
-    directives: graph.directives.length,
-    registers: graph.registers.length,
-    flags: graph.flags.length,
-    basicBlocks: graph.basicBlocks.length,
-    instructions: graph.instructions.length,
-    operands: graph.operands.length,
-    memoryEffects: graph.memoryEffects.length,
-    controlEdges: graph.controlEdges.length,
-    branches: graph.branches.length,
-    calls: graph.calls.length,
-    returns: graph.returns.length,
-    interrupts: graph.interrupts.length,
-    proofObligations: graph.proofObligations.length,
-    proofGaps: graph.proofGaps.length,
-    evidence: graph.evidence.length,
-    unknownRows: graph.unknownRows.length,
-    memoryEffectsWithoutProof: graph.memoryEffects.filter((record) => record.proofStatus !== 'passed').length,
-    controlEdgesWithoutProof: graph.controlEdges.filter((record) => record.proofStatus !== 'passed').length,
-    branchesWithoutProof: graph.branches.filter((record) => record.proofStatus !== 'passed').length,
-    callsWithoutProof: graph.calls.filter((record) => record.proofStatus !== 'passed').length,
-    interruptsWithoutProof: graph.interrupts.filter((record) => record.proofStatus !== 'passed').length,
-    parseErrors: graph.parser?.errors?.length ?? 0,
-    reasonCodes: unique([...unprovedMachineRecords(graph), ...graph.proofGaps].map((record) => record.reasonCode ?? record.code))
-  };
-}
-
-function deriveMachineGraphStatus(authoredStatus, summary) {
-  if (
-    summary.proofGaps > 0 ||
-    summary.parseErrors > 0 ||
-    summary.memoryEffectsWithoutProof > 0 ||
-    summary.controlEdgesWithoutProof > 0 ||
-    summary.branchesWithoutProof > 0 ||
-    summary.callsWithoutProof > 0 ||
-    summary.interruptsWithoutProof > 0
-  ) return 'blocked';
-  return authoredStatus ?? 'partial';
-}
-
-function machineBlockerReasonCodes(graph) {
-  return unique([...unprovedMachineRecords(graph), ...graph.proofGaps].map((record) => record.reasonCode ?? record.code));
-}
-
-function unprovedMachineRecords(graph) {
-  return [
-    ...graph.memoryEffects,
-    ...graph.controlEdges,
-    ...graph.branches,
-    ...graph.calls,
-    ...graph.interrupts
-  ].filter((record) => record.proofStatus !== 'passed');
-}
-
-function allMachineRecords(graph) {
-  return RECORD_GROUPS.flatMap((group) => graph[group] ?? []);
-}
-
 export function normalizeMachineRowKind(kind) {
   if (kind === 'reg') return 'register';
   if (kind === 'conditionFlag') return 'flag';
@@ -250,15 +205,21 @@ export function normalizeMachineRowKind(kind) {
   if (kind === 'edge') return 'controlEdge';
   if (kind === 'ret') return 'return';
   if (kind === 'irq' || kind === 'exception') return 'interrupt';
+  if (kind === 'traps') return 'trap';
+  if (kind === 'undefined' || kind === 'undefinedBehaviour' || kind === 'ub') return 'undefinedBehavior';
   if (kind === 'proof' || kind === 'obligation') return 'proofObligation';
   if (kind === 'gap' || kind === 'proofGap') return 'proofGap';
   if (kind === 'proofEvidence') return 'evidence';
+  if (kind === 'sourcemap' || kind === 'mapping' || kind === 'sourceMapMapping') return 'sourceMap';
   return kind;
 }
 
 function recordKind(kind) {
   if (kind === 'memoryEffect') return 'memory-effect';
+  if (kind === 'undefinedBehavior') return 'undefined-behavior';
   if (kind === 'proofGap') return 'proof-gap';
+  if (kind === 'sourceMap') return 'source-map';
+  if (kind === 'missingEvidence') return 'missing-evidence';
   return kind;
 }
 

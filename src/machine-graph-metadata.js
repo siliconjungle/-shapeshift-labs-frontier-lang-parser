@@ -21,14 +21,18 @@ export function mergeMachineGraphBlocks(blocks) {
     callIds: blocks.flatMap((block) => ids(block.graph?.calls)),
     returnIds: blocks.flatMap((block) => ids(block.graph?.returns)),
     interruptIds: blocks.flatMap((block) => ids(block.graph?.interrupts)),
+    trapIds: blocks.flatMap((block) => ids(block.graph?.traps)),
+    undefinedBehaviorIds: blocks.flatMap((block) => ids(block.graph?.undefinedBehaviors)),
     proofObligationIds: blocks.flatMap((block) => ids(block.graph?.proofObligations)),
     proofGapCodes: unique(blocks.flatMap((block) => block.graph?.query?.proofGapCodes ?? [])),
     unknownRowIds: blocks.flatMap((block) => ids(block.graph?.unknownRows)),
+    missingEvidenceIds: blocks.flatMap((block) => ids(block.graph?.missingEvidence)),
     missingEvidence: unique(blocks.flatMap((block) => block.graph?.query?.missingEvidence ?? [])),
     evidenceIds: unique(blocks.flatMap((block) => block.graph?.query?.evidenceIds ?? [])),
     proofEvidenceIds: unique(blocks.flatMap((block) => block.graph?.query?.proofEvidenceIds ?? [])),
     sourceMapIds: unique(blocks.flatMap((block) => block.graph?.query?.sourceMapIds ?? [])),
     sourceMapMappingIds: unique(blocks.flatMap((block) => block.graph?.query?.sourceMapMappingIds ?? [])),
+    failClosedTrapIds: blocks.flatMap((block) => block.graph?.query?.failClosedTrapIds ?? []),
     conflictKeys: unique(blocks.flatMap((block) => block.graph?.query?.conflictKeys ?? [])),
     summary: summary(blocks, records),
     metadata: { authoredMachineGraphBlockIds: blocks.map((block) => block.id) }
@@ -52,16 +56,23 @@ function summary(blocks, records) {
     callCount: sum(blocks, 'calls'),
     returnCount: sum(blocks, 'returns'),
     interruptCount: sum(blocks, 'interrupts'),
+    trapCount: sum(blocks, 'traps'),
+    undefinedBehaviorCount: sum(blocks, 'undefinedBehaviors'),
     proofObligationCount: sum(blocks, 'proofObligations'),
     proofGapCount: sum(blocks, 'proofGaps'),
     evidenceCount: sum(blocks, 'evidence'),
+    sourceMapCount: sum(blocks, 'sourceMaps'),
+    missingEvidenceCount: sum(blocks, 'missingEvidence'),
     unknownRowCount: sum(blocks, 'unknownRows'),
     parseErrorCount: sum(blocks, 'parseErrors'),
     memoryEffectsWithoutProof: sum(blocks, 'memoryEffectsWithoutProof'),
     controlEdgesWithoutProof: sum(blocks, 'controlEdgesWithoutProof'),
     branchesWithoutProof: sum(blocks, 'branchesWithoutProof'),
     callsWithoutProof: sum(blocks, 'callsWithoutProof'),
-    interruptsWithoutProof: sum(blocks, 'interruptsWithoutProof')
+    interruptsWithoutProof: sum(blocks, 'interruptsWithoutProof'),
+    failClosedTrapCount: sum(blocks, 'failClosedTraps'),
+    trapWithoutProofCount: sum(blocks, 'trapsWithoutProof'),
+    undefinedBehaviorWithoutProofCount: sum(blocks, 'undefinedBehaviorsWithoutProof')
   };
 }
 

@@ -28,6 +28,7 @@ await copyFile("src/index.d.ts", "dist/index.d.ts");
 await copyFile("src/interlingua.js", "dist/interlingua.js");
 await copyFile("src/machine-graph.js", "dist/machine-graph.js");
 await copyFile("src/machine-graph-metadata.js", "dist/machine-graph-metadata.js");
+await copyFile("src/machine-graph-summary.js", "dist/machine-graph-summary.js");
 await copyFile("src/member-records.js", "dist/member-records.js");
 await copyFile("src/metadata.js", "dist/metadata.js");
 await copyFile("src/operations.js", "dist/operations.js");

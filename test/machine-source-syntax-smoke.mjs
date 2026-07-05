@@ -23,6 +23,12 @@ machineGraph Counter @id("machine_graph_counter") {
   call draw @id("call_draw") target drawSprite proofStatus passed
   ret draw @id("return_draw") instruction instruction_rtl proofStatus passed
   irq nmi @id("interrupt_nmi") vector nmi proofStatus missing
+  sourceMap machine @id("machine_source_map") generated dist/counter.asm
+  mapping branch @id("machine_mapping_branch") sourceRecord instruction_bne targetRecord control_edge_loop generated dist/counter.asm
+  sourceMapMapping jump @id("machine_source_map_mapping_jump") sourceRecord instruction_bne targetRecord branch_loop generated dist/counter.asm
+  missingEvidence timing @id("machine_missing_timing") reason cycle-timing-proof
+  trap bounds @id("machine_trap_bounds") instruction instruction_lda kind bounds-check code machine-trap-proof-missing failClosed
+  ub overflow @id("machine_ub_overflow") instruction instruction_lda kind signed-overflow code machine-ub-proof-missing failClosed
   proof branchTarget @id("proof_obligation_branch_target") subject control_edge_loop status missing
   gap timing @id("machine_gap_timing") code assembly-cycle-timing-boundary
   proofEvidence trace @id("evidence_trace") kind emulator-trace status passed
@@ -32,8 +38,8 @@ machineGraph Counter @id("machine_graph_counter") {
 const report = inspectFrontierSourceSyntax(machineGraphSyntaxSource, { sourcePath: 'machine-syntax.frontier' });
 assert.equal(report.summary.unknownBlockCount, 0);
 assert.equal(report.summary.failClosed, false);
-assert.equal(report.summary.childCount, 23);
-assert.equal(report.summary.recognizedChildCount, 23);
+assert.equal(report.summary.childCount, 29);
+assert.equal(report.summary.recognizedChildCount, 29);
 assert.equal(report.summary.recognizedChildKinds.includes('machineGraphRow'), true);
 assert.equal(report.summary.sourceSyntaxRowFamilyCounts.architecture, 1);
 assert.equal(report.summary.sourceSyntaxRowFamilyCounts.dialect, 1);
@@ -42,6 +48,8 @@ assert.equal(report.summary.sourceSyntaxRowFamilyCounts.sourcePath, 1);
 assert.equal(report.summary.sourceSyntaxRowFamilyCounts.sourceHash, 1);
 assert.equal(report.summary.sourceSyntaxRowFamilyCounts.status, 1);
 assert.equal(report.summary.sourceSyntaxRowFamilyCounts.evidence, 2);
+assert.equal(report.summary.sourceSyntaxRowFamilyCounts.sourceMap, 3);
+assert.equal(report.summary.sourceSyntaxRowFamilyCounts.missingEvidence, 1);
 
 function machineChild(id) {
   const block = report.recognizedBlocks.find((candidate) => candidate.id === 'machine_graph_counter');
@@ -62,6 +70,12 @@ assert.equal(machineChild('control_edge_loop').normalizedRowKind, 'controlEdge')
 assert.equal(machineChild('branch_loop').normalizedRowKind, 'branch');
 assert.equal(machineChild('return_draw').normalizedRowKind, 'return');
 assert.equal(machineChild('interrupt_nmi').normalizedRowKind, 'interrupt');
+assert.equal(machineChild('machine_source_map').normalizedRowKind, 'sourceMap');
+assert.equal(machineChild('machine_mapping_branch').normalizedRowKind, 'sourceMap');
+assert.equal(machineChild('machine_source_map_mapping_jump').normalizedRowKind, 'sourceMap');
+assert.equal(machineChild('machine_missing_timing').normalizedRowKind, 'missingEvidence');
+assert.equal(machineChild('machine_trap_bounds').normalizedRowKind, 'trap');
+assert.equal(machineChild('machine_ub_overflow').normalizedRowKind, 'undefinedBehavior');
 assert.equal(machineChild('proof_obligation_branch_target').normalizedRowKind, 'proofObligation');
 assert.equal(machineChild('machine_gap_timing').normalizedRowKind, 'proofGap');
 assert.equal(machineChild('evidence_trace').normalizedRowKind, 'evidence');
