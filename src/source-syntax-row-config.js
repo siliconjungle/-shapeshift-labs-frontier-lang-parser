@@ -17,8 +17,8 @@ const coreFailClosed = (reason) => ({ failClosedUnknownRows: true, unknownRowRea
 export const ROW_SYNTAX_CONFIG = Object.freeze({
   interlingua: rowConfig('interlinguaRow', 'interlingua_row', interlinguaRows, normalizeInterlinguaRow, coreFailClosed('unsupported-interlingua-row')),
   universalInterlingua: rowConfig('interlinguaRow', 'interlingua_row', interlinguaRows, normalizeInterlinguaRow, coreFailClosed('unsupported-interlingua-row')),
-  dialectRegistry: rowConfig('dialectRegistryRow', 'dialect_registry_row', dialectRows, normalizeDialectRegistryRow),
-  universalDialectRegistry: rowConfig('dialectRegistryRow', 'dialect_registry_row', dialectRows, normalizeDialectRegistryRow),
+  dialectRegistry: rowConfig('dialectRegistryRow', 'dialect_registry_row', dialectRows, normalizeDialectRegistryRow, coreFailClosed('unsupported-dialect-registry-row')),
+  universalDialectRegistry: rowConfig('dialectRegistryRow', 'dialect_registry_row', dialectRows, normalizeDialectRegistryRow, coreFailClosed('unsupported-dialect-registry-row')),
   runtimeCapabilities: rowConfig('runtimeCapabilityRow', 'runtime_capability_row', runtimeRows, normalizeRuntimeCapabilityRow),
   runtimeCapabilityMatrix: rowConfig('runtimeCapabilityRow', 'runtime_capability_row', runtimeRows, normalizeRuntimeCapabilityRow),
   runtimeHosts: rowConfig('runtimeCapabilityRow', 'runtime_capability_row', runtimeRows, normalizeRuntimeCapabilityRow),
