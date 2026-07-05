@@ -10,11 +10,14 @@ import {
   nameFrom,
   readInlineFlag,
   readInlineList,
-  readInlineQuoted,
   readInlineWord,
   runtimeEvidence,
   runtimeFalseClaims,
+  runtimeHostBinding,
+  runtimeHostCapability,
+  runtimeHostProfile,
   runtimeProofGap,
+  runtimeRequirement,
   safeId,
   summarizeRuntimeCapabilities,
   uniqueHostSelectors,
@@ -54,33 +57,34 @@ export function parseRuntimeCapabilityBlock(block) {
     }
     const [, rowKind, rowName, rest] = match;
     if (rowKind === 'gap' || rowKind === 'proofGap') {
-      rowIdentity.push(matrix.proofGaps, runtimeProofGap(rowName, rest), { rowKind, normalizedRowKind: 'proofGap', name: rowName });
+      rowIdentity.push(matrix.proofGaps, runtimeProofGap(rowName, rest, authoredLine), { rowKind, normalizedRowKind: 'proofGap', name: rowName, sourceSpan: authoredLine.sourceSpan });
       continue;
     }
     if (rowKind === 'evidence' || rowKind === 'proofEvidence') {
-      rowIdentity.push(matrix.evidence, runtimeEvidence(rowName, rest), { rowKind, normalizedRowKind: 'evidence', name: rowName });
+      rowIdentity.push(matrix.evidence, runtimeEvidence(rowName, rest, authoredLine), { rowKind, normalizedRowKind: 'evidence', name: rowName, sourceSpan: authoredLine.sourceSpan });
       continue;
     }
     if (rowKind === 'requirement' || rowKind === 'runtimeRequirement' || rowKind === 'requiredRuntime') {
-      rowIdentity.push(matrix.runtimeRequirements, runtimeRequirement(rowName, rest), { rowKind, normalizedRowKind: 'runtimeRequirement', name: rowName });
+      rowIdentity.push(matrix.runtimeRequirements, runtimeRequirement(rowName, rest, authoredLine), { rowKind, normalizedRowKind: 'runtimeRequirement', name: rowName, sourceSpan: authoredLine.sourceSpan });
       continue;
     }
     if (rowKind === 'capability' || rowKind === 'hostCapability') {
-      const capabilityRecord = runtimeHostCapability(rowName, rest);
-      if (capabilityRecord && rowIdentity.accept(capabilityRecord, { rowKind, normalizedRowKind: 'hostCapability', name: rowName })) {
+      const capabilityRecord = runtimeHostCapability(rowName, rest, authoredLine);
+      if (capabilityRecord && rowIdentity.accept(capabilityRecord, { rowKind, normalizedRowKind: 'hostCapability', name: rowName, sourceSpan: authoredLine.sourceSpan })) {
         attachCapability(hostMap, matrix, capabilityRecord, rest);
       }
       continue;
     }
     if (rowKind === 'hostBinding' || rowKind === 'binding') {
-      rowIdentity.push(matrix.hostBindings, runtimeHostBinding(rowName, rest), { rowKind, normalizedRowKind: 'hostBinding', name: rowName });
+      rowIdentity.push(matrix.hostBindings, runtimeHostBinding(rowName, rest, authoredLine), { rowKind, normalizedRowKind: 'hostBinding', name: rowName, sourceSpan: authoredLine.sourceSpan });
       continue;
     }
-    const profile = runtimeHostProfile(rowKind, rowName, rest);
+    const profile = runtimeHostProfile(rowKind, rowName, rest, authoredLine);
     rowIdentity.preserve(profile, {
       rowKind,
       normalizedRowKind: 'hostProfile',
       name: rowName,
+      sourceSpan: authoredLine.sourceSpan,
       disposition: 'preserved-runtime-host-profile-upsert'
     });
     upsertHost(hostMap, matrix, profile, rowKind);
@@ -187,28 +191,6 @@ function pushUnsupportedRuntimeRow(matrix, line, authoredLine) {
   });
 }
 
-function runtimeHostProfile(rowKind, name, text) {
-  const id = idFrom(text, name);
-  const [languageFromId, runtimeFromId] = String(id).includes(':') ? String(id).split(':') : [];
-  return cleanRecord({
-    kind: 'frontier.lang.runtimeHostProfile',
-    id,
-    name: readInlineWord('name', text) ?? name,
-    language: readInlineWord('language', text) ?? languageFromId,
-    aliases: readInlineList(text, 'alias', 'aliases'),
-    runtime: readInlineWord('runtime', text) ?? runtimeFromId,
-    host: readInlineWord('host', text),
-    target: readInlineWord('target', text),
-    capabilities: {},
-    notes: readInlineList(text, 'note', 'notes'),
-    role: rowKind === 'sourceHost' ? 'source' : rowKind === 'targetHost' ? 'target' : readInlineWord('role', text),
-    sourcePath: readInlineWord('sourcePath', text) ?? readInlineWord('path', text),
-    sourceHash: readInlineWord('sourceHash', text),
-    evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
-    claims: runtimeFalseClaims()
-  });
-}
-
 function upsertHost(hostMap, matrix, profile, rowKind) {
   const existing = hostMap.get(profile.id) ?? { capabilities: {} };
   const merged = cleanRecord({
@@ -232,89 +214,13 @@ function attachCapability(hostMap, matrix, capabilityRecord, text) {
     notes: readInlineList(text, 'note', 'notes'),
     evidenceIds: capabilityRecord.evidenceIds,
     sourcePath: capabilityRecord.sourcePath,
-    sourceHash: capabilityRecord.sourceHash
+    sourceHash: capabilityRecord.sourceHash,
+    sourceSpan: capabilityRecord.sourceSpan,
+    authoredSourceSpan: capabilityRecord.authoredSourceSpan
   });
   profile.capabilities = { ...(profile.capabilities ?? {}), [capability]: normalized };
   hostMap.set(hostId, profile);
   matrix.hostCapabilities.push(capabilityRecord);
   if (readInlineFlag('source', text) || readInlineWord('role', text) === 'source') matrix.sourceHosts.push(hostId);
   if (readInlineFlag('target', text) || readInlineWord('role', text) === 'target') matrix.targetHosts.push(hostId);
-}
-
-function runtimeHostCapability(name, text) {
-  const hostId = readInlineWord('host', text) ?? readInlineWord('hostId', text) ?? readInlineWord('sourceHost', text) ?? readInlineWord('targetHost', text);
-  if (!hostId) return undefined;
-  const capability = readInlineWord('capability', text) ?? readInlineWord('kind', text) ?? name;
-  const bindingId = readInlineWord('bindingId', text) ?? readInlineWord('binding', text);
-  return cleanRecord({
-    kind: 'frontier.lang.runtimeCapability.hostCapability',
-    id: idFrom(text, `runtime_capability_${safeId(hostId)}_${safeId(capability)}`),
-    name,
-    hostId,
-    host: hostId,
-    capability,
-    support: readInlineWord('support', text) ?? 'native',
-    permission: readInlineWord('permission', text),
-    bindingId,
-    binding: bindingId,
-    requiredSignals: readInlineList(text, 'requiredSignal', 'requiredSignals', 'signal', 'signals'),
-    proofEvidenceIds: readInlineList(text, 'proofEvidence', 'proofEvidenceIds'),
-    evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
-    missingEvidence: readInlineList(text, 'missingEvidence', 'missingEvidences'),
-    proofGaps: readInlineList(text, 'proofGap', 'proofGaps'),
-    sourcePath: readInlineWord('sourcePath', text) ?? readInlineWord('path', text),
-    sourceHash: readInlineWord('sourceHash', text),
-    failClosed: true,
-    claims: runtimeFalseClaims()
-  });
-}
-
-function runtimeHostBinding(name, text) {
-  return cleanRecord({
-    kind: 'frontier.lang.runtimeCapability.hostBinding',
-    id: idFrom(text, `runtime_binding_${safeId(name)}`),
-    name,
-    hostId: readInlineWord('host', text) ?? readInlineWord('hostId', text) ?? readInlineWord('sourceHost', text) ?? readInlineWord('targetHost', text),
-    capability: readInlineWord('capability', text) ?? readInlineWord('kind', text),
-    bindingKind: readInlineWord('bindingKind', text) ?? readInlineWord('kind', text),
-    packageName: readInlineWord('package', text) ?? readInlineWord('packageName', text),
-    importPath: readInlineWord('import', text) ?? readInlineWord('importPath', text),
-    symbol: readInlineWord('symbol', text),
-    apiName: readInlineWord('apiName', text),
-    globalName: readInlineWord('globalName', text),
-    command: readInlineQuoted('command', text) ?? readInlineWord('command', text),
-    evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
-    proofEvidenceIds: readInlineList(text, 'proofEvidence', 'proofEvidenceIds'),
-    missingEvidence: readInlineList(text, 'missingEvidence', 'missingEvidences'),
-    proofGaps: readInlineList(text, 'proofGap', 'proofGaps'),
-    failClosed: true,
-    claims: runtimeFalseClaims()
-  });
-}
-
-function runtimeRequirement(name, text) {
-  return cleanRecord({
-    id: idFrom(text, `runtime_requirement_${safeId(name)}`),
-    name,
-    capability: readInlineWord('capability', text) ?? readInlineWord('kind', text) ?? name,
-    capabilities: readInlineList(text, 'capability', 'capabilities'),
-    sourceLanguage: readInlineWord('sourceLanguage', text) ?? readInlineWord('language', text),
-    target: readInlineWord('target', text) ?? readInlineWord('targetLanguage', text),
-    sourceRuntime: readInlineWord('sourceRuntime', text) ?? readInlineWord('runtime', text),
-    targetRuntime: readInlineWord('targetRuntime', text),
-    sourceHost: readInlineWord('sourceHost', text) ?? readInlineWord('sourceHostId', text),
-    targetHost: readInlineWord('targetHost', text) ?? readInlineWord('targetHostId', text),
-    reason: readInlineQuoted('reason', text) ?? readInlineWord('reason', text),
-    requiredSignals: readInlineList(text, 'requiredSignal', 'requiredSignals', 'signal', 'signals', 'proofSignal', 'proofSignals'),
-    proofEvidenceIds: readInlineList(text, 'proofEvidence', 'proofEvidenceIds'),
-    evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
-    hostCapabilityIds: readInlineList(text, 'hostCapability', 'hostCapabilityIds'),
-    bindingIds: readInlineList(text, 'binding', 'bindingIds', 'hostBinding', 'hostBindingIds'),
-    missingEvidence: readInlineList(text, 'missingEvidence', 'missingEvidences'),
-    proofGaps: readInlineList(text, 'proofGap', 'proofGaps'),
-    status: readInlineWord('status', text),
-    readiness: readInlineWord('readiness', text),
-    failClosed: true,
-    claims: runtimeFalseClaims()
-  });
 }

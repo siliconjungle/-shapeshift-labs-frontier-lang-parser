@@ -15,7 +15,7 @@ runtimeCapabilities WebToRust @id("runtime_caps_web_rust") {
   evidence fetchProbe @id("evidence_runtime_fetch") kind runtime-adapter-proof status passed capability fetch sourceHost runtime_host_js_web targetHost runtime_host_rust_cli runtimeProofSignals source-hash|target-hash|runtime-command|probe-id|telemetry-hash|network-trace-hash command "npm run probe:fetch" probeId fetch-probe telemetryHash hash_telemetry networkTraceHash hash_network
   gap domProbe @id("runtime_gap_dom_probe") code runtime-dom-proof status missing summary "DOM proof is not provided."
 }
-`);
+`, { sourcePath: 'runtime-capability-probe.frontier' });
 
 const runtime = doc.metadata.runtimeCapabilities;
 assert.equal(runtime.id, 'runtime_caps_web_rust');
@@ -42,6 +42,15 @@ assert.equal(runtime.evidence[0].status, 'passed');
 assert.equal(runtime.evidence[0].command, 'npm run probe:fetch');
 assert.equal(runtime.evidence[0].runtimeProofSignals.includes('telemetry-hash'), true);
 assert.equal(runtime.proofGapCodes[0], 'runtime-dom-proof');
+assert.equal(runtime.hostProfiles[0].sourceSpan.path, 'runtime-capability-probe.frontier');
+assert.equal(runtime.hostProfiles[0].sourceSpan.blockKind, 'runtimeCapabilities');
+assert.equal(runtime.hostProfiles[0].capabilities.fetch.sourceSpan.path, 'runtime-capability-probe.frontier');
+assert.equal(runtime.hostCapabilities[0].sourceSpan.path, 'runtime-capability-probe.frontier');
+assert.equal(runtime.hostBindings[0].sourceSpan.path, 'runtime-capability-probe.frontier');
+assert.equal(runtime.runtimeRequirements[0].sourceSpan.path, 'runtime-capability-probe.frontier');
+assert.equal(runtime.evidence[0].sourceSpan.path, 'runtime-capability-probe.frontier');
+assert.equal(runtime.proofGaps[0].sourceSpan.path, 'runtime-capability-probe.frontier');
+assert.deepEqual(runtime.evidence[0].authoredSourceSpan, runtime.evidence[0].sourceSpan);
 assert.equal(runtime.summary.capabilityCount, 2);
 assert.equal(runtime.summary.hostCapabilityCount, 2);
 assert.equal(runtime.summary.hostBindingCount, 2);

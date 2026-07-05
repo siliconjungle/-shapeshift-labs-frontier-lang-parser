@@ -26,7 +26,7 @@ export function runtimeFalseClaims() {
   };
 }
 
-export function runtimeEvidence(name, text) {
+export function runtimeEvidence(name, text, authoredLine = {}) {
   return cleanRecord({
     id: idFrom(text, `runtime_evidence_${safeId(name)}`),
     name,
@@ -70,19 +70,131 @@ export function runtimeEvidence(name, text) {
     adapterBindingHash: readInlineWord('adapterBindingHash', text),
     path: readInlineWord('path', text),
     summary: readInlineQuoted('summary', text),
+    sourceSpan: authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan,
     claims: runtimeFalseClaims()
   });
 }
 
-export function runtimeProofGap(name, text) {
+export function runtimeProofGap(name, text, authoredLine = {}) {
   const code = readInlineWord('code', text) ?? name;
   return cleanRecord({
     id: idFrom(text, `runtime_gap_${safeId(code)}`),
     code,
     status: readInlineWord('status', text) ?? 'not-claimed',
     summary: readInlineQuoted('summary', text) ?? readInlineQuoted('message', text),
+    sourceSpan: authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan,
     failClosed: true,
     ...runtimeFalseClaims()
+  });
+}
+
+export function runtimeHostProfile(rowKind, name, text, authoredLine = {}) {
+  const id = idFrom(text, name);
+  const [languageFromId, runtimeFromId] = String(id).includes(':') ? String(id).split(':') : [];
+  return cleanRecord({
+    kind: 'frontier.lang.runtimeHostProfile',
+    id,
+    name: readInlineWord('name', text) ?? name,
+    language: readInlineWord('language', text) ?? languageFromId,
+    aliases: readInlineList(text, 'alias', 'aliases'),
+    runtime: readInlineWord('runtime', text) ?? runtimeFromId,
+    host: readInlineWord('host', text),
+    target: readInlineWord('target', text),
+    capabilities: {},
+    notes: readInlineList(text, 'note', 'notes'),
+    role: rowKind === 'sourceHost' ? 'source' : rowKind === 'targetHost' ? 'target' : readInlineWord('role', text),
+    sourcePath: readInlineWord('sourcePath', text) ?? readInlineWord('path', text),
+    sourceHash: readInlineWord('sourceHash', text),
+    evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
+    sourceSpan: authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan,
+    claims: runtimeFalseClaims()
+  });
+}
+
+export function runtimeHostCapability(name, text, authoredLine = {}) {
+  const hostId = readInlineWord('host', text) ?? readInlineWord('hostId', text) ?? readInlineWord('sourceHost', text) ?? readInlineWord('targetHost', text);
+  if (!hostId) return undefined;
+  const capability = readInlineWord('capability', text) ?? readInlineWord('kind', text) ?? name;
+  const bindingId = readInlineWord('bindingId', text) ?? readInlineWord('binding', text);
+  return cleanRecord({
+    kind: 'frontier.lang.runtimeCapability.hostCapability',
+    id: idFrom(text, `runtime_capability_${safeId(hostId)}_${safeId(capability)}`),
+    name,
+    hostId,
+    host: hostId,
+    capability,
+    support: readInlineWord('support', text) ?? 'native',
+    permission: readInlineWord('permission', text),
+    bindingId,
+    binding: bindingId,
+    requiredSignals: readInlineList(text, 'requiredSignal', 'requiredSignals', 'signal', 'signals'),
+    proofEvidenceIds: readInlineList(text, 'proofEvidence', 'proofEvidenceIds'),
+    evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
+    missingEvidence: readInlineList(text, 'missingEvidence', 'missingEvidences'),
+    proofGaps: readInlineList(text, 'proofGap', 'proofGaps'),
+    sourcePath: readInlineWord('sourcePath', text) ?? readInlineWord('path', text),
+    sourceHash: readInlineWord('sourceHash', text),
+    sourceSpan: authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan,
+    failClosed: true,
+    claims: runtimeFalseClaims()
+  });
+}
+
+export function runtimeHostBinding(name, text, authoredLine = {}) {
+  return cleanRecord({
+    kind: 'frontier.lang.runtimeCapability.hostBinding',
+    id: idFrom(text, `runtime_binding_${safeId(name)}`),
+    name,
+    hostId: readInlineWord('host', text) ?? readInlineWord('hostId', text) ?? readInlineWord('sourceHost', text) ?? readInlineWord('targetHost', text),
+    capability: readInlineWord('capability', text) ?? readInlineWord('kind', text),
+    bindingKind: readInlineWord('bindingKind', text) ?? readInlineWord('kind', text),
+    packageName: readInlineWord('package', text) ?? readInlineWord('packageName', text),
+    importPath: readInlineWord('import', text) ?? readInlineWord('importPath', text),
+    symbol: readInlineWord('symbol', text),
+    apiName: readInlineWord('apiName', text),
+    globalName: readInlineWord('globalName', text),
+    command: readInlineQuoted('command', text) ?? readInlineWord('command', text),
+    evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
+    proofEvidenceIds: readInlineList(text, 'proofEvidence', 'proofEvidenceIds'),
+    missingEvidence: readInlineList(text, 'missingEvidence', 'missingEvidences'),
+    proofGaps: readInlineList(text, 'proofGap', 'proofGaps'),
+    sourceSpan: authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan,
+    failClosed: true,
+    claims: runtimeFalseClaims()
+  });
+}
+
+export function runtimeRequirement(name, text, authoredLine = {}) {
+  return cleanRecord({
+    id: idFrom(text, `runtime_requirement_${safeId(name)}`),
+    name,
+    capability: readInlineWord('capability', text) ?? readInlineWord('kind', text) ?? name,
+    capabilities: readInlineList(text, 'capability', 'capabilities'),
+    sourceLanguage: readInlineWord('sourceLanguage', text) ?? readInlineWord('language', text),
+    target: readInlineWord('target', text) ?? readInlineWord('targetLanguage', text),
+    sourceRuntime: readInlineWord('sourceRuntime', text) ?? readInlineWord('runtime', text),
+    targetRuntime: readInlineWord('targetRuntime', text),
+    sourceHost: readInlineWord('sourceHost', text) ?? readInlineWord('sourceHostId', text),
+    targetHost: readInlineWord('targetHost', text) ?? readInlineWord('targetHostId', text),
+    reason: readInlineQuoted('reason', text) ?? readInlineWord('reason', text),
+    requiredSignals: readInlineList(text, 'requiredSignal', 'requiredSignals', 'signal', 'signals', 'proofSignal', 'proofSignals'),
+    proofEvidenceIds: readInlineList(text, 'proofEvidence', 'proofEvidenceIds'),
+    evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
+    hostCapabilityIds: readInlineList(text, 'hostCapability', 'hostCapabilityIds'),
+    bindingIds: readInlineList(text, 'binding', 'bindingIds', 'hostBinding', 'hostBindingIds'),
+    missingEvidence: readInlineList(text, 'missingEvidence', 'missingEvidences'),
+    proofGaps: readInlineList(text, 'proofGap', 'proofGaps'),
+    status: readInlineWord('status', text),
+    readiness: readInlineWord('readiness', text),
+    sourceSpan: authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan,
+    failClosed: true,
+    claims: runtimeFalseClaims()
   });
 }
 

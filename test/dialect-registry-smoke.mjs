@@ -11,7 +11,7 @@ dialectRegistry RuntimeDialects @id("dialect_registry_runtime") {
   dialect nodeProcess @id("dialect_registry_node_process") dialect node.runtime kind runtime name process.env target rust disposition unsupported readiness blocked loss loss_node_process_projection evidence evidence_node_runtime sourceMap sourcemap_runtime
   extern viteRoutes @id("dialect_registry_vite_routes") dialect vite.plugin.virtual-module externKind generatorArtifact target rust disposition runtime-required readiness needs-review evidence evidence_vite_routes_manifest bindingSymbol virtual:routes module vite
 }
-`);
+`, { sourcePath: 'dialect-registry-probe.frontier' });
 
 assert.equal(doc.metadata.dialects.id, 'dialect_registry_runtime');
 assert.equal(doc.metadata.dialects.kind, 'frontier.lang.universalDialectRegistry');
@@ -26,10 +26,24 @@ assert.equal(doc.metadata.dialects.dialects[0].language, 'javascript');
 assert.equal(doc.metadata.dialects.dialects[0].sourceHash, 'sha256:runtime');
 assert.equal(doc.metadata.dialects.dialects[0].projection.disposition, 'unsupported');
 assert.equal(doc.metadata.dialects.dialects[0].projection.targets[0], 'rust');
+assert.equal(doc.metadata.dialects.dialects[0].sourceSpan.path, 'dialect-registry-probe.frontier');
+assert.equal(doc.metadata.dialects.dialects[0].sourceSpan.blockKind, 'dialectRegistry');
 assert.equal(doc.metadata.dialects.externs[0].binding.symbol, 'virtual:routes');
 assert.equal(doc.metadata.dialects.externs[0].sourceHash, 'sha256:runtime');
 assert.equal(doc.metadata.dialects.externs[0].projection.evidenceIds[0], 'evidence_vite_routes_manifest');
+assert.equal(doc.metadata.dialects.externs[0].sourceSpan.path, 'dialect-registry-probe.frontier');
+assert.deepEqual(doc.metadata.dialects.externs[0].authoredSourceSpan, doc.metadata.dialects.externs[0].sourceSpan);
 assert.equal(doc.metadata.dialects.metadata.semanticEquivalenceClaim, false);
+
+const externPathDoc = parseFrontierSource(`module DialectExternPathProbe @id("mod_dialect_extern_path_probe") {
+dialectRegistry RuntimeDialects @id("dialect_registry_extern_path") {
+  extern viteRoutes @id("dialect_registry_extern_path_vite_routes") path src/routes.virtual.ts bindingPath vite/routes bindingSymbol virtual:routes
+}
+}`, { sourcePath: 'dialect-extern-path.frontier' });
+const externPath = externPathDoc.metadata.dialects.externs[0];
+assert.equal(externPath.sourcePath, 'src/routes.virtual.ts');
+assert.equal(externPath.binding.path, 'vite/routes');
+assert.equal(externPath.sourceSpan.path, 'dialect-extern-path.frontier');
 
 const syntaxReport = inspectFrontierSourceSyntax(`module DialectRegistrySyntax @id("mod_dialect_registry_syntax") {
 universalDialectRegistry RuntimeDialects @id("dialect_registry_syntax") {

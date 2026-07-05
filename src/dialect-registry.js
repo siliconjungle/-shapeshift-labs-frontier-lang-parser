@@ -27,8 +27,8 @@ export function parseDialectRegistryBlock(block) {
     if (!line || line.startsWith('#') || isRegistryPropertyLine(line)) continue;
     const dialect = /^(?:dialect|record)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
     const extern = /^extern\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
-    if (dialect) registry.dialects.push(dialectRecord(registry, dialect[1], dialect[2]));
-    else if (extern) registry.externs.push(externRecord(registry, extern[1], extern[2]));
+    if (dialect) registry.dialects.push(dialectRecord(registry, dialect[1], dialect[2], authoredLine));
+    else if (extern) registry.externs.push(externRecord(registry, extern[1], extern[2], authoredLine));
     else pushUnsupportedDialectRow(registry, line, authoredLine);
   }
   return summarizeRegistry(registry);
@@ -76,7 +76,7 @@ function pushUnsupportedDialectRow(registry, line, authoredLine) {
   });
 }
 
-function dialectRecord(registry, name, text) {
+function dialectRecord(registry, name, text, authoredLine = {}) {
   return cleanRecord({
     kind: 'frontier.lang.universalDialectRecord',
     version: 1,
@@ -100,14 +100,16 @@ function dialectRecord(registry, name, text) {
     lossIds: readInlineList(text, 'loss', 'lossId', 'lossIds') ?? [],
     evidenceIds: readInlineList(text, 'evidence', 'evidenceId', 'evidenceIds') ?? [],
     projection: projectionRecord(text),
+    sourceSpan: authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan,
     metadata: { semanticEquivalenceClaim: false, autoMergeClaim: false }
   });
 }
 
-function externRecord(registry, name, text) {
+function externRecord(registry, name, text, authoredLine = {}) {
   const binding = cleanRecord({
     module: readInlineWord('module', text),
-    path: readInlineWord('bindingPath', text) ?? readInlineWord('path', text),
+    path: readInlineWord('bindingPath', text),
     symbol: readInlineWord('bindingSymbol', text) ?? readInlineWord('symbol', text),
     abi: readInlineWord('abi', text),
     version: readInlineWord('version', text)
@@ -121,7 +123,7 @@ function externRecord(registry, name, text) {
     externKind: readInlineWord('externKind', text) ?? readInlineWord('kind', text) ?? 'foreignSymbol',
     name: readInlineWord('name', text) ?? name,
     ...(Object.keys(binding).length ? { binding } : {}),
-    sourcePath: readInlineWord('sourcePath', text) ?? registry.sourcePath,
+    sourcePath: readInlineWord('sourcePath', text) ?? readInlineWord('path', text) ?? registry.sourcePath,
     sourceHash: readInlineWord('sourceHash', text) ?? registry.sourceHash,
     nativeSourceId: readInlineWord('nativeSource', text) ?? readInlineWord('nativeSourceId', text),
     nativeAstId: readInlineWord('nativeAst', text) ?? readInlineWord('nativeAstId', text),
@@ -133,6 +135,8 @@ function externRecord(registry, name, text) {
     lossIds: readInlineList(text, 'loss', 'lossId', 'lossIds') ?? [],
     evidenceIds: readInlineList(text, 'evidence', 'evidenceId', 'evidenceIds') ?? [],
     projection: projectionRecord(text),
+    sourceSpan: authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan,
     metadata: { semanticEquivalenceClaim: false, autoMergeClaim: false }
   });
 }
