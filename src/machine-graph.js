@@ -234,6 +234,7 @@ function allMachineRecords(graph) {
 
 export function normalizeMachineRowKind(kind) {
   if (kind === 'reg') return 'register';
+  if (kind === 'conditionFlag') return 'flag';
   if (kind === 'block') return 'basicBlock';
   if (kind === 'inst' || kind === 'instr' || kind === 'op' || kind === 'opcode') return 'instruction';
   if (kind === 'arg') return 'operand';

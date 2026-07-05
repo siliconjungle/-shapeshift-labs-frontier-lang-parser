@@ -3,7 +3,7 @@ const canvasRows = words('sourcePath path sourceHash element command state state
 const constraintRows = words('subject scope target variable var constraint hard soft preference prefer collapse admission');
 const dialectRows = words('language sourceLanguage sourcePath path sourceHash dialect record extern');
 const interlinguaRows = words('route routeId sourceLanguage target mode layer constraint constraintEdge edge obligation proofObligation proof lowering lower source sourceLift lift evidence');
-const machineRows = words('label directive register reg flag conditionFlag basicBlock block instruction inst instr op opcode operand arg memoryEffect memoryAccess load store atomic fence memory mem effect controlEdge edge branch call return ret interrupt irq exception proof proofObligation obligation gap proofGap evidence proofEvidence');
+const machineRows = words('architecture arch dialect sourceLanguage language sourcePath path sourceHash status label directive register reg flag conditionFlag basicBlock block instruction inst instr op opcode operand arg memoryEffect memoryAccess load store atomic fence memory mem effect controlEdge edge branch call return ret interrupt irq exception proof proofObligation obligation gap proofGap evidence evidenceIds proofEvidence');
 const migrationRows = words('from fromVersion to toVersion change invariant invariants');
 const packageRows = words('sourcePath path sourceHash packageManager metadata dependency script export gap proofGap evidence proofEvidence');
 const runtimeRows = words('host runtimeHost hostProfile sourceHost targetHost capability hostCapability hostBinding binding requirement runtimeRequirement requiredRuntime evidence proofEvidence gap proofGap');
@@ -130,6 +130,9 @@ function normalizeResourceGraphRow(rowKind) {
 }
 
 function normalizeMachineGraphRow(rowKind) {
+  if (rowKind === 'arch') return 'architecture';
+  if (rowKind === 'language') return 'sourceLanguage';
+  if (rowKind === 'path') return 'sourcePath';
   if (rowKind === 'reg') return 'register';
   if (rowKind === 'conditionFlag') return 'flag';
   if (rowKind === 'block') return 'basicBlock';
@@ -141,7 +144,7 @@ function normalizeMachineGraphRow(rowKind) {
   if (rowKind === 'irq' || rowKind === 'exception') return 'interrupt';
   if (rowKind === 'proof' || rowKind === 'obligation') return 'proofObligation';
   if (rowKind === 'gap') return 'proofGap';
-  if (rowKind === 'proofEvidence') return 'evidence';
+  if (rowKind === 'evidenceIds' || rowKind === 'proofEvidence') return 'evidence';
   return rowKind;
 }
 

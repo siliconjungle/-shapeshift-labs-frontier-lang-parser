@@ -34,9 +34,11 @@ await copyFile("src/semantic-edit-metadata.js", "dist/semantic-edit-metadata.js"
 await copyFile("src/semantic-edit-records.js", "dist/semantic-edit-records.js");
 await copyFile("src/package-manifest.js", "dist/package-manifest.js");
 await copyFile("src/paradigm.js", "dist/paradigm.js");
+await copyFile("src/paradigm-metadata.js", "dist/paradigm-metadata.js");
 await copyFile("src/proof.js", "dist/proof.js");
 await copyFile("src/resource-graph.js", "dist/resource-graph.js");
 await copyFile("src/resource-graph-low-level.js", "dist/resource-graph-low-level.js");
+await copyFile("src/resource-graph-summary.js", "dist/resource-graph-summary.js");
 await copyFile("src/row-identity.js", "dist/row-identity.js");
 await copyFile("src/runtime-capability.js", "dist/runtime-capability.js");
 await copyFile("src/runtime-capability-records.js", "dist/runtime-capability-records.js");

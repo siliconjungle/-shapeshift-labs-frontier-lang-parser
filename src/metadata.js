@@ -6,12 +6,8 @@ import { mergeConversionBlocks } from './conversion-metadata.js';
 import { mergeSemanticEditBlocks } from './semantic-edit-metadata.js';
 import { mergeGateAdmissionEvidenceBlocks } from './gate-admission-evidence.js';
 import { mergeMachineGraphBlocks } from './machine-graph-metadata.js';
+import { mergeParadigmBlocks } from './paradigm-metadata.js';
 const PROOF_GROUPS = ['contracts', 'refinements', 'invariants', 'termination', 'temporal', 'obligations', 'artifacts', 'assumptions'];
-const PARADIGM_GROUPS = [
-  'bindingScopes', 'bindings', 'patterns', 'typeConstraints', 'evaluationModels', 'memoryLocations', 'effectRegions',
-  'controlRegions', 'logicPrograms', 'actorSystems', 'stackEffects', 'arrayShapes', 'numericKernels', 'dataflowNetworks',
-  'clockModels', 'objectModels', 'macroExpansions', 'reflectionBoundaries', 'loweringRecords'
-];
 
 export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], semanticEditBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], decisionGraphBlocks = [], gateAdmissionEvidenceBlocks = [], dialectRegistryBlocks = [], interlinguaBlocks = [], resourceGraphBlocks = [], machineGraphBlocks = [], nativeSourceBlocks = [], packageManifestBlocks = [], canvasSurfaceBlocks = [], applicationSurfaceBlocks = [], runtimeCapabilityBlocks = [], targetProjectionTargets = [] } = {}) {
   const metadata = {};
@@ -48,15 +44,6 @@ function mergeProofBlocks(blocks) {
   };
   for (const group of PROOF_GROUPS) proof[group] = blocks.flatMap((block) => block[group] ?? []);
   return proof;
-}
-
-function mergeParadigmBlocks(blocks) {
-  const paradigm = {
-    id: blocks.length === 1 ? blocks[0].id : 'paradigm:source',
-    metadata: { authoredParadigmBlockIds: blocks.map((block) => block.id) }
-  };
-  for (const group of PARADIGM_GROUPS) paradigm[group] = blocks.flatMap((block) => block[group] ?? []);
-  return paradigm;
 }
 
 function mergeOperationBlocks(blocks) {
@@ -275,6 +262,12 @@ function mergeResourceGraphBlocks(blocks) {
     undefinedBehaviorIds: blocks.flatMap((block) => ids(block.graph?.undefinedBehaviors)),
     conflictIds: blocks.flatMap((block) => ids(block.graph?.conflicts)),
     proofObligationIds: blocks.flatMap((block) => ids(block.graph?.proofObligations)),
+    evidenceIds: [...new Set(blocks.flatMap((block) => block.graph?.query?.evidenceIds ?? []))],
+    proofEvidenceIds: [...new Set(blocks.flatMap((block) => block.graph?.query?.proofEvidenceIds ?? []))],
+    sourceMapIds: [...new Set(blocks.flatMap((block) => block.graph?.query?.sourceMapIds ?? []))],
+    sourceMapMappingIds: [...new Set(blocks.flatMap((block) => block.graph?.query?.sourceMapMappingIds ?? []))],
+    missingEvidenceIds: blocks.flatMap((block) => ids(block.graph?.missingEvidence)),
+    missingEvidence: [...new Set(blocks.flatMap((block) => block.graph?.query?.missingEvidence ?? []))],
     summary: {
       graphCount: blocks.length,
       recordCount: records.length,
@@ -294,6 +287,9 @@ function mergeResourceGraphBlocks(blocks) {
       abiBoundaryCount: sum(blocks, 'abiBoundaries'), synchronizationEdgeCount: sum(blocks, 'synchronizationEdges'),
       trapCount: sum(blocks, 'traps'),
       undefinedBehaviorCount: sum(blocks, 'undefinedBehaviors'),
+      evidenceCount: sum(blocks, 'evidence'),
+      sourceMapCount: sum(blocks, 'sourceMaps'),
+      missingEvidenceCount: sum(blocks, 'missingEvidence'),
       lowLevelPrimitiveCount: sum(blocks, 'lowLevelPrimitives'),
       conflictCount: sum(blocks, 'conflicts'),
       proofObligationCount: sum(blocks, 'proofObligations'),

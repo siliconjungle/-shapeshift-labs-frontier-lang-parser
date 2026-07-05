@@ -12,7 +12,7 @@ machineGraph CounterLoop @id("machine_graph_counter_loop") {
   label loop @id("label_loop") address $808000 exported evidence evidence_counter_trace
   directive bank @id("directive_bank") kind bank value 01 evidence evidence_counter_trace
   register a @id("register_a") kind accumulator widthBits 16 bank m aliases acc|A evidence evidence_counter_trace
-  flag zero @id("flag_zero") kind zero bit 1 register register_p evidence evidence_counter_trace
+  conditionFlag zero @id("flag_zero") kind zero bit 1 register register_p evidence evidence_counter_trace
   block loop @id("basic_block_loop") entryInstruction instruction_lda exitInstruction instruction_bne instruction instruction_lda|instruction_bne successor basic_block_loop proofStatus passed evidence evidence_counter_trace
   instruction lda @id("instruction_lda") mnemonic LDA opcode A9 address $808000 addressMode immediate sizeBytes 3 cycles 2 writes register_a flagsWritten flag_zero memoryEffect memory_effect_counter_load proofStatus passed evidence evidence_counter_trace
   operand ldaValue @id("operand_lda_value") instruction instruction_lda index 0 kind immediate value "#$0001" widthBits 16 evidence evidence_counter_trace

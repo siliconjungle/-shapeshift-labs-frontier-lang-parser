@@ -1,5 +1,6 @@
 import { createRowIdentityTracker } from './row-identity.js';
 import { parseLowLevelResourceRecord } from './resource-graph-low-level.js';
+import { allResourceGraphRecords, deriveResourceGraphStatus, resourceGraphBlockerReasonCodes, summarizeResourceGraph } from './resource-graph-summary.js';
 
 const GROUPS = {
   resource: 'resources',
@@ -22,7 +23,10 @@ const GROUPS = {
   trap: 'traps',
   undefinedBehavior: 'undefinedBehaviors',
   conflict: 'conflicts',
-  proofObligation: 'proofObligations'
+  proofObligation: 'proofObligations',
+  evidence: 'evidence',
+  sourceMap: 'sourceMaps',
+  missingEvidence: 'missingEvidence'
 };
 
 export function parseResourceGraphBlock(block) {
@@ -60,6 +64,9 @@ export function parseResourceGraphBlock(block) {
     undefinedBehaviors: [],
     conflicts: [],
     proofObligations: [],
+    evidence: [],
+    sourceMaps: [],
+    missingEvidence: [],
     parser: { status: 'authored', errors: rowIdentity.errors },
     claims: {
       borrowCheckerClaim: false,
@@ -85,8 +92,8 @@ export function parseResourceGraphBlock(block) {
 
   graph.outlives = graph.lifetimeRelations;
   graph.borrowScopeRegions = graph.borrowScopes;
-  graph.summary = summarize(graph);
-  graph.status = deriveGraphStatus(graph.status, graph.summary);
+  graph.summary = summarizeResourceGraph(graph);
+  graph.status = deriveResourceGraphStatus(graph.status, graph.summary);
   graph.query = {
     resourceIds: ids(graph.resources),
     ownerIds: ids(graph.owners),
@@ -96,15 +103,20 @@ export function parseResourceGraphBlock(block) {
     failClosedTrapIds: ids(graph.traps.filter((record) => record.failClosed)),
     synchronizationEdgeIds: ids(graph.synchronizationEdges),
     lowLevelPrimitiveIds: ids([...graph.memoryRegions, ...graph.dataLayouts, ...graph.pointerEdges, ...graph.memoryAccesses, ...graph.abiBoundaries, ...graph.synchronizationEdges, ...graph.traps, ...graph.undefinedBehaviors]),
-    sourcePaths: unique(allRecords(graph).map((record) => record.sourcePath)),
-    evidenceIds: unique([...graph.evidenceIds, ...allRecords(graph).flatMap((record) => record.evidenceIds ?? [])]),
-    blockerReasonCodes: blockerReasonCodes(graph)
+    sourcePaths: unique(allResourceGraphRecords(graph).map((record) => record.sourcePath)),
+    evidenceIds: unique([...graph.evidenceIds, ...ids(graph.evidence), ...allResourceGraphRecords(graph).flatMap((record) => record.evidenceIds ?? [])]),
+    proofEvidenceIds: unique(allResourceGraphRecords(graph).flatMap((record) => record.proofEvidenceIds ?? [])),
+    sourceMapIds: unique([...ids(graph.sourceMaps), ...allResourceGraphRecords(graph).flatMap((record) => record.sourceMapIds ?? [])]),
+    sourceMapMappingIds: unique(allResourceGraphRecords(graph).flatMap((record) => record.sourceMapMappingIds ?? [])),
+    missingEvidenceIds: ids(graph.missingEvidence),
+    missingEvidence: unique([...graph.missingEvidence.map((record) => record.reasonCode), ...allResourceGraphRecords(graph).flatMap((record) => record.missingEvidence ?? [])]),
+    blockerReasonCodes: resourceGraphBlockerReasonCodes(graph)
   };
 
   return {
     id: graph.id,
     graph,
-    records: allRecords(graph),
+    records: allResourceGraphRecords(graph),
     summary: {
       graphCount: 1,
       ...graph.summary
@@ -130,6 +142,9 @@ function parseResourceRecord(kind, name, text, graph, authoredLine = {}) {
   if (lowLevelRecord) return lowLevelRecord;
   if (kind === 'conflict') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), ownerId: readInlineWord('owner', text) ?? readInlineWord('ownerId', text), loanId: readInlineWord('loan', text) ?? readInlineWord('loanId', text), aliasId: readInlineWord('alias', text) ?? readInlineWord('aliasId', text), unsafeBoundaryId: readInlineWord('unsafeBoundary', text) ?? readInlineWord('unsafeBoundaryId', text), reasonCode: readInlineWord('reasonCode', text), message: readInlineQuoted('message', text), status: readInlineWord('status', text) ?? 'open', severity: readInlineWord('severity', text) ?? 'error' });
   if (kind === 'proofObligation') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), conflictId: readInlineWord('conflict', text) ?? readInlineWord('conflictId', text), kind: readInlineWord('kind', text), status: readInlineWord('status', text) ?? 'open', statement: readInlineQuoted('statement', text) });
+  if (kind === 'evidence') return cleanRecord({ ...common, evidenceKind: readInlineWord('kind', text) ?? readInlineWord('evidenceKind', text) ?? 'resource-proof', status: readInlineWord('status', text) ?? 'unknown', path: readInlineWord('path', text), command: readInlineQuoted('command', text) ?? readInlineWord('command', text), sourceHash: readInlineWord('sourceHash', text), outputHash: readInlineWord('outputHash', text), traceHash: readInlineWord('traceHash', text), summary: readInlineQuoted('summary', text) });
+  if (kind === 'sourceMap') return cleanRecord({ ...common, sourceRecordId: readInlineWord('sourceRecord', text) ?? readInlineWord('sourceRecordId', text), targetRecordId: readInlineWord('targetRecord', text) ?? readInlineWord('targetRecordId', text), generatedPath: readInlineWord('generated', text) ?? readInlineWord('generatedPath', text) ?? readInlineWord('targetPath', text), originalPath: readInlineWord('original', text) ?? readInlineWord('originalPath', text), mappingHash: readInlineWord('mappingHash', text), status: readInlineWord('status', text) ?? 'authored' });
+  if (kind === 'missingEvidence') return cleanRecord({ ...common, reasonCode: readInlineWord('reason', text) ?? readInlineWord('reasonCode', text) ?? readInlineWord('code', text) ?? name, status: readInlineWord('status', text) ?? 'missing', severity: readInlineWord('severity', text) ?? 'warning', summary: readInlineQuoted('summary', text) ?? readInlineQuoted('message', text), failClosed: common.failClosed ?? true, semanticEquivalenceClaim: false, runtimeEquivalenceClaim: false });
   return undefined;
 }
 
@@ -153,83 +168,6 @@ function commonRecord(kind, name, text, graph, authoredLine = {}) {
   });
 }
 
-function summarize(graph) {
-  return {
-    records: allRecords(graph).length,
-    resources: graph.resources.length,
-    owners: graph.owners.length,
-    loans: graph.loans.length,
-    aliases: graph.aliases.length,
-    moves: graph.moves.length,
-    drops: graph.drops.length,
-    escapes: graph.escapes.length,
-    lifetimeRegions: graph.lifetimeRegions.length,
-    lifetimeRelations: graph.lifetimeRelations.length,
-    borrowScopes: graph.borrowScopes.length,
-    unsafeBoundaries: graph.unsafeBoundaries.length,
-    memoryRegions: graph.memoryRegions.length,
-    dataLayouts: graph.dataLayouts.length,
-    pointerEdges: graph.pointerEdges.length,
-    memoryAccesses: graph.memoryAccesses.length,
-    abiBoundaries: graph.abiBoundaries.length,
-    synchronizationEdges: graph.synchronizationEdges.length,
-    traps: graph.traps.length,
-    undefinedBehaviors: graph.undefinedBehaviors.length,
-    lowLevelPrimitives: graph.memoryRegions.length + graph.dataLayouts.length + graph.pointerEdges.length + graph.memoryAccesses.length + graph.abiBoundaries.length + graph.synchronizationEdges.length + graph.traps.length + graph.undefinedBehaviors.length,
-    conflicts: graph.conflicts.length,
-    proofObligations: graph.proofObligations.length,
-    unsafeBoundariesWithoutProof: graph.unsafeBoundaries.filter((record) => record.proofStatus !== 'passed').length,
-    failClosedTraps: graph.traps.filter((record) => record.failClosed).length,
-    trapsWithoutProof: graph.traps.filter((record) => record.proofStatus !== 'passed').length,
-    undefinedBehaviorsWithoutProof: graph.undefinedBehaviors.filter((record) => record.proofStatus !== 'passed').length,
-    parseErrors: graph.parser?.errors?.length ?? 0,
-    synchronizationEdgesWithoutProof: graph.synchronizationEdges.filter((record) => record.proofStatus !== 'passed').length,
-    reasonCodes: unique([...graph.conflicts, ...graph.synchronizationEdges, ...graph.traps, ...graph.undefinedBehaviors].map((record) => record.reasonCode))
-  };
-}
-
-function deriveGraphStatus(authoredStatus, summary) {
-  if (
-    summary.conflicts > 0 ||
-    summary.unsafeBoundariesWithoutProof > 0 ||
-    summary.synchronizationEdgesWithoutProof > 0 ||
-    summary.trapsWithoutProof > 0 ||
-    summary.undefinedBehaviorsWithoutProof > 0
-  ) return 'blocked';
-  return authoredStatus ?? 'partial';
-}
-
-function blockerReasonCodes(graph) {
-  const unprovedSynchronizationEdges = graph.synchronizationEdges.filter((record) => record.proofStatus !== 'passed');
-  return unique([...graph.conflicts, ...unprovedSynchronizationEdges, ...graph.traps, ...graph.undefinedBehaviors].map((record) => record.reasonCode));
-}
-
-function allRecords(graph) {
-  return [
-    ...graph.resources,
-    ...graph.owners,
-    ...graph.loans,
-    ...graph.aliases,
-    ...graph.moves,
-    ...graph.drops,
-    ...graph.escapes,
-    ...graph.lifetimeRegions,
-    ...graph.lifetimeRelations,
-    ...graph.borrowScopes,
-    ...graph.unsafeBoundaries,
-    ...graph.memoryRegions,
-    ...graph.dataLayouts,
-    ...graph.pointerEdges,
-    ...graph.memoryAccesses,
-    ...graph.abiBoundaries,
-    ...graph.synchronizationEdges,
-    ...graph.traps,
-    ...graph.undefinedBehaviors,
-    ...graph.conflicts,
-    ...graph.proofObligations
-  ];
-}
-
 function normalizeRowKind(kind) {
   if (kind === 'lifetime' || kind === 'life') return 'lifetimeRegion';
   if (kind === 'outlives' || kind === 'lifetimeRelation' || kind === 'lifeRelation') return 'lifetimeRelation';
@@ -244,6 +182,8 @@ function normalizeRowKind(kind) {
   if (kind === 'traps') return 'trap';
   if (kind === 'undefined' || kind === 'ub' || kind === 'undefinedBehavior' || kind === 'undefinedBehaviour') return 'undefinedBehavior';
   if (kind === 'proof' || kind === 'obligation' || kind === 'proofObligation') return 'proofObligation';
+  if (kind === 'evidence' || kind === 'evidenceIds' || kind === 'proofEvidence') return 'evidence';
+  if (kind === 'sourcemap' || kind === 'mapping' || kind === 'sourceMapMapping') return 'sourceMap';
   return kind;
 }
 
@@ -260,6 +200,8 @@ function recordKind(kind) {
   if (kind === 'synchronizationEdge') return 'synchronization-edge';
   if (kind === 'undefinedBehavior') return 'undefined-behavior';
   if (kind === 'proofObligation') return 'proof-obligation';
+  if (kind === 'sourceMap') return 'source-map';
+  if (kind === 'missingEvidence') return 'missing-evidence';
   return kind;
 }
 
@@ -268,7 +210,10 @@ function recordPrefix(kind) {
 }
 
 function isGraphPropertyLine(line) {
-  return /^(sourceLanguage|language|sourcePath|path|sourceHash|status|evidence|evidenceIds)\s+/.test(line);
+  const property = /^(sourceLanguage|language|sourcePath|path|sourceHash|status|evidence|evidenceIds)\s+/.exec(line)?.[1];
+  if (!property) return false;
+  if ((property === 'evidence' || property === 'evidenceIds') && /@id\(/.test(line)) return false;
+  return true;
 }
 
 function idFrom(text, fallback) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(text)?.[1] ?? fallback; }
