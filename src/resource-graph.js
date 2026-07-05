@@ -11,6 +11,8 @@ const GROUPS = {
   move: 'moves',
   drop: 'drops',
   escape: 'escapes',
+  coroutineScope: 'coroutineScopes',
+  greenThread: 'greenThreads',
   lifetimeRegion: 'lifetimeRegions',
   lifetimeRelation: 'lifetimeRelations',
   borrowScope: 'borrowScopes',
@@ -50,6 +52,8 @@ export function parseResourceGraphBlock(block) {
     moves: [],
     drops: [],
     escapes: [],
+    coroutineScopes: [],
+    greenThreads: [],
     lifetimeRegions: [],
     lifetimeRelations: [],
     outlives: [],
@@ -105,6 +109,8 @@ export function parseResourceGraphBlock(block) {
   graph.query = {
     resourceIds: ids(graph.resources),
     ownerIds: ids(graph.owners),
+    coroutineScopeIds: ids(graph.coroutineScopes),
+    greenThreadIds: ids(graph.greenThreads),
     lifetimeRegionIds: ids(graph.lifetimeRegions),
     trapIds: ids(graph.traps),
     undefinedBehaviorIds: ids(graph.undefinedBehaviors),
@@ -158,6 +164,8 @@ function parseResourceRecord(kind, name, text, graph, authoredLine = {}) {
   if (kind === 'move') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), fromOwnerId: readInlineWord('fromOwner', text) ?? readInlineWord('fromOwnerId', text), toOwnerId: readInlineWord('toOwner', text) ?? readInlineWord('toOwnerId', text), moveKind: readInlineWord('moveKind', text) ?? readInlineWord('kind', text) });
   if (kind === 'drop') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), ownerId: readInlineWord('owner', text) ?? readInlineWord('ownerId', text), lifetimeRegionId: readInlineWord('lifetime', text) ?? readInlineWord('lifetimeRegion', text) ?? readInlineWord('lifetimeRegionId', text), dropKind: readInlineWord('dropKind', text) ?? readInlineWord('kind', text) ?? 'drop', line: readInlineNumber('line', text), order: readInlineNumber('order', text) });
   if (kind === 'escape') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), ownerId: readInlineWord('owner', text) ?? readInlineWord('ownerId', text), lifetimeRegionId: readInlineWord('lifetime', text) ?? readInlineWord('lifetimeRegion', text) ?? readInlineWord('lifetimeRegionId', text), loanId: readInlineWord('loan', text) ?? readInlineWord('loanId', text), escapeKind: readInlineWord('escapeKind', text) ?? readInlineWord('kind', text) ?? 'escape', status: readInlineWord('status', text) ?? 'needs-proof' });
+  if (kind === 'coroutineScope') return cleanRecord({ ...common, scopeKind: readInlineWord('scopeKind', text) ?? readInlineWord('kind', text) ?? 'coroutine-scope', runtimeId: readInlineWord('runtime', text) ?? readInlineWord('runtimeId', text), schedulerId: readInlineWord('scheduler', text) ?? readInlineWord('schedulerId', text), parentScopeId: readInlineWord('parent', text) ?? readInlineWord('parentScope', text) ?? readInlineWord('parentScopeId', text), ownerId: readInlineWord('owner', text) ?? readInlineWord('ownerId', text), resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), taskIds: readInlineList(text, 'task', 'tasks', 'taskId', 'taskIds'), awaitBoundaryIds: readInlineList(text, 'awaitBoundary', 'awaitBoundaries', 'awaitBoundaryId', 'awaitBoundaryIds'), cancellationKind: readInlineWord('cancellation', text) ?? readInlineWord('cancellationKind', text), structuredConcurrency: readInlineFlag('structuredConcurrency', text) ?? readInlineFlag('structured', text), proofStatus: readInlineWord('proofStatus', text) ?? readInlineWord('status', text) ?? 'missing', reasonCode: readInlineWord('reasonCode', text) ?? readInlineWord('code', text), status: readInlineWord('status', text) ?? 'needs-proof' });
+  if (kind === 'greenThread') return cleanRecord({ ...common, threadKind: readInlineWord('threadKind', text) ?? readInlineWord('kind', text) ?? 'green-thread', runtimeId: readInlineWord('runtime', text) ?? readInlineWord('runtimeId', text), schedulerId: readInlineWord('scheduler', text) ?? readInlineWord('schedulerId', text), coroutineScopeId: readInlineWord('scope', text) ?? readInlineWord('coroutineScope', text) ?? readInlineWord('coroutineScopeId', text), ownerId: readInlineWord('owner', text) ?? readInlineWord('ownerId', text), resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), stackKind: readInlineWord('stackKind', text) ?? readInlineWord('stack', text), preemptionKind: readInlineWord('preemption', text) ?? readInlineWord('preemptionKind', text), yieldPointIds: readInlineList(text, 'yieldPoint', 'yieldPoints', 'yieldPointId', 'yieldPointIds'), proofStatus: readInlineWord('proofStatus', text) ?? readInlineWord('status', text) ?? 'missing', reasonCode: readInlineWord('reasonCode', text) ?? readInlineWord('code', text), status: readInlineWord('status', text) ?? 'needs-proof' });
   if (kind === 'lifetimeRegion') return cleanRecord({ ...common, lifetimeKind: readInlineWord('lifetimeKind', text) ?? readInlineWord('kind', text) ?? 'lexical', startLine: readInlineNumber('startLine', text), endLine: readInlineNumber('endLine', text) });
   if (kind === 'lifetimeRelation') return cleanRecord({ ...common, relationKind: readInlineWord('relationKind', text) ?? readInlineWord('kind', text) ?? 'outlives', fromLifetimeId: readInlineWord('fromLifetime', text) ?? readInlineWord('fromLifetimeId', text) ?? readInlineWord('from', text), toLifetimeId: readInlineWord('toLifetime', text) ?? readInlineWord('toLifetimeId', text) ?? readInlineWord('to', text), from: readInlineWord('from', text), to: readInlineWord('to', text) });
   if (kind === 'borrowScope') return cleanRecord({ ...common, scopeKind: readInlineWord('scopeKind', text) ?? readInlineWord('kind', text) ?? 'borrow-scope', constraintKind: readInlineWord('constraintKind', text), constraintKinds: readInlineList(text, 'constraint', 'constraints', 'constraintKind', 'constraintKinds') ?? [], ownershipKind: readInlineWord('ownershipKind', text), lifetimeKind: readInlineWord('lifetimeKind', text), controlFlowKind: readInlineWord('controlFlowKind', text), sourceControlFlowId: readInlineWord('sourceControlFlow', text) ?? readInlineWord('sourceControlFlowId', text), lifetimeRegionId: readInlineWord('lifetime', text) ?? readInlineWord('lifetimeRegion', text) ?? readInlineWord('lifetimeRegionId', text), resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text) });
@@ -197,6 +205,8 @@ function normalizeRowKind(kind) {
   if (kind === 'lifetime' || kind === 'life') return 'lifetimeRegion';
   if (kind === 'outlives' || kind === 'lifetimeRelation' || kind === 'lifeRelation') return 'lifetimeRelation';
   if (kind === 'borrow' || kind === 'borrowScope' || kind === 'borrowRegion') return 'borrowScope';
+  if (kind === 'coroutine') return 'coroutineScope';
+  if (kind === 'fiber') return 'greenThread';
   if (kind === 'unsafe' || kind === 'unsafeBoundary') return 'unsafeBoundary';
   if (kind === 'memory' || kind === 'memoryRegion' || kind === 'region') return 'memoryRegion';
   if (kind === 'layout' || kind === 'dataLayout') return 'dataLayout';
@@ -217,6 +227,8 @@ function recordKind(kind) {
   if (kind === 'lifetimeRegion') return 'lifetime-region';
   if (kind === 'lifetimeRelation') return 'lifetime-relation';
   if (kind === 'borrowScope') return 'borrow-scope';
+  if (kind === 'coroutineScope') return 'coroutine-scope';
+  if (kind === 'greenThread') return 'green-thread';
   if (kind === 'unsafeBoundary') return 'unsafe-boundary';
   if (kind === 'memoryRegion') return 'memory-region';
   if (kind === 'dataLayout') return 'data-layout';

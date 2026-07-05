@@ -4,7 +4,7 @@ import { inspectFrontierSourceSyntax, parseFrontierSource } from '../dist/index.
 const source = `module SemanticUnknownRows @id("mod_semantic_unknown_rows") {
 resourceGraph BrokenResources @id("resource_graph_broken") {
   sourceLanguage rust
-  coroutineScope asyncRuntime @id("resource_coroutine_scope")
+  actorRuntime asyncRuntime @id("resource_actor_runtime")
 }
 machineGraph BrokenMachine @id("machine_graph_broken") {
   architecture asm-65816
@@ -15,7 +15,7 @@ machineGraph BrokenMachine @id("machine_graph_broken") {
 const syntax = inspectFrontierSourceSyntax(source, { sourcePath: 'semantic-unknown.frontier' });
 assert.equal(syntax.summary.failClosed, true);
 assert.equal(syntax.summary.unknownChildCount, 2);
-assert.equal(syntax.unknownChildren.find((child) => child.rowKind === 'coroutineScope').reason, 'unsupported-resource-graph-row');
+assert.equal(syntax.unknownChildren.find((child) => child.rowKind === 'actorRuntime').reason, 'unsupported-resource-graph-row');
 assert.equal(syntax.unknownChildren.find((child) => child.rowKind === 'mysteryFact').reason, 'unsupported-machine-graph-row');
 
 const doc = parseFrontierSource(source, { sourcePath: 'semantic-unknown.frontier' });
@@ -29,14 +29,14 @@ const machineUnknown = machineGraph.unknownRows[0];
 assert.equal(resourceGraph.status, 'blocked');
 assert.equal(resourceGraph.parser.status, 'needs-review');
 assert.equal(resourceGraph.parser.errors[0].code, 'unsupported-resource-graph-row');
-assert.equal(resourceUnknown.id, 'resource_coroutine_scope');
+assert.equal(resourceUnknown.id, 'resource_actor_runtime');
 assert.equal(resourceUnknown.failClosed, true);
 assert.equal(resourceGraph.proofGaps[0].code, 'unsupported-resource-graph-row');
-assert.equal(resourceGraph.query.unknownRowIds[0], 'resource_coroutine_scope');
+assert.equal(resourceGraph.query.unknownRowIds[0], 'resource_actor_runtime');
 assert.equal(resourceGraph.query.proofGapCodes[0], 'unsupported-resource-graph-row');
 assert.equal(resourceGraph.query.blockerReasonCodes.includes('unsupported-resource-graph-row'), true);
 assert.equal(resourceGraph.summary.unknownRows, 1);
-assert.equal(resourceGraphs.unknownRowIds.includes('resource_coroutine_scope'), true);
+assert.equal(resourceGraphs.unknownRowIds.includes('resource_actor_runtime'), true);
 assert.equal(resourceGraphs.proofGapCodes.includes('unsupported-resource-graph-row'), true);
 assert.equal(resourceGraphs.summary.unknownRowCount, 1);
 

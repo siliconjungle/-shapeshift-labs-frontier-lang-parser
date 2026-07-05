@@ -8,6 +8,8 @@ export function summarizeResourceGraph(graph) {
     moves: graph.moves.length,
     drops: graph.drops.length,
     escapes: graph.escapes.length,
+    coroutineScopes: graph.coroutineScopes?.length ?? 0,
+    greenThreads: graph.greenThreads?.length ?? 0,
     lifetimeRegions: graph.lifetimeRegions.length,
     lifetimeRelations: graph.lifetimeRelations.length,
     borrowScopes: graph.borrowScopes.length,
@@ -25,6 +27,7 @@ export function summarizeResourceGraph(graph) {
     missingEvidence: graph.missingEvidence.length,
     proofGaps: graph.proofGaps?.length ?? 0,
     unknownRows: graph.unknownRows?.length ?? 0,
+    runtimeConcurrencyPrimitives: (graph.coroutineScopes?.length ?? 0) + (graph.greenThreads?.length ?? 0),
     lowLevelPrimitives: graph.memoryRegions.length + graph.dataLayouts.length + graph.pointerEdges.length + graph.memoryAccesses.length + graph.abiBoundaries.length + graph.synchronizationEdges.length + graph.traps.length + graph.undefinedBehaviors.length,
     conflicts: graph.conflicts.length,
     proofObligations: graph.proofObligations.length,
@@ -59,7 +62,7 @@ export function resourceGraphBlockerReasonCodes(graph) {
 export function allResourceGraphRecords(graph) {
   return [
     ...graph.resources, ...graph.owners, ...graph.loans, ...graph.aliases, ...graph.moves, ...graph.drops,
-    ...graph.escapes, ...graph.lifetimeRegions, ...graph.lifetimeRelations, ...graph.borrowScopes,
+    ...graph.escapes, ...(graph.coroutineScopes ?? []), ...(graph.greenThreads ?? []), ...graph.lifetimeRegions, ...graph.lifetimeRelations, ...graph.borrowScopes,
     ...graph.unsafeBoundaries, ...graph.memoryRegions, ...graph.dataLayouts, ...graph.pointerEdges,
     ...graph.memoryAccesses, ...graph.abiBoundaries, ...graph.synchronizationEdges, ...graph.traps,
     ...graph.undefinedBehaviors, ...graph.conflicts, ...graph.proofObligations, ...graph.evidence,

@@ -12,6 +12,8 @@ resourceGraph LowLevelResources @id("resource_graph_low_level") {
   life request @id("life_request") kind lexical
   outlives moduleRequest @id("life_module_request") from life_module to life_request
   borrow storeBorrow @id("borrow_scope_store") resource resource_store lifetime life_request kind shared-borrow
+  coroutine asyncRuntime @id("resource_coroutine_scope") runtime tokio scheduler scheduler_tokio structured proofStatus missing
+  fiber worker @id("resource_green_thread") scope resource_coroutine_scope runtime tokio scheduler scheduler_tokio stack segmented proofStatus missing
   unsafe ffi @id("unsafe_ffi") resource resource_store proofStatus missing
   memory heap @id("memory_heap") resource resource_store kind heap pointerWidth 64
   layout packet @id("layout_packet") resource resource_store type Packet repr C sizeBytes 16
@@ -51,6 +53,8 @@ assert.equal(resourceCounts.resource, 1);
 assert.equal(resourceCounts.lifetimeRegion, 1);
 assert.equal(resourceCounts.lifetimeRelation, 1);
 assert.equal(resourceCounts.borrowScope, 1);
+assert.equal(resourceCounts.coroutineScope, 1);
+assert.equal(resourceCounts.greenThread, 1);
 assert.equal(resourceCounts.unsafeBoundary, 1);
 assert.equal(resourceCounts.memoryRegion, 1);
 assert.equal(resourceCounts.dataLayout, 1);
@@ -71,26 +75,30 @@ const resourcePathRow = resourceBlock.children.find((child) => child.rowKind ===
 const pointerRow = resourceBlock.children.find((child) => child.rowKind === 'ptr');
 const proofEvidenceRow = resourceBlock.children.find((child) => child.rowKind === 'proofEvidence');
 const undefinedBehaviorRow = resourceBlock.children.find((child) => child.rowKind === 'ub');
+const coroutineRow = resourceBlock.children.find((child) => child.rowKind === 'coroutine');
+const fiberRow = resourceBlock.children.find((child) => child.rowKind === 'fiber');
 
 assert.equal(resourcePathRow.normalizedRowKind, 'sourcePath');
 assert.equal(resourcePathRow.sourceSpan.path, 'resource-rows.frontier');
 assert.equal(pointerRow.normalizedRowKind, 'pointerEdge');
 assert.equal(proofEvidenceRow.normalizedRowKind, 'evidence');
 assert.equal(undefinedBehaviorRow.normalizedRowKind, 'undefinedBehavior');
+assert.equal(coroutineRow.normalizedRowKind, 'coroutineScope');
+assert.equal(fiberRow.normalizedRowKind, 'greenThread');
 assert.equal(resourceBlock.children.find((child) => child.rowKind === 'proofGap').normalizedRowKind, 'proofGap');
 
 const unknownResourceGraphRowsReport = inspectFrontierSourceSyntax(`module UnknownResourceGraphRows @id("mod_unknown_resource_graph_rows") {
 resourceGraph Broken @id("resource_graph_broken") {
-  coroutineScope asyncRuntime @id("resource_coroutine_scope")
+  actorRuntime asyncRuntime @id("resource_actor_runtime")
 }
 semanticResourceGraph AlsoBroken @id("semantic_resource_graph_broken") {
-  greenThread worker @id("resource_green_thread")
+  schedulerMagic worker @id("resource_scheduler_magic")
 }
 }`);
 
 assert.equal(unknownResourceGraphRowsReport.summary.failClosed, true);
 assert.equal(unknownResourceGraphRowsReport.summary.unknownChildCount, 2);
-assert.equal(unknownResourceGraphRowsReport.summary.sourceSyntaxRowFamilyCounts.coroutineScope, 1);
-assert.equal(unknownResourceGraphRowsReport.summary.sourceSyntaxRowFamilyCounts.greenThread, 1);
-assert.equal(unknownResourceGraphRowsReport.unknownChildren.find((child) => child.rowKind === 'coroutineScope').reason, 'unsupported-resource-graph-row');
-assert.equal(unknownResourceGraphRowsReport.unknownChildren.find((child) => child.rowKind === 'greenThread').reason, 'unsupported-resource-graph-row');
+assert.equal(unknownResourceGraphRowsReport.summary.sourceSyntaxRowFamilyCounts.actorRuntime, 1);
+assert.equal(unknownResourceGraphRowsReport.summary.sourceSyntaxRowFamilyCounts.schedulerMagic, 1);
+assert.equal(unknownResourceGraphRowsReport.unknownChildren.find((child) => child.rowKind === 'actorRuntime').reason, 'unsupported-resource-graph-row');
+assert.equal(unknownResourceGraphRowsReport.unknownChildren.find((child) => child.rowKind === 'schedulerMagic').reason, 'unsupported-resource-graph-row');

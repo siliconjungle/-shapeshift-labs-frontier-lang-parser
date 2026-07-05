@@ -15,6 +15,8 @@ resourceGraph TodoResources @id("resource_graph_todo") {
   move todoMove @id("move_todos") resource resource_todos fromOwner owner_todo_store toOwner owner_worker kind transfer evidence artifact_todo_title_probe
   drop todoDrop @id("drop_todos") resource resource_todos owner owner_worker lifetime life_request kind lexical-drop order 1 evidence artifact_todo_title_probe
   escape todoEscape @id("escape_todos") resource resource_todos loan loan_read_todos lifetime life_request kind returned-borrow status needs-proof evidence artifact_todo_title_probe
+  coroutine requestScope @id("coroutine_scope_request") runtime js-event-loop scheduler promise-microtask owner owner_todo_store task task_refresh|task_save awaitBoundary await_fetch structured cancellation abort proofStatus missing reasonCode coroutine-scheduling-proof-missing evidence artifact_todo_title_probe
+  fiber refreshWorker @id("green_thread_refresh_worker") scope coroutine_scope_request runtime js-event-loop scheduler promise-microtask stack heap preemption cooperative yieldPoint await_fetch proofStatus missing reasonCode green-thread-yield-proof-missing evidence artifact_todo_title_probe
   outlives requestModule @id("life_request_outlives_module") from life_module to life_request kind contains evidence artifact_todo_title_probe
   borrow readScope @id("borrow_scope_todos") resource resource_todos lifetime life_request kind shared-borrow constraint shared|read-only evidence artifact_todo_title_probe
   unsafe ffiBoundary @id("unsafe_todos_ffi") resource resource_todos kind ffi proofStatus missing evidence artifact_todo_title_probe
@@ -44,6 +46,9 @@ assert.equal(graphs.summary.aliasCount, 1);
 assert.equal(graphs.summary.moveCount, 1);
 assert.equal(graphs.summary.dropCount, 1);
 assert.equal(graphs.summary.escapeCount, 1);
+assert.equal(graphs.summary.coroutineScopeCount, 1);
+assert.equal(graphs.summary.greenThreadCount, 1);
+assert.equal(graphs.summary.runtimeConcurrencyPrimitiveCount, 2);
 assert.equal(graphs.summary.lifetimeRegionCount, 1);
 assert.equal(graphs.summary.lifetimeRelationCount, 1);
 assert.equal(graphs.summary.borrowScopeCount, 1);
@@ -66,6 +71,8 @@ assert.equal(graphs.summary.proofObligationCount, 1);
 assert.equal(graphs.summary.proofGapCount, 1);
 assert.equal(graphs.graphIds[0], 'resource_graph_todo');
 assert.equal(graphs.resourceIds[0], 'resource_todos');
+assert.equal(graphs.coroutineScopeIds[0], 'coroutine_scope_request');
+assert.equal(graphs.greenThreadIds[0], 'green_thread_refresh_worker');
 assert.equal(graphs.loanIds[0], 'loan_read_todos');
 assert.equal(graphs.unsafeBoundaryIds[0], 'unsafe_todos_ffi');
 assert.equal(graphs.memoryRegionIds[0], 'memory_region_heap');
@@ -85,7 +92,14 @@ assert.equal(graphs.graphs[0].kind, 'frontier.lang.semanticResourceGraph');
 assert.equal(graphs.graphs[0].status, 'blocked');
 assert.equal(graphs.graphs[0].claims.borrowCheckerClaim, false);
 assert.equal(graphs.graphs[0].query.resourceIds[0], 'resource_todos');
+assert.equal(graphs.graphs[0].query.coroutineScopeIds[0], 'coroutine_scope_request');
+assert.equal(graphs.graphs[0].query.greenThreadIds[0], 'green_thread_refresh_worker');
 assert.equal(graphs.graphs[0].query.lowLevelPrimitiveIds.includes('layout_todo_packet'), true);
+assert.equal(graphs.graphs[0].coroutineScopes[0].runtimeId, 'js-event-loop');
+assert.equal(graphs.graphs[0].coroutineScopes[0].structuredConcurrency, true);
+assert.deepEqual(graphs.graphs[0].coroutineScopes[0].taskIds, ['task_refresh', 'task_save']);
+assert.equal(graphs.graphs[0].greenThreads[0].threadKind, 'green-thread');
+assert.equal(graphs.graphs[0].greenThreads[0].coroutineScopeId, 'coroutine_scope_request');
 assert.equal(graphs.graphs[0].dataLayouts[0].repr, 'C');
 assert.equal(graphs.graphs[0].memoryRegions[0].atomic, true);
 assert.equal(graphs.graphs[0].memoryAccesses[0].memoryOrder, 'acquire');
