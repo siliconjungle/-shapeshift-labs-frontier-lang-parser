@@ -10,7 +10,7 @@ const runtimeRows = words('host runtimeHost hostProfile sourceHost targetHost ca
 const semanticEditRows = words('script semanticEditScript projection semanticEditProjection replay semanticEditReplay');
 const gateAdmissionRows = words('gate evidence proofEvidence admission admissionDecision proofObligation obligation gap proofGap');
 const resourceRows = words('sourceLanguage language sourcePath path sourceHash status evidence evidenceIds resource owner loan alias move drop escape lifetime lifetimeRegion life outlives lifetimeRelation lifeRelation borrow borrowScope borrowRegion unsafe unsafeBoundary memory memoryRegion region layout dataLayout pointer ptr address access memoryAccess atomic volatile abi abiBoundary callBoundary sync synchronization synchronisation synchronizationEdge synchronisationEdge happensBefore happens-before hb fence fenceEdge barrier barrierEdge trap traps undefined undefinedBehavior undefinedBehaviour ub conflict proof proofObligation obligation proofEvidence sourceMap sourcemap mapping sourceMapMapping missingEvidence');
-const targetRows = words('language targetLanguage sourceLanguage package packageName emitPath targetPath sourcePath path sourceHash targetHash runtime runtimeHost moduleFormat projection lowering lower layer adapter adapterId readiness disposition status evidence proofEvidence proof loss missingEvidence gap proofGap sourceMap sourcemap mapping sourceMapMapping');
+const targetRows = words('language targetLanguage source sourceLanguage package packageName emitPath targetPath sourcePath path sourceHash targetHash runtime runtimeHost moduleFormat projection lowering lower layer adapter adapterId readiness disposition status evidence proofEvidence proof loss missingEvidence gap proofGap sourceMap sourcemap mapping sourceMapMapping');
 const nativeSourceRows = words('language sourceLanguage parser parserVersion sourcePath path sourceHash symbol frontierNodes frontierNode frontierNodeId frontierNodeIds loss evidence proofEvidence sourceMap sourcemap mapping sourceMapMapping mergeCandidate candidate');
 const paradigmRows = words('valueSemantics mutationModel effectModel ownership ownershipModel lifetime lifetimeModel bindingScope binding pattern dispatch typeModel moduleModel concurrency errorModel memoryModel evaluation evaluationModel metaprogramming interop typeConstraint memoryLocation effectRegion controlRegion logicProgram actorSystem stackEffect arrayShape numericKernel dataflowNetwork clockModel objectModel macroExpansion reflectionBoundary lowering loweringRecord');
 const coreFailClosed = (reason) => ({ failClosedUnknownRows: true, unknownRowReason: reason });
@@ -96,6 +96,7 @@ function normalizeRuntimeCapabilityRow(rowKind) {
 
 function normalizeTargetProjectionRow(rowKind) {
   if (rowKind === 'targetLanguage') return 'language';
+  if (rowKind === 'source') return 'sourceLanguage';
   if (rowKind === 'package') return 'packageName';
   if (rowKind === 'path') return 'sourcePath';
   if (rowKind === 'targetPath') return 'emitPath';

@@ -4,6 +4,7 @@ import { inspectFrontierSourceSyntax } from '../dist/index.js';
 const targetRowsReport = inspectFrontierSourceSyntax(`module TargetRows @id("mod_target_rows") {
 target typescript @id("target_ts") {
   targetLanguage typescript
+  source frontier
   package todo-ui
   targetPath src/generated/todo.ts
   path src/todo.frontier
@@ -26,6 +27,7 @@ const targetCounts = targetRowsReport.summary.sourceSyntaxRowFamilyCountsByBlock
 
 assert.equal(targetRowsReport.summary.failClosed, false);
 assert.equal(targetCounts.language, 1);
+assert.equal(targetCounts.sourceLanguage, 1);
 assert.equal(targetCounts.packageName, 1);
 assert.equal(targetCounts.emitPath, 1);
 assert.equal(targetCounts.sourcePath, 1);
@@ -44,6 +46,7 @@ assert.equal(targetCounts.proofGap, 1);
 
 const targetBlock = targetRowsReport.recognizedBlocks.find((block) => block.id === 'target_ts');
 const languageRow = targetBlock.children.find((child) => child.rowKind === 'targetLanguage');
+const sourceRow = targetBlock.children.find((child) => child.rowKind === 'source');
 const packageRow = targetBlock.children.find((child) => child.rowKind === 'package');
 const targetPathRow = targetBlock.children.find((child) => child.rowKind === 'targetPath');
 const pathRow = targetBlock.children.find((child) => child.rowKind === 'path');
@@ -51,6 +54,7 @@ const lowerRow = targetBlock.children.find((child) => child.rowKind === 'lower')
 const proofEvidenceRow = targetBlock.children.find((child) => child.rowKind === 'proofEvidence');
 
 assert.equal(languageRow.normalizedRowKind, 'language');
+assert.equal(sourceRow.normalizedRowKind, 'sourceLanguage');
 assert.equal(packageRow.normalizedRowKind, 'packageName');
 assert.equal(targetPathRow.normalizedRowKind, 'emitPath');
 assert.equal(pathRow.normalizedRowKind, 'sourcePath');

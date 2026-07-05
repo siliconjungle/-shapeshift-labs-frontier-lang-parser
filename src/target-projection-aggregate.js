@@ -3,6 +3,10 @@ export function mergeTargetProjectionTargets(targets = []) {
   if (!entries.length) return undefined;
   const contracts = entries.flatMap((entry) => entry.projectionContracts ?? []);
   const layers = entries.flatMap((entry) => entry.projectionLayers ?? []);
+  const targetEvidence = entries.flatMap((entry) => entry.targetEvidence ?? []);
+  const targetSourceMaps = entries.flatMap((entry) => entry.targetSourceMaps ?? []);
+  const targetLosses = entries.flatMap((entry) => entry.targetLosses ?? []);
+  const targetProofGaps = entries.flatMap((entry) => entry.targetProofGaps ?? []);
   return {
     id: entries.length === 1 ? `targetProjections:${entries[0].id}` : 'targetProjections:source',
     targets: entries,
@@ -11,18 +15,31 @@ export function mergeTargetProjectionTargets(targets = []) {
     emitPaths: uniqueStrings(entries.map((entry) => entry.target?.emitPath)),
     projectionContracts: contracts,
     projectionLayers: layers,
+    targetEvidence,
+    targetSourceMaps,
+    targetLosses,
+    targetProofGaps,
     projectionContractIds: ids(contracts),
     projectionLayerIds: ids(layers),
+    targetEvidenceIds: ids(targetEvidence),
+    targetSourceMapIds: ids(targetSourceMaps),
+    targetLossIds: ids(targetLosses),
+    targetProofGapIds: ids(targetProofGaps),
     representedLayerKinds: uniqueStrings(contracts.flatMap((entry) => entry.representedLayerKinds ?? [])),
     missingLayerKinds: uniqueStrings(contracts.flatMap((entry) => entry.missingLayerKinds ?? [])),
     evidenceIds: uniqueStrings(entries.flatMap((entry) => entry.evidenceIds ?? [])),
     proofEvidenceIds: uniqueStrings(entries.flatMap((entry) => entry.proofEvidenceIds ?? [])),
     lossIds: uniqueStrings(entries.flatMap((entry) => entry.lossIds ?? [])),
     missingEvidence: uniqueStrings(entries.flatMap((entry) => entry.missingEvidence ?? [])),
+    proofGapCodes: uniqueStrings(targetProofGaps.map((entry) => entry.code)),
     summary: {
       targetCount: entries.length,
       projectionContractCount: contracts.length,
       projectionLayerCount: layers.length,
+      targetEvidenceCount: targetEvidence.length,
+      targetSourceMapCount: targetSourceMaps.length,
+      targetLossCount: targetLosses.length,
+      targetProofGapCount: targetProofGaps.length,
       missingEvidenceCount: uniqueStrings(entries.flatMap((entry) => entry.missingEvidence ?? [])).length,
       lossCount: uniqueStrings(entries.flatMap((entry) => entry.lossIds ?? [])).length
     },
@@ -43,8 +60,16 @@ function targetProjectionEntry(node = {}) {
     target: node.target,
     projectionContracts,
     projectionLayers,
+    targetEvidence: metadata.targetEvidence,
+    targetSourceMaps: metadata.targetSourceMaps,
+    targetLosses: metadata.targetLosses,
+    targetProofGaps: metadata.targetProofGaps,
     projectionContractIds: ids(projectionContracts),
     projectionLayerIds: ids(projectionLayers),
+    targetEvidenceIds: ids(metadata.targetEvidence),
+    targetSourceMapIds: ids(metadata.targetSourceMaps),
+    targetLossIds: ids(metadata.targetLosses),
+    targetProofGapIds: ids(metadata.targetProofGaps),
     representedLayerKinds: uniqueStrings(projectionContracts.flatMap((entry) => entry.representedLayerKinds ?? [])),
     missingLayerKinds: uniqueStrings(projectionContracts.flatMap((entry) => entry.missingLayerKinds ?? [])),
     evidenceIds: metadata.evidenceIds,

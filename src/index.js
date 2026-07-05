@@ -195,10 +195,18 @@ function parseTarget(block) {
     id: idFrom(block.header, `target_${name}`),
     name,
     target: {
-      language: readWord('language', block.body) ?? name,
-      packageName: readWord('package', block.body),
-      emitPath: readWord('emitPath', block.body),
-      moduleFormat: readWord('moduleFormat', block.body)
+      language: readWord('language', block.body) ?? readWord('targetLanguage', block.body) ?? name,
+      sourceLanguage: readWord('sourceLanguage', block.body) ?? readWord('source', block.body),
+      packageName: readWord('packageName', block.body) ?? readWord('package', block.body),
+      emitPath: readWord('emitPath', block.body) ?? readWord('targetPath', block.body),
+      sourcePath: readWord('sourcePath', block.body) ?? readWord('path', block.body),
+      sourceHash: readWord('sourceHash', block.body),
+      targetHash: readWord('targetHash', block.body),
+      runtime: readWord('runtime', block.body),
+      runtimeHost: readWord('runtimeHost', block.body),
+      moduleFormat: readWord('moduleFormat', block.body),
+      status: readWord('status', block.body),
+      readiness: readWord('readiness', block.body)
     },
     ...(metadata ? { metadata } : {})
   });
