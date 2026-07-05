@@ -40,6 +40,24 @@ assert.equal(sourceSyntaxBlock.children.find((child) => child.rowKind === 'sourc
 assert.equal(sourceSyntaxBlock.children[0].sourceSpan.path, 'interlingua-source-syntax.frontier');
 assert.equal(sourceSyntaxBlock.children[0].sourceSpan.blockKind, 'universalInterlingua');
 
+const sourceAliasReport = inspectFrontierSourceSyntax(`module InterlinguaSourceAlias @id("mod_interlingua_source_alias") {
+interlingua JsToRust @id("interlingua_source_alias") {
+  route conversion_route_javascript_to_rust
+  source javascript
+  target rust
+  mode target-adapter
+  sourceLift jsSource @id("lift_js_source") sourceImport native_import_js sourcePath src/public-api.js
+}
+}`, { sourcePath: 'interlingua-source-alias.frontier' });
+
+const sourceAliasCounts = sourceAliasReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.interlingua;
+const sourceAliasBlock = sourceAliasReport.recognizedBlocks.find((block) => block.id === 'interlingua_source_alias');
+assert.equal(sourceAliasReport.summary.failClosed, false);
+assert.equal(sourceAliasCounts.sourceLanguage, 1);
+assert.equal(sourceAliasCounts.lift, 1);
+assert.equal(sourceAliasBlock.children.find((child) => child.rowKind === 'source').normalizedRowKind, 'sourceLanguage');
+assert.equal(sourceAliasBlock.children.find((child) => child.rowKind === 'sourceLift').normalizedRowKind, 'lift');
+
 const unknownInterlingua = inspectFrontierSourceSyntax(`module UnknownInterlinguaRows @id("mod_unknown_interlingua_rows") {
 interlingua BrokenBridge @id("interlingua_broken") {
   semanticPromise borrow @id("promise_borrow")

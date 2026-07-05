@@ -72,7 +72,8 @@ function normalizeInterlinguaRow(rowKind) {
   if (rowKind === 'constraintEdge' || rowKind === 'edge') return 'constraint';
   if (rowKind === 'proof' || rowKind === 'proofObligation') return 'obligation';
   if (rowKind === 'lower' || rowKind === 'lowering') return 'lowering';
-  if (rowKind === 'source' || rowKind === 'sourceLift') return 'lift';
+  if (rowKind === 'source') return 'sourceLanguage';
+  if (rowKind === 'sourceLift') return 'lift';
   return rowKind;
 }
 
