@@ -4,7 +4,7 @@ import { readTypeExpressionSyntaxChildren } from './source-syntax-type-expressio
 import { readViewSyntaxChildren } from './source-syntax-view-children.js';
 import { inspectTypeExpressionSyntax } from './type-expressions.js';
 import { inspectVariantPayload } from './type-variants.js';
-const ROW_NAME_PATTERN = '([A-Za-z_$@./:*+-][\\w$./@:*+-]*)';
+const ROW_NAME_PATTERN = '([^\\s{}]+)';
 
 export function readSourceSyntaxChildren(source, block, options = {}) {
   let children = [];
@@ -277,8 +277,8 @@ function genericUnknownRowChild(source, block, options, line, config, rowKind, n
   });
 }
 
-function unknownGenericRowsFailClosed(config) { return config.childKind === 'gateAdmissionEvidenceRow' || config.childKind === 'machineGraphRow'; }
-function unsupportedGenericRowReason(config) { return config.childKind === 'machineGraphRow' ? 'unsupported-machine-graph-row' : 'unsupported-gate-admission-row'; }
+function unknownGenericRowsFailClosed(config) { return config.failClosedUnknownRows === true; }
+function unsupportedGenericRowReason(config) { return config.unknownRowReason ?? 'unsupported-generic-row'; }
 
 function readBodyLines(source, block) { return readTextLines(source, block.bodyStartOffset, block.bodyEndOffset); }
 

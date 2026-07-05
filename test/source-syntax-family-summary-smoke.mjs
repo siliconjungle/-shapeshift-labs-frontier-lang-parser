@@ -87,3 +87,69 @@ assert.equal(genericRowsReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.
 assert.equal(genericRowsReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.operations.operation, 2);
 assert.equal(genericRowsReport.summary.sourceSyntaxRowFamiliesByBlockFamily.runtimeCapabilities.includes('hostCapability'), true);
 assert.equal(genericRowsReport.summary.sourceSyntaxRowFamiliesByBlockFamily.nativeSource.includes('sourceMap'), true);
+
+const coreBlocksReport = inspectFrontierSourceSyntax(`module CoreBlocks @id("mod_core_blocks") {
+migration TodoV1ToV2 @id("migration_todo_v1_v2") {
+  fromVersion 1
+  toVersion 2
+  change addField Todo.title
+  invariants title_present
+}
+extern persistTodo @id("extern_persist") {
+  language typescript
+  symbol persistTodo
+  input TodoInput
+  returns Patch
+  effects storage
+}
+capability HttpRequest @id("cap_http_request") {
+  capability http.request
+  category network
+  input Json
+  returns Json
+  resources HttpClient
+  adapter typescript symbol fetch platform node package undici kind library
+  unsupported c platform embedded reason "host socket adapter needed"
+}
+effect PersistTodo @id("effect_persist_todo") {
+  capability storage.write
+  input TodoInput
+  returns Json
+  resources TodoDb.todos
+}
+lattice TagSet @id("lat_tag_set") {
+  carrier Set<Text>
+  laws semilattice, commutative
+  frontierCrdt createCrdtOrSetLattice
+  lawChecker checkCrdtJoinLaws
+}
+}`, { sourcePath: 'core-blocks.frontier' });
+
+assert.equal(coreBlocksReport.summary.failClosed, false);
+assert.equal(coreBlocksReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.migration.fromVersion, 1);
+assert.equal(coreBlocksReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.migration.toVersion, 1);
+assert.equal(coreBlocksReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.migration.change, 1);
+assert.equal(coreBlocksReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.extern.language, 1);
+assert.equal(coreBlocksReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.extern.effects, 1);
+assert.equal(coreBlocksReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.capability.adapter, 1);
+assert.equal(coreBlocksReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.capability.unsupportedTarget, 1);
+assert.equal(coreBlocksReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.effect.capability, 1);
+assert.equal(coreBlocksReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.lattice.carrier, 1);
+assert.equal(coreBlocksReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.lattice.frontierCrdt, 1);
+assert.equal(coreBlocksReport.summary.sourceSyntaxRowFamiliesByBlockFamily.lattice.includes('laws'), true);
+
+const capabilityBlock = coreBlocksReport.recognizedBlocks.find((block) => block.id === 'cap_http_request');
+const adapterRow = capabilityBlock.children.find((child) => child.normalizedRowKind === 'adapter');
+assert.equal(adapterRow.sourceSpan.path, 'core-blocks.frontier');
+assert.equal(adapterRow.sourceSpan.blockKind, 'capability');
+
+const unknownCoreReport = inspectFrontierSourceSyntax(`module UnknownCore @id("mod_unknown_core") {
+effect Broken @id("effect_broken") {
+  sideEffect mutation
+}
+}`);
+
+assert.equal(unknownCoreReport.summary.failClosed, true);
+assert.equal(unknownCoreReport.summary.unknownChildKinds[0], 'sideEffect');
+assert.equal(unknownCoreReport.summary.sourceSyntaxRowFamilyCounts.sideEffect, 1);
+assert.equal(unknownCoreReport.unknownChildren[0].reason, 'unsupported-effect-row');

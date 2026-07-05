@@ -4,10 +4,12 @@ const constraintRows = words('variable var constraint hard soft preference prefe
 const dialectRows = words('dialect record extern');
 const interlinguaRows = words('layer constraint edge obligation proofObligation proof lowering lower source sourceLift lift evidence');
 const machineRows = words('label directive register reg flag conditionFlag basicBlock block instruction inst instr op opcode operand arg memoryEffect memoryAccess load store atomic fence memory mem effect controlEdge edge branch call return ret interrupt irq exception proof proofObligation obligation gap proofGap evidence proofEvidence');
+const migrationRows = words('from fromVersion to toVersion change invariant invariants');
 const packageRows = words('metadata dependency script export gap proofGap evidence proofEvidence');
 const runtimeRows = words('host runtimeHost hostProfile sourceHost targetHost capability hostCapability hostBinding binding requirement runtimeRequirement requiredRuntime evidence proofEvidence gap proofGap');
 const semanticEditRows = words('script semanticEditScript projection semanticEditProjection replay semanticEditReplay');
 const gateAdmissionRows = words('gate evidence proofEvidence admission admissionDecision proofObligation obligation gap proofGap');
+const coreFailClosed = (reason) => ({ failClosedUnknownRows: true, unknownRowReason: reason });
 
 export const ROW_SYNTAX_CONFIG = Object.freeze({
   interlingua: rowConfig('interlinguaRow', 'interlingua_row', interlinguaRows, normalizeInterlinguaRow),
@@ -19,9 +21,14 @@ export const ROW_SYNTAX_CONFIG = Object.freeze({
   runtimeHosts: rowConfig('runtimeCapabilityRow', 'runtime_capability_row', runtimeRows, normalizeRuntimeCapabilityRow),
   resourceGraph: rowConfig('resourceGraphRow', 'resource_graph_row', words('resource owner loan alias move drop escape lifetime lifetimeRegion life outlives lifetimeRelation lifeRelation borrow borrowScope borrowRegion unsafe unsafeBoundary memory memoryRegion region layout dataLayout pointer ptr address access memoryAccess atomic volatile abi abiBoundary callBoundary sync synchronization synchronisation synchronizationEdge synchronisationEdge happensBefore hb fence fenceEdge barrier barrierEdge trap traps undefined undefinedBehavior undefinedBehaviour ub conflict proof proofObligation obligation'), normalizeResourceGraphRow),
   semanticResourceGraph: rowConfig('resourceGraphRow', 'resource_graph_row', words('resource owner loan alias move drop escape lifetime lifetimeRegion life outlives lifetimeRelation lifeRelation borrow borrowScope borrowRegion unsafe unsafeBoundary memory memoryRegion region layout dataLayout pointer ptr address access memoryAccess atomic volatile abi abiBoundary callBoundary sync synchronization synchronisation synchronizationEdge synchronisationEdge happensBefore hb fence fenceEdge barrier barrierEdge trap traps undefined undefinedBehavior undefinedBehaviour ub conflict proof proofObligation obligation'), normalizeResourceGraphRow),
-  machineGraph: rowConfig('machineGraphRow', 'machine_graph_row', machineRows, normalizeMachineGraphRow),
-  executionGraph: rowConfig('machineGraphRow', 'machine_graph_row', machineRows, normalizeMachineGraphRow),
-  lowLevelGraph: rowConfig('machineGraphRow', 'machine_graph_row', machineRows, normalizeMachineGraphRow),
+  machineGraph: rowConfig('machineGraphRow', 'machine_graph_row', machineRows, normalizeMachineGraphRow, coreFailClosed('unsupported-machine-graph-row')),
+  executionGraph: rowConfig('machineGraphRow', 'machine_graph_row', machineRows, normalizeMachineGraphRow, coreFailClosed('unsupported-machine-graph-row')),
+  lowLevelGraph: rowConfig('machineGraphRow', 'machine_graph_row', machineRows, normalizeMachineGraphRow, coreFailClosed('unsupported-machine-graph-row')),
+  migration: rowConfig('migrationRow', 'migration_row', migrationRows, normalizeMigrationRow, coreFailClosed('unsupported-migration-row')),
+  capability: rowConfig('capabilityRow', 'capability_row', words('capability category input returns effects resources adapter unsupported unsupportedTarget'), normalizeCapabilityRow, coreFailClosed('unsupported-capability-row')),
+  effect: rowConfig('effectRow', 'effect_row', words('capability input returns resources'), undefined, coreFailClosed('unsupported-effect-row')),
+  extern: rowConfig('externRow', 'extern_row', words('language target symbol input returns effects uses resources'), normalizeExternRow, coreFailClosed('unsupported-extern-row')),
+  lattice: rowConfig('latticeRow', 'lattice_row', words('carrier law laws frontierCrdt frontier-crdt lawChecker'), normalizeLatticeRow, coreFailClosed('unsupported-lattice-row')),
   applicationSurface: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow),
   appHost: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow),
   plugin: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow),
@@ -37,9 +44,9 @@ export const ROW_SYNTAX_CONFIG = Object.freeze({
   possibilitySpace: rowConfig('constraintSpaceRow', 'constraint_space_row', constraintRows, normalizeConstraintSpaceRow),
   decisionGraph: rowConfig('decisionGraphRow', 'decision_graph_row', words('node edge chunk gate evidence semanticChange change patchEvent patch admissionDecision admission candidateDecision candidate mergeDecision merge replay tournament tournamentCandidate panelProjection panel rsiLoop improvementFeedback feedback'), normalizeDecisionGraphRow),
   admissionGraph: rowConfig('decisionGraphRow', 'decision_graph_row', words('node edge chunk gate evidence semanticChange change patchEvent patch admissionDecision admission candidateDecision candidate mergeDecision merge replay tournament tournamentCandidate panelProjection panel rsiLoop improvementFeedback feedback'), normalizeDecisionGraphRow),
-  gateEvidence: rowConfig('gateAdmissionEvidenceRow', 'gate_admission_evidence_row', gateAdmissionRows, normalizeGateAdmissionRow),
-  admissionEvidence: rowConfig('gateAdmissionEvidenceRow', 'gate_admission_evidence_row', gateAdmissionRows, normalizeGateAdmissionRow),
-  routeEvidence: rowConfig('gateAdmissionEvidenceRow', 'gate_admission_evidence_row', gateAdmissionRows, normalizeGateAdmissionRow),
+  gateEvidence: rowConfig('gateAdmissionEvidenceRow', 'gate_admission_evidence_row', gateAdmissionRows, normalizeGateAdmissionRow, coreFailClosed('unsupported-gate-admission-row')),
+  admissionEvidence: rowConfig('gateAdmissionEvidenceRow', 'gate_admission_evidence_row', gateAdmissionRows, normalizeGateAdmissionRow, coreFailClosed('unsupported-gate-admission-row')),
+  routeEvidence: rowConfig('gateAdmissionEvidenceRow', 'gate_admission_evidence_row', gateAdmissionRows, normalizeGateAdmissionRow, coreFailClosed('unsupported-gate-admission-row')),
   operations: rowConfig('semanticOperationRow', 'semantic_operation_row', words('operation op'), normalizeOperationRow),
   semanticOperations: rowConfig('semanticOperationRow', 'semantic_operation_row', words('operation op'), normalizeOperationRow),
   semanticEdits: rowConfig('semanticEditRecordRow', 'semantic_edit_record_row', semanticEditRows, normalizeSemanticEditRow),
@@ -50,8 +57,8 @@ export const ROW_SYNTAX_CONFIG = Object.freeze({
   nativeSource: rowConfig('nativeSourceRow', 'native_source_row', words('loss evidence proofEvidence sourceMap sourcemap mapping sourceMapMapping mergeCandidate candidate'), normalizeNativeSourceRow)
 });
 
-function rowConfig(childKind, idPrefix, rowKinds, normalize) {
-  return { childKind, idPrefix, rowKinds: new Set(rowKinds), normalize };
+function rowConfig(childKind, idPrefix, rowKinds, normalize, options = {}) {
+  return { childKind, idPrefix, rowKinds: new Set(rowKinds), normalize, ...options };
 }
 
 function words(source) { return source.split(/\s+/); }
@@ -108,6 +115,30 @@ function normalizeMachineGraphRow(rowKind) {
   if (rowKind === 'proof' || rowKind === 'obligation') return 'proofObligation';
   if (rowKind === 'gap') return 'proofGap';
   if (rowKind === 'proofEvidence') return 'evidence';
+  return rowKind;
+}
+
+function normalizeMigrationRow(rowKind) {
+  if (rowKind === 'from') return 'fromVersion';
+  if (rowKind === 'to') return 'toVersion';
+  if (rowKind === 'invariant') return 'invariants';
+  return rowKind;
+}
+
+function normalizeCapabilityRow(rowKind) {
+  if (rowKind === 'unsupported') return 'unsupportedTarget';
+  return rowKind;
+}
+
+function normalizeExternRow(rowKind) {
+  if (rowKind === 'target') return 'language';
+  if (rowKind === 'uses') return 'effects';
+  return rowKind;
+}
+
+function normalizeLatticeRow(rowKind) {
+  if (rowKind === 'law') return 'laws';
+  if (rowKind === 'frontier-crdt') return 'frontierCrdt';
   return rowKind;
 }
 
