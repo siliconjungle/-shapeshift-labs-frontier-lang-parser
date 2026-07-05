@@ -179,7 +179,9 @@ function mergeDecisionGraphBlocks(blocks) {
     decisionIds: idsByKind(records, 'frontier.lang.decisionGraph.candidateDecision').concat(idsByKind(records, 'frontier.lang.decisionGraph.mergeDecision')),
     replayRecordIds: idsByKind(records, 'frontier.lang.decisionGraph.replay'),
     tournamentRecordIds: idsByKind(records, 'frontier.lang.decisionGraph.tournament').concat(idsByKind(records, 'frontier.lang.decisionGraph.tournamentCandidate')),
+    panelProjectionIds: idsByKind(records, 'frontier.lang.decisionGraph.panelProjection'),
     rsiLoopIds: idsByKind(records, 'frontier.lang.decisionGraph.rsiLoop'),
+    feedbackIds: idsByKind(records, 'frontier.lang.decisionGraph.improvementFeedback'),
     summary: {
       graphCount: blocks.length,
       recordCount: records.length,
@@ -193,7 +195,9 @@ function mergeDecisionGraphBlocks(blocks) {
       patchEventCount: sum(blocks, 'patchEventCount'),
       replayCount: sum(blocks, 'replayCount'),
       tournamentCount: sum(blocks, 'tournamentCount'),
-      rsiLoopCount: sum(blocks, 'rsiLoopCount')
+      panelProjectionCount: sum(blocks, 'panelProjectionCount'),
+      rsiLoopCount: sum(blocks, 'rsiLoopCount'),
+      feedbackCount: sum(blocks, 'feedbackCount')
     },
     metadata: { authoredDecisionGraphBlockIds: blocks.map((block) => block.id) }
   };

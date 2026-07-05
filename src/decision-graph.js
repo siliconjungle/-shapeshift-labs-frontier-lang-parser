@@ -27,6 +27,7 @@ const RECORD_FIELDS = Object.freeze({
   replay: 'replayRecordIds',
   tournament: 'tournamentRecordIds',
   tournamentCandidate: 'tournamentRecordIds',
+  panelProjection: 'panelProjectionIds',
   rsiLoop: 'rsiLoopIds',
   improvementFeedback: 'feedbackIds'
 });
@@ -80,7 +81,9 @@ export function parseDecisionGraphBlock(block) {
     replayRecordIds: grouped.replayRecordIds,
     patchEventIds: grouped.patchEventIds,
     tournamentRecordIds: grouped.tournamentRecordIds,
+    panelProjectionIds: grouped.panelProjectionIds,
     rsiLoopIds: grouped.rsiLoopIds,
+    feedbackIds: grouped.feedbackIds,
     nodes: graph.nodes,
     edges: graph.edges,
     metadata: graph.metadata
@@ -105,7 +108,9 @@ export function parseDecisionGraphBlock(block) {
       patchEventCount: grouped.patchEventIds.length,
       replayCount: grouped.replayRecordIds.length,
       tournamentCount: grouped.tournamentRecordIds.length,
-      rsiLoopCount: grouped.rsiLoopIds.length
+      panelProjectionCount: grouped.panelProjectionIds.length,
+      rsiLoopCount: grouped.rsiLoopIds.length,
+      feedbackCount: grouped.feedbackIds.length
     },
     metadata: { name }
   };
@@ -183,6 +188,7 @@ function groupRecords(records) {
     decisionIds: [],
     replayRecordIds: [],
     tournamentRecordIds: [],
+    panelProjectionIds: [],
     rsiLoopIds: [],
     feedbackIds: []
   };
