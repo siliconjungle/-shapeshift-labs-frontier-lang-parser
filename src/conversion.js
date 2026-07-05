@@ -126,7 +126,7 @@ function addConstraint(plan, family, name, text, authoredLine = {}) {
     blockers: readInlineList(text, 'blocker', 'blockers'),
     review: readInlineList(text, 'review'),
     failClosed: readInlineFlag('failClosed', text),
-    metadata: { name, family, authoredConversionBlockId: plan.id }
+    metadata: cleanRecord({ name, family: config.family ?? family, authoredFamily: config.family && config.family !== family ? family : undefined, authoredConversionBlockId: plan.id })
   });
   const recordKey = role === 'target' ? config.targetKey : config.sourceKey;
   const recordValue = config.graph ? resourceGraphFromRecord(record, entry) : record;

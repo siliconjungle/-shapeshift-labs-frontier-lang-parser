@@ -5,7 +5,7 @@ const FAMILY_ROWS = [
   ['lifetime', 'lifetimeConstraints', 'sourceLifetimeConstraints', 'targetLifetimeConstraints', ['lifetimeConstraint', 'lifetime-constraint']],
   ['borrowScope', 'borrowScopeConstraints', 'sourceBorrowScopes', 'targetBorrowScopes', ['borrowScopeConstraint', 'borrow-scope', 'borrow-scope-constraint']],
   ['borrowChecker', 'borrowCheckerConstraints', 'sourceBorrowScopes', 'targetBorrowScopes', ['borrowCheckerConstraint', 'borrow-checker', 'borrow-checker-constraint']],
-  ['callableBoundary', 'callableBoundaryConstraints', 'sourceCallables', 'targetCallables', ['callableBoundaryConstraint', 'callable-boundary', 'callable-boundary-constraint'], { extraSourceKeys: ['sourceCallableBoundaryRecords'], extraTargetKeys: ['targetCallableBoundaryRecords'] }],
+  ['callableBoundary', 'callableBoundaryConstraints', 'sourceCallables', 'targetCallables', ['callableBoundaryConstraint', 'callable-boundary', 'callable-boundary-constraint', 'abi', 'abiConstraint', 'abi-boundary', 'abi-boundary-constraint', 'ffi', 'ffiBoundary', 'ffi-boundary', 'ffi-boundary-constraint'], { extraSourceKeys: ['sourceCallableBoundaryRecords'], extraTargetKeys: ['targetCallableBoundaryRecords'] }],
   ['adtPattern', 'adtPatternConstraints', 'sourcePatterns', 'targetPatterns', ['adtPatternConstraint', 'adt-pattern', 'adt-pattern-constraint'], { extraSourceKeys: ['sourceAdtPatternRecords'], extraTargetKeys: ['targetAdtPatternRecords'] }],
   ['dataLayout', 'dataLayoutConstraints', 'sourceLayouts', 'targetLayouts', ['dataLayoutConstraint', 'data-layout', 'data-layout-constraint'], { extraSourceKeys: ['sourceDataLayoutRecords'], extraTargetKeys: ['targetDataLayoutRecords'] }],
   ['layoutStyle', 'layoutStyleConstraints', 'sourceLayoutStyles', 'targetLayoutStyles', ['layoutStyleConstraint', 'layout-style', 'layout-style-constraint', 'layout', 'layoutConstraint', 'layout-constraint', 'style', 'styleConstraint', 'style-constraint', 'css-style', 'css-rule', 'style-layout', 'render-layout'], { extraSourceKeys: ['sourceLayoutStyleRecords'], extraTargetKeys: ['targetLayoutStyleRecords'] }],
@@ -13,16 +13,16 @@ const FAMILY_ROWS = [
   ['concurrencyModel', 'concurrencyModelConstraints', 'sourceConcurrencyModels', 'targetConcurrencyModels', ['concurrencyModelConstraint', 'concurrency-model', 'concurrency-model-constraint'], { extraSourceKeys: ['sourceConcurrencyModelRecords'], extraTargetKeys: ['targetConcurrencyModelRecords'] }],
   ['errorModel', 'errorModelConstraints', 'sourceErrors', 'targetErrors', ['errorModelConstraint', 'error-model', 'error-model-constraint'], { extraSourceKeys: ['sourceErrorModelRecords'], extraTargetKeys: ['targetErrorModelRecords'] }],
   ['evaluationModel', 'evaluationModelConstraints', 'sourceEvaluations', 'targetEvaluations', ['evaluationModelConstraint', 'evaluation-model', 'evaluation-model-constraint'], { extraSourceKeys: ['sourceEvaluationModelRecords'], extraTargetKeys: ['targetEvaluationModelRecords'] }],
-  ['hostEnvironment', 'hostEnvironmentConstraints', 'sourceHosts', 'targetHosts', ['hostEnvironmentConstraint', 'host-environment', 'host-environment-constraint'], { extraSourceKeys: ['sourceHostEnvironmentRecords'], extraTargetKeys: ['targetHostEnvironmentRecords'] }],
+  ['hostEnvironment', 'hostEnvironmentConstraints', 'sourceHosts', 'targetHosts', ['hostEnvironmentConstraint', 'host-environment', 'host-environment-constraint', 'runtime', 'runtimeConstraint', 'runtime-constraint', 'runtimeEnvironment', 'runtime-environment', 'runtime-environment-constraint'], { extraSourceKeys: ['sourceHostEnvironmentRecords'], extraTargetKeys: ['targetHostEnvironmentRecords'] }],
   ['memoryModel', 'memoryModelConstraints', 'sourceMemoryModels', 'targetMemoryModels', ['memoryModelConstraint', 'memory-model', 'memory-model-constraint'], { extraSourceKeys: ['sourceMemoryModelRecords'], extraTargetKeys: ['targetMemoryModelRecords'] }],
   ['metaprogramming', 'metaprogrammingConstraints', 'sourceMetaprograms', 'targetMetaprograms', ['metaprogrammingConstraint', 'metaprogramming-constraint'], { extraSourceKeys: ['sourceMetaprogrammingRecords'], extraTargetKeys: ['targetMetaprogrammingRecords'] }],
   ['module', 'moduleConstraints', 'sourceModules', 'targetModules', ['moduleConstraint', 'module-constraint']],
-  ['scopeBinding', 'scopeBindingConstraints', 'sourceBindings', 'targetBindings', ['scopeBindingConstraint', 'scope-binding', 'scope-binding-constraint'], { extraSourceKeys: ['sourceScopeBindingRecords'], extraTargetKeys: ['targetScopeBindingRecords'] }],
+  ['scopeBinding', 'scopeBindingConstraints', 'sourceBindings', 'targetBindings', ['scopeBindingConstraint', 'scope-binding', 'scope-binding-constraint', 'useDef', 'use-def', 'useDefConstraint', 'use-def-constraint', 'nameResolution', 'name-resolution', 'nameResolutionConstraint', 'name-resolution-constraint', 'symbolResolution', 'symbol-resolution', 'symbolResolutionConstraint', 'symbol-resolution-constraint'], { extraSourceKeys: ['sourceScopeBindingRecords'], extraTargetKeys: ['targetScopeBindingRecords'] }],
   ['numericSemantics', 'numericSemanticsConstraints', 'sourceNumerics', 'targetNumerics', ['numericSemanticsConstraint', 'numeric-semantics', 'numeric-semantics-constraint'], { extraSourceKeys: ['sourceNumericSemanticsRecords'], extraTargetKeys: ['targetNumericSemanticsRecords'] }],
   ['textSemantics', 'textSemanticsConstraints', 'sourceTexts', 'targetTexts', ['textSemanticsConstraint', 'text-semantics', 'text-semantics-constraint'], { extraSourceKeys: ['sourceTextSemanticsRecords'], extraTargetKeys: ['targetTextSemanticsRecords'] }],
   ['collectionSemantics', 'collectionSemanticsConstraints', 'sourceCollections', 'targetCollections', ['collectionSemanticsConstraint', 'collection-semantics', 'collection-semantics-constraint'], { extraSourceKeys: ['sourceCollectionSemanticsRecords'], extraTargetKeys: ['targetCollectionSemanticsRecords'] }],
   ['serializationSemantics', 'serializationSemanticsConstraints', 'sourceSerializations', 'targetSerializations', ['serializationSemanticsConstraint', 'serialization-semantics', 'serialization-semantics-constraint'], { extraSourceKeys: ['sourceSerializationSemanticsRecords'], extraTargetKeys: ['targetSerializationSemanticsRecords'] }],
-  ['dependencySemantics', 'dependencySemanticsConstraints', 'sourceDependencies', 'targetDependencies', ['dependencySemanticsConstraint', 'dependency-semantics', 'dependency-semantics-constraint'], { extraSourceKeys: ['sourceDependencySemanticsRecords'], extraTargetKeys: ['targetDependencySemanticsRecords'] }],
+  ['dependencySemantics', 'dependencySemanticsConstraints', 'sourceDependencies', 'targetDependencies', ['dependencySemanticsConstraint', 'dependency-semantics', 'dependency-semantics-constraint', 'dependency', 'dependencyConstraint', 'dependency-constraint', 'package', 'packageConstraint', 'package-constraint', 'packageBoundary', 'package-boundary', 'package-boundary-constraint', 'packageManager', 'package-manager', 'package-manager-constraint'], { extraSourceKeys: ['sourceDependencySemanticsRecords'], extraTargetKeys: ['targetDependencySemanticsRecords'] }],
   ['objectModel', 'objectModelConstraints', 'sourceObjects', 'targetObjects', ['objectModelConstraint', 'object-model', 'object-model-constraint'], { extraSourceKeys: ['sourceObjectModelRecords'], extraTargetKeys: ['targetObjectModelRecords'] }],
   ['protocol', 'protocolConstraints', 'sourceProtocols', 'targetProtocols', ['protocolConstraint', 'protocol-constraint']]
 ];
@@ -31,19 +31,21 @@ const WORD_FIELDS = [
   ['symbolId', 'symbol', 'symbolId'], ['symbolName'], ['localName'], ['ownerId', 'owner', 'ownerId'], ['ownerKind'],
   ['bindingKind'], ['referenceKind'], ['scopeId', 'scopeId', 'scope'], ['ownerScopeId'], ['bindingId', 'bindingId', 'binding'],
   ['externalBindingId', 'externalBindingId', 'externalBinding'], ['resolvedBindingId', 'resolvedBindingId', 'resolvedBinding'],
+  ['definitionId', 'definitionId', 'definition', 'def'], ['useId', 'useId', 'use'], ['resolvedSymbolId', 'resolvedSymbolId', 'resolvedSymbol'],
   ['declarationId', 'declarationId', 'declaration'], ['referenceId', 'referenceId', 'reference'], ['occurrenceId', 'occurrenceId', 'occurrence'],
-  ['resolvedName'], ['namespace'], ['scopeType'], ['variableScopeType'], ['lookupKind'], ['resolutionKind', 'resolutionKind', 'moduleResolutionKind'],
-  ['moduleKind'], ['edgeKind'], ['declarationKind'], ['specifier', 'specifier', 'moduleSpecifier'], ['moduleSpecifier', 'moduleSpecifier', 'specifier'],
+  ['resolvedName'], ['canonicalName'], ['qualifiedName'], ['referenceName'], ['namespace'], ['scopeType'], ['variableScopeType'], ['lookupKind'], ['resolutionKind', 'resolutionKind', 'moduleResolutionKind'],
+  ['moduleId'], ['modulePath'], ['moduleKind'], ['edgeKind'], ['declarationKind'], ['specifier', 'specifier', 'moduleSpecifier'], ['moduleSpecifier', 'moduleSpecifier', 'specifier'],
   ['importedName', 'importedName', 'importName'], ['importName', 'importName', 'importedName'], ['exportedName', 'exportedName', 'exportName'],
   ['exportName', 'exportName', 'exportedName'], ['reExportedName', 'reExportedName', 'reexportedName'], ['packageName', 'packageName', 'package'],
-  ['packageSubpath', 'packageSubpath', 'subpath'], ['packageCondition', 'packageCondition', 'condition'], ['packageExportKey'], ['packageImportKey'],
+  ['packageSubpath', 'packageSubpath', 'subpath'], ['packageVersion'], ['dependencyName'], ['dependencyVersion'], ['packageCondition', 'packageCondition', 'condition'], ['packageExportKey'], ['packageImportKey'],
   ['resolvedPath', 'resolvedPath', 'targetPath'], ['targetPath', 'targetPath', 'resolvedPath'], ['capability'], ['hostKind'], ['runtimeKind'],
+  ['sourceRuntime'], ['targetRuntime'], ['runtimeId'], ['runtimeVersion'], ['sourceHost'], ['targetHost'], ['platform'], ['os'], ['arch'], ['engine'], ['sandbox'],
   ['apiName', 'apiName', 'callee'], ['globalName', 'globalName', 'global', 'objectName'], ['permission', 'permission', 'permissionKind'],
-  ['permissionKind', 'permissionKind', 'permission'], ['effectKind'], ['memoryKind'],
+  ['permissionKind', 'permissionKind', 'permission'], ['policy'], ['adapter'], ['adapterId', 'adapterId', 'adapter'], ['effectKind'], ['memoryKind'],
   ['operationKind'], ['memoryOrder', 'memoryOrder', 'ordering'], ['ordering', 'ordering', 'memoryOrder'], ['lockId', 'lockId', 'lock'],
   ['channelId', 'channelId', 'channel'], ['actorId', 'actorId', 'actor'], ['synchronizationKey', 'synchronizationKey', 'syncKey'],
   ['callableId', 'callableId', 'callable'], ['functionId', 'functionId', 'function'], ['receiverId', 'receiverId', 'receiver'],
-  ['abi'], ['callingConvention'], ['layoutKind'], ['endian'], ['objectKind'], ['memberKind'], ['protocolId', 'protocolId', 'protocol'],
+  ['abi'], ['abiVersion'], ['linkage'], ['symbolVersion'], ['callingConvention', 'callingConvention', 'callConvention', 'callConv'], ['layoutKind'], ['endian'], ['objectKind'], ['memberKind'], ['protocolId', 'protocolId', 'protocol'],
   ['traitId', 'traitId', 'trait'], ['interfaceId', 'interfaceId', 'interface'], ['mode', 'mode', 'loanMode'], ['aliasKind'], ['moveKind'],
   ['dropKind'], ['resourceKind'], ['scopeKind'], ['typeKind'], ['signatureHash'], ['contractHash'], ['typeHash'], ['flowKind'],
   ['controlFlowKind'], ['sourceControlFlowId'], ['sourceId', 'from', 'sourceId'], ['targetId', 'to', 'targetId'], ['label'],
@@ -129,7 +131,7 @@ const NUMBER_FIELDS = [
 const FLAG_FIELDS = ['nullable', 'optional', 'publicContract', 'closure', 'captured', 'writeExpr', 'mutable', 'shadowed', 'hoisted', 'typeOnly', 'isTypeReference', 'isValueReference', 'shared', 'volatile', 'atomic', 'adapterRequired', 'async', 'generator', 'exceptional', 'cancellable', 'variadic', 'signed', 'nan', 'infinity', 'deterministic', 'streaming', 'framing', 'copyOnWrite', 'multipleInheritance', 'reflection', 'staticDispatch', 'virtual', 'spawn', 'await', 'structured', 'reentrant', 'cancelable', 'failClosed'];
 
 export const FAMILIES = Object.freeze(Object.fromEntries(FAMILY_ROWS.flatMap(([name, field, sourceKey, targetKey, aliases = [], extra = {}]) => {
-  const config = { field, sourceKey, targetKey, ...extra };
+  const config = { family: name, field, sourceKey, targetKey, ...extra };
   return [name, ...aliases].map((alias) => [alias, config]);
 })));
 
@@ -175,7 +177,15 @@ function numberAny(text, ...labels) {
   return value === undefined ? undefined : Number(value);
 }
 function idFrom(text, fallback) { return /@id\(\s*["']([^"']+)["']\s*\)/.exec(text)?.[1] ?? fallback; }
-function word(label, text) { return new RegExp('(?:^|\\s)' + label + '\\s+([^\\s,]+)').exec(text)?.[1]?.trim(); }
+function word(label, text) {
+  const tokens = text.trim().split(/\s+/);
+  for (let i = 0; i < tokens.length - 1; i += 1) {
+    if (tokens[i] !== label) continue;
+    if (i > 0 && VALUE_LABELS.has(tokens[i - 1])) continue;
+    return cleanToken(tokens[i + 1]);
+  }
+  return undefined;
+}
 function quoted(label, text) { return new RegExp("(?:^|\\s)" + label + "\\s+[\"']([^\"']+)[\"']").exec(text)?.[1]?.trim(); }
 function flag(label, text) { return new RegExp('(?:^|\\s)' + label + '(?:\\s|$)').test(text) || undefined; }
 function list(label, text) {
@@ -185,3 +195,5 @@ function list(label, text) {
 function cleanRecord(record) {
   return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined && (!Array.isArray(value) || value.length > 0)));
 }
+const VALUE_LABELS = new Set(['kind', 'constraintKind', 'role', 'mode']);
+function cleanToken(value) { return value.replace(/,$/, '').trim(); }
