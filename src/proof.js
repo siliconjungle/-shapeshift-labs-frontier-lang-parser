@@ -23,12 +23,12 @@ export function parseProofBlock(block) {
   for (const rawLine of block.body.split('\n')) {
     const line = rawLine.trim();
     if (!line || line.startsWith('#')) continue;
-    const match = /^(contract|refinement|invariant|termination|temporal|obligation|artifact|assumption)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
+    const match = /^(contract|refinement|invariant|termination|temporal|obligation|proofObligation|artifact|assumption)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
     if (!match) continue;
     const [, section, recordName, rest] = match;
     const group = CONTRACT_GROUPS[section];
     if (group) proof[group].push(parseProofContract(section, recordName, rest));
-    if (section === 'obligation') proof.obligations.push(parseProofObligation(recordName, rest));
+    if (section === 'obligation' || section === 'proofObligation') proof.obligations.push(parseProofObligation(recordName, rest, section));
     if (section === 'artifact') proof.artifacts.push(parseProofArtifact(recordName, rest));
     if (section === 'assumption') proof.assumptions.push(parseProofAssumption(recordName, rest));
   }
@@ -52,7 +52,7 @@ function parseProofContract(section, name, text) {
   });
 }
 
-function parseProofObligation(name, text) {
+function parseProofObligation(name, text, authoredKind = 'obligation') {
   return cleanRecord({
     id: idFrom(text, `proof_obligation_${name}`),
     kind: readInlineWord('kind', text),
@@ -68,7 +68,7 @@ function parseProofObligation(name, text) {
     lossIds: readInlineList(text, 'loss', 'lossIds'),
     solver: readInlineWord('solver', text),
     staleAgainstHash: readInlineWord('staleAgainstHash', text),
-    metadata: { name }
+    metadata: cleanRecord({ name, authoredKind: authoredKind === 'obligation' ? undefined : authoredKind })
   });
 }
 

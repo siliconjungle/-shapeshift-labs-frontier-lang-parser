@@ -57,7 +57,7 @@ export const ROW_SYNTAX_CONFIG = Object.freeze({
   semanticEditRecords: rowConfig('semanticEditRecordRow', 'semantic_edit_record_row', semanticEditRows, normalizeSemanticEditRow, coreFailClosed('unsupported-semantic-edit-record-row')),
   paradigm: rowConfig('paradigmRow', 'paradigm_row', paradigmRows, normalizeParadigmRow, coreFailClosed('unsupported-paradigm-row')),
   paradigmSemantics: rowConfig('paradigmRow', 'paradigm_row', paradigmRows, normalizeParadigmRow, coreFailClosed('unsupported-paradigm-row')),
-  proof: rowConfig('proofRow', 'proof_row', words('contract refinement invariant termination temporal obligation artifact assumption'), undefined, coreFailClosed('unsupported-proof-row')),
+  proof: rowConfig('proofRow', 'proof_row', words('contract refinement invariant termination temporal obligation proofObligation artifact assumption'), normalizeProofRow, coreFailClosed('unsupported-proof-row')),
   nativeSource: rowConfig('nativeSourceRow', 'native_source_row', nativeSourceRows, normalizeNativeSourceRow, coreFailClosed('unsupported-native-source-row'))
 });
 
@@ -242,6 +242,11 @@ function normalizeGateAdmissionRow(rowKind) {
   if (rowKind === 'admissionDecision') return 'admission';
   if (rowKind === 'obligation') return 'proofObligation';
   if (rowKind === 'gap') return 'proofGap';
+  return rowKind;
+}
+
+function normalizeProofRow(rowKind) {
+  if (rowKind === 'proofObligation') return 'obligation';
   return rowKind;
 }
 
