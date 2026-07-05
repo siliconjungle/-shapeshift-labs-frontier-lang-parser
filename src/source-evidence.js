@@ -4,6 +4,7 @@ export function parseNativeSourceBlock(block) {
   const name = nameFrom(block.header);
   const losses = parseLosses(name, block.body);
   const nativeSourceId = idFrom(block.header, `native_${name}`);
+  const language = readWord('language', block.body) ?? readWord('sourceLanguage', block.body) ?? name;
   const evidence = parseEvidenceRecords(block.body);
   const sourceMaps = parseSourceMaps(block.body, {
     nativeSourceId,
@@ -13,7 +14,7 @@ export function parseNativeSourceBlock(block) {
   });
   const mergeCandidates = parseMergeCandidates(block.body, {
     nativeSourceId,
-    language: readWord('language', block.body) ?? name,
+    language,
     sourcePath: readWord('sourcePath', block.body) ?? readWord('path', block.body),
     sourceMaps,
     evidence
@@ -21,13 +22,13 @@ export function parseNativeSourceBlock(block) {
   const node = nativeSourceNode({
     id: nativeSourceId,
     name,
-    language: readWord('language', block.body) ?? name,
+    language,
     parser: readWord('parser', block.body),
     parserVersion: readWord('parserVersion', block.body),
     sourcePath: readWord('sourcePath', block.body) ?? readWord('path', block.body),
     sourceHash: readWord('sourceHash', block.body),
     symbol: readWord('symbol', block.body),
-    frontierNodeIds: readList('frontierNodes', block.body),
+    frontierNodeIds: readList('frontierNodes', block.body) ?? readList('frontierNodeIds', block.body) ?? readList('frontierNodeId', block.body) ?? readList('frontierNode', block.body),
     sourceMapIds: sourceMaps.map((sourceMap) => sourceMap.id),
     mergeCandidateIds: mergeCandidates.map((candidate) => candidate.id),
     evidenceIds: evidence.map((record) => record.id),
@@ -139,7 +140,7 @@ function parseMergeCandidates(body, context) {
     const sourceMapMappingIds = readInlineList(rest, 'sourceMapMapping', 'sourceMapMappings', 'sourceMapMappingIds');
     return createSemanticMergeCandidateRecord(cleanRecord({
       id: idFrom(rest, `merge_candidate_${name}`),
-      language: readInlineWord('language', rest) ?? context.language,
+      language: readInlineWord('language', rest) ?? readInlineWord('sourceLanguage', rest) ?? context.language,
       sourcePath: readInlineWord('sourcePath', rest) ?? readInlineWord('path', rest) ?? context.sourcePath,
       baseHash: readInlineWord('baseHash', rest),
       targetHash: readInlineWord('targetHash', rest),

@@ -11,6 +11,7 @@ const semanticEditRows = words('script semanticEditScript projection semanticEdi
 const gateAdmissionRows = words('gate evidence proofEvidence admission admissionDecision proofObligation obligation gap proofGap');
 const resourceRows = words('sourceLanguage language sourcePath path sourceHash status evidence evidenceIds resource owner loan alias move drop escape lifetime lifetimeRegion life outlives lifetimeRelation lifeRelation borrow borrowScope borrowRegion unsafe unsafeBoundary memory memoryRegion region layout dataLayout pointer ptr address access memoryAccess atomic volatile abi abiBoundary callBoundary sync synchronization synchronisation synchronizationEdge synchronisationEdge happensBefore happens-before hb fence fenceEdge barrier barrierEdge trap traps undefined undefinedBehavior undefinedBehaviour ub conflict proof proofObligation obligation proofEvidence sourceMap sourcemap mapping sourceMapMapping missingEvidence');
 const targetRows = words('language targetLanguage sourceLanguage package packageName emitPath targetPath sourcePath path sourceHash targetHash runtime runtimeHost moduleFormat projection lowering lower layer adapter adapterId readiness disposition status evidence proofEvidence proof loss missingEvidence gap proofGap sourceMap sourcemap mapping sourceMapMapping');
+const nativeSourceRows = words('language sourceLanguage parser parserVersion sourcePath path sourceHash symbol frontierNodes frontierNode frontierNodeId frontierNodeIds loss evidence proofEvidence sourceMap sourcemap mapping sourceMapMapping mergeCandidate candidate');
 const coreFailClosed = (reason) => ({ failClosedUnknownRows: true, unknownRowReason: reason });
 
 export const ROW_SYNTAX_CONFIG = Object.freeze({
@@ -56,7 +57,7 @@ export const ROW_SYNTAX_CONFIG = Object.freeze({
   paradigm: rowConfig('paradigmRow', 'paradigm_row', words('valueSemantics mutationModel effectModel ownership ownershipModel lifetime lifetimeModel bindingScope binding dispatch typeModel moduleModel concurrency errorModel memoryModel evaluation metaprogramming interop lowering'), normalizeParadigmRow),
   paradigmSemantics: rowConfig('paradigmRow', 'paradigm_row', words('valueSemantics mutationModel effectModel ownership ownershipModel lifetime lifetimeModel bindingScope binding dispatch typeModel moduleModel concurrency errorModel memoryModel evaluation metaprogramming interop lowering'), normalizeParadigmRow),
   proof: rowConfig('proofRow', 'proof_row', words('contract refinement invariant termination temporal obligation artifact assumption')),
-  nativeSource: rowConfig('nativeSourceRow', 'native_source_row', words('loss evidence proofEvidence sourceMap sourcemap mapping sourceMapMapping mergeCandidate candidate'), normalizeNativeSourceRow)
+  nativeSource: rowConfig('nativeSourceRow', 'native_source_row', nativeSourceRows, normalizeNativeSourceRow, coreFailClosed('unsupported-native-source-row'))
 });
 
 function rowConfig(childKind, idPrefix, rowKinds, normalize, options = {}) {
@@ -234,6 +235,9 @@ function normalizeParadigmRow(rowKind) {
 }
 
 function normalizeNativeSourceRow(rowKind) {
+  if (rowKind === 'sourceLanguage') return 'language';
+  if (rowKind === 'path') return 'sourcePath';
+  if (rowKind === 'frontierNode' || rowKind === 'frontierNodeId' || rowKind === 'frontierNodeIds') return 'frontierNodes';
   if (rowKind === 'proofEvidence') return 'evidence';
   if (rowKind === 'sourcemap' || rowKind === 'mapping' || rowKind === 'sourceMapMapping') return 'sourceMap';
   if (rowKind === 'candidate') return 'mergeCandidate';

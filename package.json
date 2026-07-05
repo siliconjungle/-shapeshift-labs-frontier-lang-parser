@@ -1,6 +1,6 @@
 {
   "name": "@shapeshift-labs/frontier-lang-parser",
-  "version": "0.3.83",
+  "version": "0.3.84",
   "description": "Parser for the first Frontier Lang .frontier syntax slice.",
   "type": "module",
   "main": "./dist/index.js",
@@ -22,7 +22,7 @@
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "npm run build && node test/smoke.mjs && node test/source-syntax-family-summary-smoke.mjs && node test/resource-graph-source-syntax-smoke.mjs && node test/tgt-source-smoke.mjs && node test/member-identity-smoke.mjs && node test/generic-row-parse-identity-smoke.mjs && node test/type-variant-payload-smoke.mjs && node test/type-generic-ref-smoke.mjs && node test/type-parameter-constraints-smoke.mjs && node test/type-structural-expression-smoke.mjs && node test/action-body-smoke.mjs && node test/action-structured-literals-smoke.mjs && node test/action-return-smoke.mjs && node test/action-else-smoke.mjs && node test/action-match-smoke.mjs && node test/action-for-in-smoke.mjs && node test/action-repeat-smoke.mjs && node test/action-call-smoke.mjs && node test/semantic-operation-edit-smoke.mjs && node test/target-projection-aggregate-smoke.mjs && node test/conversion-constraint-fields-smoke.mjs && node test/conversion-evidence-smoke.mjs && node test/gate-admission-evidence-smoke.mjs && node test/package-canvas-surface-smoke.mjs && node test/view-render-graph-smoke.mjs && node test/view-source-syntax-smoke.mjs && node test/resource-graph-smoke.mjs && node test/machine-graph-smoke.mjs && node test/interlingua-smoke.mjs && node test/dialect-registry-smoke.mjs",
+    "test": "npm run build && node test/smoke.mjs && node test/source-syntax-family-summary-smoke.mjs && node test/resource-graph-source-syntax-smoke.mjs && node test/tgt-source-smoke.mjs && node test/native-source-rows-smoke.mjs && node test/member-identity-smoke.mjs && node test/generic-row-parse-identity-smoke.mjs && node test/type-variant-payload-smoke.mjs && node test/type-generic-ref-smoke.mjs && node test/type-parameter-constraints-smoke.mjs && node test/type-structural-expression-smoke.mjs && node test/action-body-smoke.mjs && node test/action-structured-literals-smoke.mjs && node test/action-return-smoke.mjs && node test/action-else-smoke.mjs && node test/action-match-smoke.mjs && node test/action-for-in-smoke.mjs && node test/action-repeat-smoke.mjs && node test/action-call-smoke.mjs && node test/semantic-operation-edit-smoke.mjs && node test/target-projection-aggregate-smoke.mjs && node test/conversion-constraint-fields-smoke.mjs && node test/conversion-evidence-smoke.mjs && node test/gate-admission-evidence-smoke.mjs && node test/package-canvas-surface-smoke.mjs && node test/view-render-graph-smoke.mjs && node test/view-source-syntax-smoke.mjs && node test/resource-graph-smoke.mjs && node test/machine-graph-smoke.mjs && node test/interlingua-smoke.mjs && node test/dialect-registry-smoke.mjs",
     "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit -p test/tsconfig.json",
     "fuzz": "npm run build && node fuzz/smoke.mjs",
     "bench": "npm run build && node bench/smoke.mjs",
