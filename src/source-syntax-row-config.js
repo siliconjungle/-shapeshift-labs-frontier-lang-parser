@@ -1,4 +1,4 @@
-const appRows = words('mount provide provides required requires require route event asset gate gap proofGap evidence proofEvidence');
+const appRows = words('role sourcePath path sourceHash host hostId mount provide provides required requires require route event asset gate gap proofGap evidence proofEvidence');
 const canvasRows = words('element command state stateWrite trace gap proofGap evidence proofEvidence');
 const constraintRows = words('variable var constraint hard soft preference prefer collapse admission');
 const dialectRows = words('dialect record extern');
@@ -29,11 +29,11 @@ export const ROW_SYNTAX_CONFIG = Object.freeze({
   effect: rowConfig('effectRow', 'effect_row', words('capability input returns resources'), undefined, coreFailClosed('unsupported-effect-row')),
   extern: rowConfig('externRow', 'extern_row', words('language target symbol input returns effects uses resources'), normalizeExternRow, coreFailClosed('unsupported-extern-row')),
   lattice: rowConfig('latticeRow', 'lattice_row', words('carrier law laws frontierCrdt frontier-crdt lawChecker'), normalizeLatticeRow, coreFailClosed('unsupported-lattice-row')),
-  applicationSurface: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow),
-  appHost: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow),
-  plugin: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow),
-  pluginSurface: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow),
-  pluginContract: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow),
+  applicationSurface: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow, coreFailClosed('unsupported-application-surface-row')),
+  appHost: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow, coreFailClosed('unsupported-application-surface-row')),
+  plugin: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow, coreFailClosed('unsupported-application-surface-row')),
+  pluginSurface: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow, coreFailClosed('unsupported-application-surface-row')),
+  pluginContract: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow, coreFailClosed('unsupported-application-surface-row')),
   target: rowConfig('targetProjectionRow', 'target_projection_row', words('projection lowering layer')),
   packageManifest: rowConfig('packageManifestRow', 'package_manifest_row', packageRows, normalizeProofEvidenceRows),
   packageGraph: rowConfig('packageManifestRow', 'package_manifest_row', packageRows, normalizeProofEvidenceRows),
@@ -143,6 +143,8 @@ function normalizeLatticeRow(rowKind) {
 }
 
 function normalizeApplicationSurfaceRow(rowKind) {
+  if (rowKind === 'path') return 'sourcePath';
+  if (rowKind === 'hostId') return 'host';
   if (rowKind === 'provide' || rowKind === 'provides') return 'provided-surface';
   if (rowKind === 'required' || rowKind === 'requires' || rowKind === 'require') return 'required-capability';
   if (rowKind === 'proofEvidence') return 'evidence';

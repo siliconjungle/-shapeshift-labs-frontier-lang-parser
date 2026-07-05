@@ -88,6 +88,66 @@ assert.equal(genericRowsReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.
 assert.equal(genericRowsReport.summary.sourceSyntaxRowFamiliesByBlockFamily.runtimeCapabilities.includes('hostCapability'), true);
 assert.equal(genericRowsReport.summary.sourceSyntaxRowFamiliesByBlockFamily.nativeSource.includes('sourceMap'), true);
 
+const applicationSurfaceReport = inspectFrontierSourceSyntax(`module AppSurfaceRows @id("mod_app_surface_rows") {
+appHost WorkbenchHost @id("app_surface_workbench") {
+  role host
+  sourcePath app.frontier
+  sourceHash sha256:host
+  evidence previewProbe @id("evidence_preview_probe") kind browser-probe status passed path reports/preview.json
+  mount dashboard @id("app_mount_dashboard") kind region path /dashboard view view_dashboard target react evidence evidence_preview_probe
+  provides shell @id("app_provide_shell") surface view view view_dashboard mount app_mount_dashboard capability host.fetch|host.storage evidence evidence_preview_probe
+  requires fetch @id("app_require_fetch") capability host.fetch category network permission network proofGap app-host-capability-adapter-boundary evidence evidence_preview_probe
+  gate preview @id("app_gate_preview") kind browser-probe command "npm run preview:probe" required subject view_dashboard evidence evidence_preview_probe
+  gap pluginAbi @id("app_gap_plugin_abi") code plugin-abi-compatibility-boundary summary "Plugin ABI requires host/runtime compatibility proof."
+}
+plugin WeatherWidget @id("plugin_weather_widget") {
+  role plugin
+  host app_surface_workbench
+  path plugins/weather.frontier
+  sourceHash sha256:plugin
+  provides weatherPanel @id("plugin_provide_weather") surface view view view_weather_panel mount app_mount_dashboard capability host.fetch proofGap plugin-projection-runtime-boundary evidence evidence_preview_probe
+  require fetch @id("plugin_require_fetch") capability host.fetch category network permission network adapter host_fetch_adapter proofGap plugin-capability-grant-boundary evidence evidence_preview_probe
+}
+}`, { sourcePath: 'app-surfaces.frontier' });
+
+assert.equal(applicationSurfaceReport.summary.failClosed, false);
+assert.equal(applicationSurfaceReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.appHost.role, 1);
+assert.equal(applicationSurfaceReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.appHost.sourcePath, 1);
+assert.equal(applicationSurfaceReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.appHost.sourceHash, 1);
+assert.equal(applicationSurfaceReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.appHost.evidence, 1);
+assert.equal(applicationSurfaceReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.appHost['provided-surface'], 1);
+assert.equal(applicationSurfaceReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.appHost['required-capability'], 1);
+assert.equal(applicationSurfaceReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.plugin.role, 1);
+assert.equal(applicationSurfaceReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.plugin.host, 1);
+assert.equal(applicationSurfaceReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.plugin.sourcePath, 1);
+assert.equal(applicationSurfaceReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.plugin['provided-surface'], 1);
+assert.equal(applicationSurfaceReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.plugin['required-capability'], 1);
+assert.equal(applicationSurfaceReport.summary.sourceSyntaxRowFamilyCounts.sourcePath, 2);
+assert.equal(applicationSurfaceReport.summary.sourceSyntaxRowFamiliesByBlockFamily.plugin.includes('host'), true);
+
+const appHostBlock = applicationSurfaceReport.recognizedBlocks.find((block) => block.id === 'app_surface_workbench');
+const roleRow = appHostBlock.children.find((child) => child.normalizedRowKind === 'role');
+assert.equal(roleRow.name, 'host');
+assert.equal(roleRow.sourceSpan.path, 'app-surfaces.frontier');
+assert.equal(roleRow.sourceSpan.blockKind, 'appHost');
+
+const pluginBlock = applicationSurfaceReport.recognizedBlocks.find((block) => block.id === 'plugin_weather_widget');
+const pathRow = pluginBlock.children.find((child) => child.rowKind === 'path');
+assert.equal(pathRow.normalizedRowKind, 'sourcePath');
+assert.equal(pathRow.name, 'plugins/weather.frontier');
+
+const unknownApplicationSurfaceReport = inspectFrontierSourceSyntax(`module UnknownSurface @id("mod_unknown_surface") {
+plugin BrokenWidget @id("plugin_broken") {
+  role plugin
+  secretCapability root
+}
+}`);
+
+assert.equal(unknownApplicationSurfaceReport.summary.failClosed, true);
+assert.equal(unknownApplicationSurfaceReport.summary.unknownChildKinds[0], 'secretCapability');
+assert.equal(unknownApplicationSurfaceReport.summary.sourceSyntaxRowFamilyCounts.secretCapability, 1);
+assert.equal(unknownApplicationSurfaceReport.unknownChildren[0].reason, 'unsupported-application-surface-row');
+
 const coreBlocksReport = inspectFrontierSourceSyntax(`module CoreBlocks @id("mod_core_blocks") {
 migration TodoV1ToV2 @id("migration_todo_v1_v2") {
   fromVersion 1
