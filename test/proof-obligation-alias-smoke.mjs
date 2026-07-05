@@ -3,7 +3,10 @@ import { inspectFrontierSourceSyntax, parseFrontierSource } from '../dist/index.
 
 const source = `module ProofAliasProbe @id("mod_proof_alias_probe") {
 proof MergeProof @id("proof_merge") {
+  contract merge @id("contract_merge") kind invariant subject action_merge evidence evidence_replay statement "Merge contract must remain bound."
   proofObligation replay @id("obligation_replay") kind runtime status missing subject action_merge contract contract_merge evidence evidence_replay missingEvidence runtime-proof statement "Replay proof must bind runtime evidence."
+  artifact replay @id("artifact_replay") kind test status pending path reports/replay.json obligation obligation_replay
+  assumption runtime @id("assumption_runtime") scope target subject action_merge description "Runtime host is supplied by the target adapter."
 }
 }`;
 
@@ -34,6 +37,20 @@ assert.equal(obligation.subjectId, 'action_merge');
 assert.deepEqual(obligation.contractIds, ['contract_merge']);
 assert.deepEqual(obligation.evidenceIds, ['evidence_replay']);
 assert.deepEqual(obligation.metadata, { name: 'replay', authoredKind: 'proofObligation' });
+assert.equal(obligation.sourceSpan.path, 'proof-alias.frontier');
+assert.equal(obligation.sourceSpan.blockKind, 'proof');
+assert.deepEqual(obligation.authoredSourceSpan, obligation.sourceSpan);
+assert.equal(source.slice(obligation.sourceSpan.startOffset, obligation.sourceSpan.endOffset).startsWith('proofObligation replay'), true);
+
+const contract = doc.metadata.proof.contracts[0];
+const artifact = doc.metadata.proof.artifacts[0];
+const assumption = doc.metadata.proof.assumptions[0];
+assert.equal(contract.sourceSpan.path, 'proof-alias.frontier');
+assert.equal(artifact.sourceSpan.path, 'proof-alias.frontier');
+assert.equal(assumption.sourceSpan.path, 'proof-alias.frontier');
+assert.deepEqual(contract.authoredSourceSpan, contract.sourceSpan);
+assert.deepEqual(artifact.authoredSourceSpan, artifact.sourceSpan);
+assert.deepEqual(assumption.authoredSourceSpan, assumption.sourceSpan);
 
 const unsupportedSource = `module ProofUnsupportedProbe @id("mod_proof_unsupported_probe") {
 proof BrokenProof @id("proof_broken") {

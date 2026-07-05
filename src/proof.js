@@ -20,22 +20,22 @@ export function parseProofBlock(block) {
     assumptions: [],
     metadata: { name }
   };
-  for (const rawLine of block.body.split('\n')) {
-    const line = rawLine.trim();
+  for (const authoredLine of readAuthoredLines(block)) {
+    const line = authoredLine.text;
     if (!line || line.startsWith('#')) continue;
     const match = /^(contract|refinement|invariant|termination|temporal|obligation|proofObligation|artifact|assumption)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
     if (!match) continue;
     const [, section, recordName, rest] = match;
     const group = CONTRACT_GROUPS[section];
-    if (group) proof[group].push(parseProofContract(section, recordName, rest));
-    if (section === 'obligation' || section === 'proofObligation') proof.obligations.push(parseProofObligation(recordName, rest, section));
-    if (section === 'artifact') proof.artifacts.push(parseProofArtifact(recordName, rest));
-    if (section === 'assumption') proof.assumptions.push(parseProofAssumption(recordName, rest));
+    if (group) proof[group].push(parseProofContract(section, recordName, rest, authoredLine));
+    if (section === 'obligation' || section === 'proofObligation') proof.obligations.push(parseProofObligation(recordName, rest, section, authoredLine));
+    if (section === 'artifact') proof.artifacts.push(parseProofArtifact(recordName, rest, authoredLine));
+    if (section === 'assumption') proof.assumptions.push(parseProofAssumption(recordName, rest, authoredLine));
   }
   return omitEmptyArrays(proof);
 }
 
-function parseProofContract(section, name, text) {
+function parseProofContract(section, name, text, authoredLine = {}) {
   return cleanRecord({
     id: idFrom(text, `proof_${section}_${name}`),
     kind: readInlineWord('kind', text) ?? section,
@@ -48,11 +48,13 @@ function parseProofContract(section, name, text) {
     sourceMapMappingId: readInlineWord('sourceMapMapping', text) ?? readInlineWord('sourceMapMappingId', text),
     evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
     lossIds: readInlineList(text, 'loss', 'lossIds'),
+    sourceSpan: authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan,
     metadata: { name }
   });
 }
 
-function parseProofObligation(name, text, authoredKind = 'obligation') {
+function parseProofObligation(name, text, authoredKind = 'obligation', authoredLine = {}) {
   return cleanRecord({
     id: idFrom(text, `proof_obligation_${name}`),
     kind: readInlineWord('kind', text),
@@ -68,11 +70,13 @@ function parseProofObligation(name, text, authoredKind = 'obligation') {
     lossIds: readInlineList(text, 'loss', 'lossIds'),
     solver: readInlineWord('solver', text),
     staleAgainstHash: readInlineWord('staleAgainstHash', text),
+    sourceSpan: authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan,
     metadata: cleanRecord({ name, authoredKind: authoredKind === 'obligation' ? undefined : authoredKind })
   });
 }
 
-function parseProofArtifact(name, text) {
+function parseProofArtifact(name, text, authoredLine = {}) {
   return cleanRecord({
     id: idFrom(text, `proof_artifact_${name}`),
     kind: readInlineWord('kind', text),
@@ -85,11 +89,13 @@ function parseProofArtifact(name, text) {
     assumptionIds: readInlineList(text, 'assumption', 'assumptions', 'assumptionIds'),
     evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
     summary: readInlineQuoted('summary', text),
+    sourceSpan: authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan,
     metadata: { name }
   });
 }
 
-function parseProofAssumption(name, text) {
+function parseProofAssumption(name, text, authoredLine = {}) {
   return cleanRecord({
     id: idFrom(text, `proof_assumption_${name}`),
     scope: readInlineWord('scope', text),
@@ -97,6 +103,8 @@ function parseProofAssumption(name, text) {
     subjectId: readInlineWord('subject', text) ?? readInlineWord('subjectId', text),
     description: readInlineQuoted('description', text),
     evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
+    sourceSpan: authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan,
     metadata: { name }
   });
 }
@@ -111,6 +119,24 @@ function readInlineList(text, ...labels) {
     if (value) return value.split(/[|,]/).map((item) => item.trim()).filter(Boolean);
   }
   return undefined;
+}
+function readAuthoredLines(block) {
+  const lines = block.body.split('\n');
+  const records = [];
+  let lineStart = block.syntax?.bodyStartOffset ?? 0;
+  for (const rawLine of lines) {
+    const rawEnd = lineStart + rawLine.length;
+    const leading = /^\s*/.exec(rawLine)?.[0].length ?? 0;
+    const trailing = /\s*$/.exec(rawLine)?.[0].length ?? 0;
+    const startOffset = lineStart + leading;
+    const endOffset = Math.max(startOffset, rawEnd - trailing);
+    records.push({
+      text: rawLine.trim(),
+      sourceSpan: typeof block.sourceSpan === 'function' ? block.sourceSpan(startOffset, endOffset) : undefined
+    });
+    lineStart = rawEnd + 1;
+  }
+  return records;
 }
 function cleanRecord(record) {
   return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined && (!Array.isArray(value) || value.length > 0)));
