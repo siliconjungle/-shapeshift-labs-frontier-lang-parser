@@ -13,6 +13,7 @@ import { parseMachineGraphBlock } from './machine-graph.js';
 import { createParsedMetadata } from './metadata.js';
 import { parseEntityBlock, parseStateBlock, readTypeFields } from './member-records.js';
 import { parseSemanticEditRecordsBlock } from './semantic-edit-records.js';
+import { parseSemanticHistoryBlock } from './semantic-history.js';
 import { parseSemanticOperationsBlock } from './operations.js';
 import { parsePackageManifestBlock } from './package-manifest.js';
 import { parseParadigmBlock } from './paradigm.js';
@@ -34,6 +35,7 @@ export function parseFrontierSource(source, options = {}) {
   const paradigmBlocks = [];
   const operationBlocks = [];
   const semanticEditBlocks = [];
+  const semanticHistoryBlocks = [];
   const conversionBlocks = [];
   const constraintSpaceBlocks = [];
   const decisionGraphBlocks = [];
@@ -69,6 +71,7 @@ export function parseFrontierSource(source, options = {}) {
     if (block.kind === 'paradigm' || block.kind === 'paradigmSemantics') paradigmBlocks.push(parseParadigmBlock(block));
     if (block.kind === 'operations' || block.kind === 'semanticOperations') operationBlocks.push(parseSemanticOperationsBlock(block));
     if (block.kind === 'semanticEdits' || block.kind === 'semanticEditRecords') semanticEditBlocks.push(parseSemanticEditRecordsBlock(block));
+    if (block.kind === 'semanticHistory' || block.kind === 'semanticHistoryRecord' || block.kind === 'semanticHistoryRecords') semanticHistoryBlocks.push(parseSemanticHistoryBlock(block));
     if (block.kind === 'conversion' || block.kind === 'universalConversionPlan') conversionBlocks.push(parseConversionBlock(block));
     if (block.kind === 'constraintSpace' || block.kind === 'possibilitySpace') constraintSpaceBlocks.push(parseConstraintSpaceBlock(block));
     if (block.kind === 'decisionGraph' || block.kind === 'admissionGraph') decisionGraphBlocks.push(parseDecisionGraphBlock(block));
@@ -82,7 +85,7 @@ export function parseFrontierSource(source, options = {}) {
     if (block.kind === 'applicationSurface' || block.kind === 'appHost' || block.kind === 'plugin' || block.kind === 'pluginSurface' || block.kind === 'pluginContract') applicationSurfaceBlocks.push(parseApplicationSurfaceBlock(block));
     if (block.kind === 'runtimeCapabilities' || block.kind === 'runtimeCapabilityMatrix' || block.kind === 'runtimeHosts') runtimeCapabilityBlocks.push(parseRuntimeCapabilityBlock(block));
   }
-  const metadata = createParsedMetadata({ proofBlocks, paradigmBlocks, operationBlocks, semanticEditBlocks, conversionBlocks, constraintSpaceBlocks, decisionGraphBlocks, gateAdmissionEvidenceBlocks, dialectRegistryBlocks, interlinguaBlocks, resourceGraphBlocks, machineGraphBlocks, nativeSourceBlocks, packageManifestBlocks, canvasSurfaceBlocks, applicationSurfaceBlocks, runtimeCapabilityBlocks, targetProjectionTargets });
+  const metadata = createParsedMetadata({ proofBlocks, paradigmBlocks, operationBlocks, semanticEditBlocks, semanticHistoryBlocks, conversionBlocks, constraintSpaceBlocks, decisionGraphBlocks, gateAdmissionEvidenceBlocks, dialectRegistryBlocks, interlinguaBlocks, resourceGraphBlocks, machineGraphBlocks, nativeSourceBlocks, packageManifestBlocks, canvasSurfaceBlocks, applicationSurfaceBlocks, runtimeCapabilityBlocks, targetProjectionTargets });
   return createDocument({ id: documentId, name: documentName, nodes, ...(metadata ? { metadata } : {}) });
 }
 

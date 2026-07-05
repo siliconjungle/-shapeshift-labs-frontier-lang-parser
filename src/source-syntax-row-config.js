@@ -8,6 +8,7 @@ const migrationRows = words('from fromVersion to toVersion change invariant inva
 const packageRows = words('sourcePath path sourceHash packageManager metadata dependency script export gap proofGap evidence proofEvidence');
 const runtimeRows = words('host runtimeHost hostProfile sourceHost targetHost capability hostCapability hostBinding binding requirement runtimeRequirement requiredRuntime evidence proofEvidence gap proofGap');
 const semanticEditRows = words('script semanticEditScript projection semanticEditProjection replay semanticEditReplay');
+const semanticHistoryRows = words('createdAt language sourceLanguage sourcePath path sourceHash baseHash beforeHash targetHash afterHash actor record recordSource historySource source ownership ownershipRegion region semanticCandidate candidate semanticClaim claim fact accepted acceptedFact theory rejected rejectedTheory parser parserEvidence importedParserEvidence proof proofAttempt proofId reviewer admission lineage lineageEvent patch ancestry patchAncestry decision merge mergeDecision replay replayLink evidence proofEvidence missing missingEvidence gap proofGap');
 const gateAdmissionRows = words('gate evidence proofEvidence admission admissionDecision proofObligation obligation gap proofGap');
 const resourceRows = words('sourceLanguage language sourcePath path sourceHash status evidence evidenceIds resource owner loan alias move drop escape coroutineScope coroutine greenThread fiber lifetime lifetimeRegion life outlives lifetimeRelation lifeRelation borrow borrowScope borrowRegion unsafe unsafeBoundary memory memoryRegion region layout dataLayout pointer ptr address access memoryAccess atomic volatile abi abiBoundary callBoundary sync synchronization synchronisation synchronizationEdge synchronisationEdge happensBefore happens-before hb fence fenceEdge barrier barrierEdge trap traps undefined undefinedBehavior undefinedBehaviour ub conflict proof proofObligation obligation gap proofGap proofEvidence sourceMap sourcemap mapping sourceMapMapping missingEvidence');
 const targetRows = words('language targetLanguage source sourceLanguage package packageName emitPath targetPath sourcePath path sourceHash targetHash runtime runtimeHost moduleFormat projection lowering lower layer adapter adapterId readiness disposition status evidence proofEvidence proof loss missingEvidence gap proofGap sourceMap sourcemap mapping sourceMapMapping');
@@ -55,6 +56,9 @@ export const ROW_SYNTAX_CONFIG = Object.freeze({
   semanticOperations: rowConfig('semanticOperationRow', 'semantic_operation_row', words('operation op semanticOperation'), normalizeOperationRow, coreFailClosed('unsupported-semantic-operation-row')),
   semanticEdits: rowConfig('semanticEditRecordRow', 'semantic_edit_record_row', semanticEditRows, normalizeSemanticEditRow, coreFailClosed('unsupported-semantic-edit-record-row')),
   semanticEditRecords: rowConfig('semanticEditRecordRow', 'semantic_edit_record_row', semanticEditRows, normalizeSemanticEditRow, coreFailClosed('unsupported-semantic-edit-record-row')),
+  semanticHistory: rowConfig('semanticHistoryRow', 'semantic_history_row', semanticHistoryRows, normalizeSemanticHistoryRow, coreFailClosed('unsupported-semantic-history-row')),
+  semanticHistoryRecord: rowConfig('semanticHistoryRow', 'semantic_history_row', semanticHistoryRows, normalizeSemanticHistoryRow, coreFailClosed('unsupported-semantic-history-row')),
+  semanticHistoryRecords: rowConfig('semanticHistoryRow', 'semantic_history_row', semanticHistoryRows, normalizeSemanticHistoryRow, coreFailClosed('unsupported-semantic-history-row')),
   paradigm: rowConfig('paradigmRow', 'paradigm_row', paradigmRows, normalizeParadigmRow, coreFailClosed('unsupported-paradigm-row')),
   paradigmSemantics: rowConfig('paradigmRow', 'paradigm_row', paradigmRows, normalizeParadigmRow, coreFailClosed('unsupported-paradigm-row')),
   proof: rowConfig('proofRow', 'proof_row', words('contract refinement invariant termination temporal obligation proofObligation artifact assumption'), normalizeProofRow, coreFailClosed('unsupported-proof-row')),
@@ -236,6 +240,29 @@ function normalizeSemanticEditRow(rowKind) {
   if (rowKind === 'semanticEditScript') return 'script';
   if (rowKind === 'semanticEditProjection') return 'projection';
   if (rowKind === 'semanticEditReplay') return 'replay';
+  return rowKind;
+}
+
+function normalizeSemanticHistoryRow(rowKind) {
+  if (rowKind === 'sourceLanguage') return 'language';
+  if (rowKind === 'path') return 'sourcePath';
+  if (rowKind === 'beforeHash') return 'baseHash';
+  if (rowKind === 'afterHash') return 'targetHash';
+  if (rowKind === 'record' || rowKind === 'historySource') return 'recordSource';
+  if (rowKind === 'ownership' || rowKind === 'region') return 'ownershipRegion';
+  if (rowKind === 'candidate') return 'semanticCandidate';
+  if (rowKind === 'semanticClaim') return 'claim';
+  if (rowKind === 'fact' || rowKind === 'accepted') return 'acceptedFact';
+  if (rowKind === 'theory' || rowKind === 'rejected') return 'rejectedTheory';
+  if (rowKind === 'parser' || rowKind === 'parserEvidence') return 'importedParserEvidence';
+  if (rowKind === 'proof') return 'proofAttempt';
+  if (rowKind === 'lineageEvent') return 'lineage';
+  if (rowKind === 'patch' || rowKind === 'ancestry') return 'patchAncestry';
+  if (rowKind === 'decision' || rowKind === 'merge') return 'mergeDecision';
+  if (rowKind === 'replayLink') return 'replay';
+  if (rowKind === 'proofEvidence') return 'evidence';
+  if (rowKind === 'missing') return 'missingEvidence';
+  if (rowKind === 'gap') return 'proofGap';
   return rowKind;
 }
 

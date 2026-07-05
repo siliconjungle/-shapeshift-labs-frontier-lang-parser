@@ -4,17 +4,18 @@ import { mergeRuntimeCapabilityBlocks } from './runtime-capability.js';
 import { mergeTargetProjectionTargets } from './target-projection-aggregate.js';
 import { mergeConversionBlocks } from './conversion-metadata.js';
 import { mergeSemanticEditBlocks } from './semantic-edit-metadata.js';
-import { mergeGateAdmissionEvidenceBlocks } from './gate-admission-evidence.js';
-import { mergeMachineGraphBlocks } from './machine-graph-metadata.js';
+import { mergeGateAdmissionEvidenceBlocks } from './gate-admission-evidence.js'; import { mergeMachineGraphBlocks } from './machine-graph-metadata.js';
 import { mergeParadigmBlocks } from './paradigm-metadata.js';
+import { mergeSemanticHistoryBlocks } from './semantic-history-metadata.js';
 const PROOF_GROUPS = ['contracts', 'refinements', 'invariants', 'termination', 'temporal', 'obligations', 'artifacts', 'assumptions'];
 
-export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], semanticEditBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], decisionGraphBlocks = [], gateAdmissionEvidenceBlocks = [], dialectRegistryBlocks = [], interlinguaBlocks = [], resourceGraphBlocks = [], machineGraphBlocks = [], nativeSourceBlocks = [], packageManifestBlocks = [], canvasSurfaceBlocks = [], applicationSurfaceBlocks = [], runtimeCapabilityBlocks = [], targetProjectionTargets = [] } = {}) {
+export function createParsedMetadata({ proofBlocks = [], paradigmBlocks = [], operationBlocks = [], semanticEditBlocks = [], semanticHistoryBlocks = [], conversionBlocks = [], constraintSpaceBlocks = [], decisionGraphBlocks = [], gateAdmissionEvidenceBlocks = [], dialectRegistryBlocks = [], interlinguaBlocks = [], resourceGraphBlocks = [], machineGraphBlocks = [], nativeSourceBlocks = [], packageManifestBlocks = [], canvasSurfaceBlocks = [], applicationSurfaceBlocks = [], runtimeCapabilityBlocks = [], targetProjectionTargets = [] } = {}) {
   const metadata = {};
   if (proofBlocks.length) metadata.proof = mergeProofBlocks(proofBlocks);
   if (paradigmBlocks.length) metadata.paradigmSemantics = mergeParadigmBlocks(paradigmBlocks);
   if (operationBlocks.length) metadata.semanticOperations = mergeOperationBlocks(operationBlocks);
   if (semanticEditBlocks.length) metadata.semanticEditRecords = mergeSemanticEditBlocks(semanticEditBlocks);
+  if (semanticHistoryBlocks.length) metadata.semanticHistory = mergeSemanticHistoryBlocks(semanticHistoryBlocks);
   if (conversionBlocks.length) metadata.universalConversionPlan = mergeConversionBlocks(conversionBlocks);
   if (constraintSpaceBlocks.length) metadata.constraintSpaces = mergeConstraintSpaceBlocks(constraintSpaceBlocks);
   if (decisionGraphBlocks.length) metadata.decisionGraph = mergeDecisionGraphBlocks(decisionGraphBlocks);

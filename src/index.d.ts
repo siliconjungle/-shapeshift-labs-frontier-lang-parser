@@ -1,6 +1,20 @@
 import type { FrontierLangDocument } from '@shapeshift-labs/frontier-lang-kernel';
 export interface ParseFrontierOptions { readonly id?: string; readonly name?: string; readonly sourcePath?: string; }
 export declare const FrontierSourceBlockKinds: readonly string[];
+export interface FrontierSemanticHistoryMetadata {
+  readonly id: string;
+  readonly historyRecords: readonly Record<string, unknown>[];
+  readonly historyIds: readonly string[];
+  readonly sourcePaths: readonly string[];
+  readonly ownershipKeys: readonly string[];
+  readonly semanticCandidateIds: readonly string[];
+  readonly semanticClaimIds: readonly string[];
+  readonly lineageEventIds: readonly string[];
+  readonly semanticAnchorKeys: readonly string[];
+  readonly evidenceIds: readonly string[];
+  readonly proofIds: readonly string[];
+  readonly summary?: Readonly<Record<string, number>>;
+}
 export interface FrontierSourcePosition {
   readonly line: number;
   readonly column: number;
