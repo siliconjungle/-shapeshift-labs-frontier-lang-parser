@@ -1,3 +1,5 @@
+import { pushSemanticUnknownRow, readSemanticAuthoredLines } from './semantic-unknown-row.js';
+
 export function parseDialectRegistryBlock(block) {
   const name = nameFrom(block.header);
   const registry = {
@@ -10,6 +12,9 @@ export function parseDialectRegistryBlock(block) {
     sourceHash: readWord('sourceHash', block.body),
     dialects: [],
     externs: [],
+    proofGaps: [],
+    unknownRows: [],
+    parser: { status: 'authored', errors: [] },
     metadata: {
       authoredDialectRegistry: true,
       authoredDialectRegistryBlockName: name,
@@ -17,13 +22,14 @@ export function parseDialectRegistryBlock(block) {
       autoMergeClaim: false
     }
   };
-  for (const rawLine of block.body.split('\n')) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith('#')) continue;
+  for (const authoredLine of readSemanticAuthoredLines(block)) {
+    const line = authoredLine.text;
+    if (!line || line.startsWith('#') || isRegistryPropertyLine(line)) continue;
     const dialect = /^(?:dialect|record)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
     const extern = /^extern\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
     if (dialect) registry.dialects.push(dialectRecord(registry, dialect[1], dialect[2]));
-    if (extern) registry.externs.push(externRecord(registry, extern[1], extern[2]));
+    else if (extern) registry.externs.push(externRecord(registry, extern[1], extern[2]));
+    else pushUnsupportedDialectRow(registry, line, authoredLine);
   }
   return summarizeRegistry(registry);
 }
@@ -39,11 +45,34 @@ export function mergeDialectRegistryBlocks(blocks = []) {
     sourceHash: first(blocks.map((block) => block.sourceHash)),
     dialects: uniqueById(blocks.flatMap((block) => block.dialects ?? [])),
     externs: uniqueById(blocks.flatMap((block) => block.externs ?? [])),
+    proofGaps: uniqueById(blocks.flatMap((block) => block.proofGaps ?? [])),
+    unknownRows: uniqueById(blocks.flatMap((block) => block.unknownRows ?? [])),
+    parser: {
+      status: blocks.some((block) => (block.parser?.errors ?? []).length) ? 'needs-review' : 'authored',
+      errors: blocks.flatMap((block) => block.parser?.errors ?? [])
+    },
     metadata: {
       authoredDialectRegistryBlockIds: blocks.map((block) => block.id),
       semanticEquivalenceClaim: false,
       autoMergeClaim: false
     }
+  });
+}
+
+function pushUnsupportedDialectRow(registry, line, authoredLine) {
+  const match = /^([A-Za-z_$][\w$-]*)\s+([A-Za-z_$@/.:*-][\w$./@:*+-]*)(.*)$/.exec(line);
+  if (!match) return;
+  const [, rowKind, rowName, rest] = match;
+  pushSemanticUnknownRow(registry, {
+    surfaceKind: 'frontier.lang.universalDialectRegistry',
+    idPrefix: 'dialect_registry',
+    reason: 'unsupported-dialect-registry-row',
+    rowKind,
+    normalizedRowKind: rowKind,
+    rowName,
+    text: rest,
+    authoredLine,
+    rowLabel: 'dialectRegistry'
   });
 }
 
@@ -126,11 +155,22 @@ function projectionRecord(text) {
 function summarizeRegistry(registry) {
   const dialects = uniqueById(registry.dialects ?? []);
   const externs = uniqueById(registry.externs ?? []);
-  const records = [...dialects, ...externs];
+  const proofGaps = uniqueById(registry.proofGaps ?? []);
+  const unknownRows = uniqueById(registry.unknownRows ?? []);
+  const records = [...dialects, ...externs, ...proofGaps, ...unknownRows];
+  const parser = registry.parser ?? { status: 'authored', errors: [] };
+  if (parser.errors.length) parser.status = 'needs-review';
+  const projectionReadiness = proofGaps.length || parser.errors.length ? 'blocked' : records.reduce((readiness, record) => maxReadiness(readiness, record.projection?.readiness ?? 'ready'), 'ready');
   return cleanRecord({
     ...registry,
     dialects,
     externs,
+    proofGaps,
+    unknownRows,
+    parser,
+    proofGapCodes: unique(proofGaps.map((record) => record.code)),
+    unknownRowIds: unique(unknownRows.map((record) => record.id)),
+    missingEvidence: unique(proofGaps.map((record) => record.code)),
     summary: {
       dialects: dialects.length,
       externs: externs.length,
@@ -143,11 +183,18 @@ function summarizeRegistry(registry) {
       evidenceIds: unique(records.flatMap((record) => record.evidenceIds ?? [])),
       sourceMapIds: unique(records.flatMap((record) => [record.sourceMapId, ...(record.projection?.sourceMapIds ?? [])])),
       projectionDispositions: countBy(records.map((record) => record.projection?.disposition)),
-      projectionReadiness: records.reduce((readiness, record) => maxReadiness(readiness, record.projection?.readiness ?? 'ready'), 'ready'),
+      projectionReadiness,
       recordsWithLosses: records.filter((record) => (record.lossIds ?? []).length).length,
-      recordsWithProjectionEvidence: records.filter((record) => (record.projection?.evidenceIds ?? []).length).length
+      recordsWithProjectionEvidence: records.filter((record) => (record.projection?.evidenceIds ?? []).length).length,
+      proofGapCount: proofGaps.length,
+      unknownRowCount: unknownRows.length,
+      parseErrors: parser.errors.length
     }
   });
+}
+
+function isRegistryPropertyLine(line) {
+  return /^(language|sourceLanguage|sourcePath|path|sourceHash|dialect)\s+/.test(line) && !/@id\(/.test(line);
 }
 
 function readinessForDisposition(disposition) {

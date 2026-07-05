@@ -1,5 +1,6 @@
 import { hashSemanticValue } from '@shapeshift-labs/frontier-lang-kernel';
 import { createRowIdentityTracker } from './row-identity.js';
+import { pushSemanticUnknownRow, readSemanticAuthoredLines } from './semantic-unknown-row.js';
 import {
   cleanRecord,
   hostIds,
@@ -36,17 +37,21 @@ export function parseRuntimeCapabilityBlock(block) {
     runtimeRequirements: [],
     evidence: [],
     proofGaps: [],
+    unknownRows: [],
     parser: { status: 'authored', errors: rowIdentity.errors },
     claims: runtimeFalseClaims(),
     metadata: { authoredName: name, authoredBlockKind: block.kind }
   };
   const hostMap = new Map();
 
-  for (const rawLine of block.body.split('\n')) {
-    const line = rawLine.trim();
+  for (const authoredLine of readSemanticAuthoredLines(block)) {
+    const line = authoredLine.text;
     if (!line || line.startsWith('#') || isPropertyLine(line)) continue;
     const match = /^(host|runtimeHost|hostProfile|sourceHost|targetHost|capability|hostCapability|hostBinding|binding|requirement|runtimeRequirement|requiredRuntime|evidence|proofEvidence|gap|proofGap)\s+([A-Za-z_$@/.:*-][\w$./@:*+-]*)(.*)$/.exec(line);
-    if (!match) continue;
+    if (!match) {
+      pushUnsupportedRuntimeRow(matrix, line, authoredLine);
+      continue;
+    }
     const [, rowKind, rowName, rest] = match;
     if (rowKind === 'gap' || rowKind === 'proofGap') {
       rowIdentity.push(matrix.proofGaps, runtimeProofGap(rowName, rest), { rowKind, normalizedRowKind: 'proofGap', name: rowName });
@@ -92,6 +97,8 @@ export function parseRuntimeCapabilityBlock(block) {
   matrix.runtimeRequirementIds = ids(matrix.runtimeRequirements);
   matrix.evidenceIds = ids(matrix.evidence);
   matrix.proofGapCodes = [...new Set(matrix.proofGaps.map((gap) => gap.code).filter(Boolean))];
+  matrix.unknownRowIds = ids(matrix.unknownRows);
+  matrix.missingEvidence = [...new Set(matrix.proofGaps.map((gap) => gap.code).filter(Boolean))];
   matrix.summary = summarizeRuntimeCapabilities(matrix);
   matrix.inputHash = hashSemanticValue({
     kind: 'frontier.lang.runtimeCapabilities.authoredInput.v1',
@@ -113,7 +120,8 @@ export function parseRuntimeCapabilityBlock(block) {
       targetHost: requirement.targetHost,
       requiredSignals: requirement.requiredSignals
     })),
-    proofGaps: matrix.proofGapCodes
+    proofGaps: matrix.proofGapCodes,
+    unknownRows: matrix.unknownRowIds
   });
   return matrix;
 }
@@ -127,7 +135,9 @@ export function mergeRuntimeCapabilityBlocks(blocks) {
   const runtimeRequirements = uniqueRecords(blocks.flatMap((block) => block.runtimeRequirements ?? []));
   const evidence = uniqueRecords(blocks.flatMap((block) => block.evidence ?? []));
   const proofGaps = uniqueRecords(blocks.flatMap((block) => block.proofGaps ?? []));
+  const unknownRows = uniqueRecords(blocks.flatMap((block) => block.unknownRows ?? []));
   const parser = { status: 'authored', errors: blocks.flatMap((block) => block.parser?.errors ?? []) };
+  if (parser.errors.length) parser.status = 'needs-review';
   return {
     kind: 'frontier.lang.authoredRuntimeCapabilityMatrixInput',
     version: 1,
@@ -142,6 +152,7 @@ export function mergeRuntimeCapabilityBlocks(blocks) {
     runtimeRequirements,
     evidence,
     proofGaps,
+    unknownRows,
     parser,
     hostProfileIds: ids(hostProfiles),
     sourceHostIds: hostIds(sourceHosts),
@@ -151,10 +162,29 @@ export function mergeRuntimeCapabilityBlocks(blocks) {
     runtimeRequirementIds: ids(runtimeRequirements),
     evidenceIds: ids(evidence),
     proofGapCodes: [...new Set(proofGaps.map((gap) => gap.code).filter(Boolean))],
-    summary: summarizeRuntimeCapabilities({ hostProfiles, sourceHosts, targetHosts, hostCapabilities, hostBindings, runtimeRequirements, evidence, proofGaps, parser }),
+    unknownRowIds: ids(unknownRows),
+    missingEvidence: [...new Set(proofGaps.map((gap) => gap.code).filter(Boolean))],
+    summary: summarizeRuntimeCapabilities({ hostProfiles, sourceHosts, targetHosts, hostCapabilities, hostBindings, runtimeRequirements, evidence, proofGaps, unknownRows, parser }),
     claims: runtimeFalseClaims(),
     metadata: { authoredRuntimeCapabilityBlockIds: ids(blocks) }
   };
+}
+
+function pushUnsupportedRuntimeRow(matrix, line, authoredLine) {
+  const match = /^([A-Za-z_$][\w$-]*)\s+([A-Za-z_$@/.:*-][\w$./@:*+-]*)(.*)$/.exec(line);
+  if (!match) return;
+  const [, rowKind, rowName, rest] = match;
+  pushSemanticUnknownRow(matrix, {
+    surfaceKind: 'frontier.lang.authoredRuntimeCapabilityMatrixInput',
+    idPrefix: 'runtime_capability',
+    reason: 'unsupported-runtime-capability-row',
+    rowKind,
+    normalizedRowKind: rowKind,
+    rowName,
+    text: rest,
+    authoredLine,
+    rowLabel: 'runtimeCapabilities'
+  });
 }
 
 function runtimeHostProfile(rowKind, name, text) {

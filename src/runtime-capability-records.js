@@ -10,6 +10,7 @@ export function summarizeRuntimeCapabilities(matrix) {
     runtimeRequirementCount: matrix.runtimeRequirements.length,
     evidenceCount: matrix.evidence.length,
     proofGapCount: matrix.proofGaps.length,
+    unknownRowCount: matrix.unknownRows?.length ?? 0,
     parseErrors: matrix.parser?.errors?.length ?? 0
   };
 }
