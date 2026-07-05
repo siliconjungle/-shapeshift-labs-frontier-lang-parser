@@ -1,4 +1,5 @@
 import { createRowIdentityTracker } from './row-identity.js';
+import { pushSemanticUnknownRow } from './semantic-unknown-row.js';
 
 const GROUPS = {
   label: 'labels',
@@ -18,6 +19,7 @@ const GROUPS = {
   proofGap: 'proofGaps',
   evidence: 'evidence'
 };
+const RECORD_GROUPS = Object.values(GROUPS).concat('unknownRows');
 
 export function parseMachineGraphBlock(block) {
   const name = nameFrom(block.header);
@@ -49,6 +51,7 @@ export function parseMachineGraphBlock(block) {
     proofObligations: [],
     proofGaps: [],
     evidence: [],
+    unknownRows: [],
     parser: { status: 'authored', errors: rowIdentity.errors },
     claims: {
       autoMergeClaim: false,
@@ -69,7 +72,11 @@ export function parseMachineGraphBlock(block) {
     const normalized = normalizeMachineRowKind(rowKind);
     const record = parseMachineRecord(normalized, rowName, rest, graph, authoredLine);
     const group = GROUPS[normalized];
-    if (record && group) rowIdentity.push(graph[group], record, { rowKind, normalizedRowKind: normalized, name: rowName });
+    if (record && group) {
+      rowIdentity.push(graph[group], record, { rowKind, normalizedRowKind: normalized, name: rowName });
+    } else {
+      pushUnsupportedMachineRow(graph, rowKind, normalized, rowName, rest, authoredLine);
+    }
   }
 
   graph.summary = summarizeMachineGraph(graph);
@@ -91,6 +98,8 @@ export function parseMachineGraphBlock(block) {
     controlFlowEdgeIds: ids([...graph.controlEdges, ...graph.branches, ...graph.calls, ...graph.returns, ...graph.interrupts]),
     proofObligationIds: ids(graph.proofObligations),
     proofGapCodes: unique(graph.proofGaps.map((record) => record.code)),
+    unknownRowIds: ids(graph.unknownRows),
+    missingEvidence: unique(graph.proofGaps.map((record) => record.code)),
     evidenceIds: unique([...graph.evidenceIds, ...ids(graph.evidence), ...allMachineRecords(graph).flatMap((record) => record.evidenceIds ?? [])]),
     proofEvidenceIds: unique(allMachineRecords(graph).flatMap((record) => record.proofEvidenceIds ?? [])),
     sourceMapIds: unique(allMachineRecords(graph).flatMap((record) => record.sourceMapIds ?? [])),
@@ -109,6 +118,20 @@ export function parseMachineGraphBlock(block) {
     },
     metadata: { name }
   };
+}
+
+function pushUnsupportedMachineRow(graph, rowKind, normalized, rowName, rest, authoredLine) {
+  pushSemanticUnknownRow(graph, {
+    surfaceKind: 'frontier.lang.machineGraph',
+    idPrefix: 'machine_graph',
+    reason: 'unsupported-machine-graph-row',
+    rowKind,
+    normalizedRowKind: normalized,
+    rowName,
+    text: rest,
+    authoredLine,
+    rowLabel: 'machineGraph'
+  });
 }
 
 function parseMachineRecord(kind, name, text, graph, authoredLine = {}) {
@@ -175,6 +198,7 @@ function summarizeMachineGraph(graph) {
     proofObligations: graph.proofObligations.length,
     proofGaps: graph.proofGaps.length,
     evidence: graph.evidence.length,
+    unknownRows: graph.unknownRows.length,
     memoryEffectsWithoutProof: graph.memoryEffects.filter((record) => record.proofStatus !== 'passed').length,
     controlEdgesWithoutProof: graph.controlEdges.filter((record) => record.proofStatus !== 'passed').length,
     branchesWithoutProof: graph.branches.filter((record) => record.proofStatus !== 'passed').length,
@@ -188,6 +212,7 @@ function summarizeMachineGraph(graph) {
 function deriveMachineGraphStatus(authoredStatus, summary) {
   if (
     summary.proofGaps > 0 ||
+    summary.parseErrors > 0 ||
     summary.memoryEffectsWithoutProof > 0 ||
     summary.controlEdgesWithoutProof > 0 ||
     summary.branchesWithoutProof > 0 ||
@@ -212,24 +237,7 @@ function unprovedMachineRecords(graph) {
 }
 
 function allMachineRecords(graph) {
-  return [
-    ...graph.labels,
-    ...graph.directives,
-    ...graph.registers,
-    ...graph.flags,
-    ...graph.basicBlocks,
-    ...graph.instructions,
-    ...graph.operands,
-    ...graph.memoryEffects,
-    ...graph.controlEdges,
-    ...graph.branches,
-    ...graph.calls,
-    ...graph.returns,
-    ...graph.interrupts,
-    ...graph.proofObligations,
-    ...graph.proofGaps,
-    ...graph.evidence
-  ];
+  return RECORD_GROUPS.flatMap((group) => graph[group] ?? []);
 }
 
 export function normalizeMachineRowKind(kind) {
@@ -298,7 +306,7 @@ function readAuthoredLines(block) {
     const trailing = /\s*$/.exec(rawLine)?.[0].length ?? 0;
     const startOffset = lineStart + leading;
     const endOffset = Math.max(startOffset, rawEnd - trailing);
-    records.push({ text: rawLine.trim(), sourceSpan: typeof block.sourceSpan === 'function' ? block.sourceSpan(startOffset, endOffset) : undefined });
+    records.push({ text: rawLine.trim(), startOffset, endOffset, sourceSpan: typeof block.sourceSpan === 'function' ? block.sourceSpan(startOffset, endOffset) : undefined });
     lineStart = rawEnd + 1;
   }
   return records;

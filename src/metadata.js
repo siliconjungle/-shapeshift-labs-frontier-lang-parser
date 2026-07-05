@@ -262,6 +262,8 @@ function mergeResourceGraphBlocks(blocks) {
     undefinedBehaviorIds: blocks.flatMap((block) => ids(block.graph?.undefinedBehaviors)),
     conflictIds: blocks.flatMap((block) => ids(block.graph?.conflicts)),
     proofObligationIds: blocks.flatMap((block) => ids(block.graph?.proofObligations)),
+    proofGapCodes: [...new Set(blocks.flatMap((block) => block.graph?.query?.proofGapCodes ?? []))],
+    unknownRowIds: blocks.flatMap((block) => ids(block.graph?.unknownRows)),
     evidenceIds: [...new Set(blocks.flatMap((block) => block.graph?.query?.evidenceIds ?? []))],
     proofEvidenceIds: [...new Set(blocks.flatMap((block) => block.graph?.query?.proofEvidenceIds ?? []))],
     sourceMapIds: [...new Set(blocks.flatMap((block) => block.graph?.query?.sourceMapIds ?? []))],
@@ -290,6 +292,9 @@ function mergeResourceGraphBlocks(blocks) {
       evidenceCount: sum(blocks, 'evidence'),
       sourceMapCount: sum(blocks, 'sourceMaps'),
       missingEvidenceCount: sum(blocks, 'missingEvidence'),
+      proofGapCount: sum(blocks, 'proofGaps'),
+      unknownRowCount: sum(blocks, 'unknownRows'),
+      parseErrorCount: sum(blocks, 'parseErrors'),
       lowLevelPrimitiveCount: sum(blocks, 'lowLevelPrimitives'),
       conflictCount: sum(blocks, 'conflicts'),
       proofObligationCount: sum(blocks, 'proofObligations'),
@@ -303,9 +308,7 @@ function mergeResourceGraphBlocks(blocks) {
   };
 }
 
-function ids(records = []) {
-  return records.map((record) => record?.id).filter(Boolean);
-}
+function ids(records = []) { return records.map((record) => record?.id).filter(Boolean); }
 
 function idsByKind(records = [], kind) {
   return ids(records.filter((record) => record?.recordKind === kind || record?.kind === kind));

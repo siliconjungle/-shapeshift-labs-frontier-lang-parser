@@ -40,6 +40,7 @@ await copyFile("src/resource-graph.js", "dist/resource-graph.js");
 await copyFile("src/resource-graph-low-level.js", "dist/resource-graph-low-level.js");
 await copyFile("src/resource-graph-summary.js", "dist/resource-graph-summary.js");
 await copyFile("src/row-identity.js", "dist/row-identity.js");
+await copyFile("src/semantic-unknown-row.js", "dist/semantic-unknown-row.js");
 await copyFile("src/runtime-capability.js", "dist/runtime-capability.js");
 await copyFile("src/runtime-capability-records.js", "dist/runtime-capability-records.js");
 await copyFile("src/source-block-kinds.js", "dist/source-block-kinds.js");

@@ -23,6 +23,8 @@ export function summarizeResourceGraph(graph) {
     evidence: graph.evidence.length,
     sourceMaps: graph.sourceMaps.length,
     missingEvidence: graph.missingEvidence.length,
+    proofGaps: graph.proofGaps?.length ?? 0,
+    unknownRows: graph.unknownRows?.length ?? 0,
     lowLevelPrimitives: graph.memoryRegions.length + graph.dataLayouts.length + graph.pointerEdges.length + graph.memoryAccesses.length + graph.abiBoundaries.length + graph.synchronizationEdges.length + graph.traps.length + graph.undefinedBehaviors.length,
     conflicts: graph.conflicts.length,
     proofObligations: graph.proofObligations.length,
@@ -32,13 +34,15 @@ export function summarizeResourceGraph(graph) {
     undefinedBehaviorsWithoutProof: graph.undefinedBehaviors.filter((record) => record.proofStatus !== 'passed').length,
     parseErrors: graph.parser?.errors?.length ?? 0,
     synchronizationEdgesWithoutProof: graph.synchronizationEdges.filter((record) => record.proofStatus !== 'passed').length,
-    reasonCodes: unique([...graph.conflicts, ...graph.synchronizationEdges, ...graph.traps, ...graph.undefinedBehaviors].map((record) => record.reasonCode))
+    reasonCodes: unique([...graph.conflicts, ...graph.synchronizationEdges, ...graph.traps, ...graph.undefinedBehaviors, ...(graph.proofGaps ?? [])].map((record) => record.reasonCode ?? record.code))
   };
 }
 
 export function deriveResourceGraphStatus(authoredStatus, summary) {
   if (
     summary.conflicts > 0 ||
+    summary.proofGaps > 0 ||
+    summary.parseErrors > 0 ||
     summary.unsafeBoundariesWithoutProof > 0 ||
     summary.synchronizationEdgesWithoutProof > 0 ||
     summary.trapsWithoutProof > 0 ||
@@ -49,7 +53,7 @@ export function deriveResourceGraphStatus(authoredStatus, summary) {
 
 export function resourceGraphBlockerReasonCodes(graph) {
   const unprovedSynchronizationEdges = graph.synchronizationEdges.filter((record) => record.proofStatus !== 'passed');
-  return unique([...graph.conflicts, ...unprovedSynchronizationEdges, ...graph.traps, ...graph.undefinedBehaviors].map((record) => record.reasonCode));
+  return unique([...graph.conflicts, ...unprovedSynchronizationEdges, ...graph.traps, ...graph.undefinedBehaviors, ...(graph.proofGaps ?? [])].map((record) => record.reasonCode ?? record.code));
 }
 
 export function allResourceGraphRecords(graph) {
@@ -59,7 +63,7 @@ export function allResourceGraphRecords(graph) {
     ...graph.unsafeBoundaries, ...graph.memoryRegions, ...graph.dataLayouts, ...graph.pointerEdges,
     ...graph.memoryAccesses, ...graph.abiBoundaries, ...graph.synchronizationEdges, ...graph.traps,
     ...graph.undefinedBehaviors, ...graph.conflicts, ...graph.proofObligations, ...graph.evidence,
-    ...graph.sourceMaps, ...graph.missingEvidence
+    ...graph.sourceMaps, ...graph.missingEvidence, ...(graph.proofGaps ?? []), ...(graph.unknownRows ?? [])
   ];
 }
 

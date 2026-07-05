@@ -1,6 +1,7 @@
 import { createRowIdentityTracker } from './row-identity.js';
 import { parseLowLevelResourceRecord } from './resource-graph-low-level.js';
 import { allResourceGraphRecords, deriveResourceGraphStatus, resourceGraphBlockerReasonCodes, summarizeResourceGraph } from './resource-graph-summary.js';
+import { pushSemanticUnknownRow } from './semantic-unknown-row.js';
 
 const GROUPS = {
   resource: 'resources',
@@ -64,9 +65,11 @@ export function parseResourceGraphBlock(block) {
     undefinedBehaviors: [],
     conflicts: [],
     proofObligations: [],
+    proofGaps: [],
     evidence: [],
     sourceMaps: [],
     missingEvidence: [],
+    unknownRows: [],
     parser: { status: 'authored', errors: rowIdentity.errors },
     claims: {
       borrowCheckerClaim: false,
@@ -87,7 +90,11 @@ export function parseResourceGraphBlock(block) {
     const normalized = normalizeRowKind(rowKind);
     const record = parseResourceRecord(normalized, rowName, rest, graph, authoredLine);
     const group = GROUPS[normalized];
-    if (record && group) rowIdentity.push(graph[group], record, { rowKind, normalizedRowKind: normalized, name: rowName });
+    if (record && group) {
+      rowIdentity.push(graph[group], record, { rowKind, normalizedRowKind: normalized, name: rowName });
+    } else {
+      pushUnsupportedResourceRow(graph, rowKind, normalized, rowName, rest, authoredLine);
+    }
   }
 
   graph.outlives = graph.lifetimeRelations;
@@ -109,7 +116,9 @@ export function parseResourceGraphBlock(block) {
     sourceMapIds: unique([...ids(graph.sourceMaps), ...allResourceGraphRecords(graph).flatMap((record) => record.sourceMapIds ?? [])]),
     sourceMapMappingIds: unique(allResourceGraphRecords(graph).flatMap((record) => record.sourceMapMappingIds ?? [])),
     missingEvidenceIds: ids(graph.missingEvidence),
-    missingEvidence: unique([...graph.missingEvidence.map((record) => record.reasonCode), ...allResourceGraphRecords(graph).flatMap((record) => record.missingEvidence ?? [])]),
+    proofGapCodes: unique(graph.proofGaps.map((record) => record.code)),
+    unknownRowIds: ids(graph.unknownRows),
+    missingEvidence: unique([...graph.missingEvidence.map((record) => record.reasonCode), ...graph.proofGaps.map((record) => record.code), ...allResourceGraphRecords(graph).flatMap((record) => record.missingEvidence ?? [])]),
     blockerReasonCodes: resourceGraphBlockerReasonCodes(graph)
   };
 
@@ -123,6 +132,20 @@ export function parseResourceGraphBlock(block) {
     },
     metadata: { name }
   };
+}
+
+function pushUnsupportedResourceRow(graph, rowKind, normalized, rowName, rest, authoredLine) {
+  pushSemanticUnknownRow(graph, {
+    surfaceKind: 'frontier.lang.semanticResourceGraph',
+    idPrefix: 'resource_graph',
+    reason: 'unsupported-resource-graph-row',
+    rowKind,
+    normalizedRowKind: normalized,
+    rowName,
+    text: rest,
+    authoredLine,
+    rowLabel: 'resourceGraph'
+  });
 }
 
 function parseResourceRecord(kind, name, text, graph, authoredLine = {}) {
@@ -249,7 +272,7 @@ function readAuthoredLines(block) {
     const trailing = /\s*$/.exec(rawLine)?.[0].length ?? 0;
     const startOffset = lineStart + leading;
     const endOffset = Math.max(startOffset, rawEnd - trailing);
-    records.push({ text: rawLine.trim(), sourceSpan: typeof block.sourceSpan === 'function' ? block.sourceSpan(startOffset, endOffset) : undefined });
+    records.push({ text: rawLine.trim(), startOffset, endOffset, sourceSpan: typeof block.sourceSpan === 'function' ? block.sourceSpan(startOffset, endOffset) : undefined });
     lineStart = rawEnd + 1;
   }
   return records;
