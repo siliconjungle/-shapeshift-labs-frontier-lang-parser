@@ -3,6 +3,10 @@ import { inspectFrontierSourceSyntax, parseFrontierSource } from '../dist/index.
 
 const sourceSyntaxReport = inspectFrontierSourceSyntax(`module InterlinguaSourceSyntax @id("mod_interlingua_source_syntax") {
 universalInterlingua JsToRust @id("interlingua_source_syntax") {
+  route conversion_route_javascript_to_rust
+  sourceLanguage javascript
+  target rust
+  mode target-adapter
   edge borrowAwait @id("edge_borrow_await") family borrow-scope layer semantic-ownership status needs-evidence
   constraintEdge dataLayout @id("edge_data_layout") family data-layout layer memory-model status represented
   proof borrowAwait @id("proof_borrow_await") edge edge_borrow_await family borrow-scope kind borrow-across-await status missing
@@ -14,6 +18,10 @@ universalInterlingua JsToRust @id("interlingua_source_syntax") {
 
 const interlinguaCounts = sourceSyntaxReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.universalInterlingua;
 assert.equal(sourceSyntaxReport.summary.failClosed, false);
+assert.equal(interlinguaCounts.route, 1);
+assert.equal(interlinguaCounts.sourceLanguage, 1);
+assert.equal(interlinguaCounts.target, 1);
+assert.equal(interlinguaCounts.mode, 1);
 assert.equal(interlinguaCounts.constraint, 2);
 assert.equal(interlinguaCounts.obligation, 1);
 assert.equal(interlinguaCounts.lowering, 1);
@@ -21,6 +29,10 @@ assert.equal(interlinguaCounts.lift, 1);
 assert.equal(interlinguaCounts.evidence, 1);
 
 const sourceSyntaxBlock = sourceSyntaxReport.recognizedBlocks.find((block) => block.id === 'interlingua_source_syntax');
+assert.equal(sourceSyntaxBlock.children.find((child) => child.rowKind === 'route').normalizedRowKind, 'route');
+assert.equal(sourceSyntaxBlock.children.find((child) => child.rowKind === 'sourceLanguage').normalizedRowKind, 'sourceLanguage');
+assert.equal(sourceSyntaxBlock.children.find((child) => child.rowKind === 'target').normalizedRowKind, 'target');
+assert.equal(sourceSyntaxBlock.children.find((child) => child.rowKind === 'mode').normalizedRowKind, 'mode');
 assert.equal(sourceSyntaxBlock.children.find((child) => child.rowKind === 'constraintEdge').normalizedRowKind, 'constraint');
 assert.equal(sourceSyntaxBlock.children.find((child) => child.rowKind === 'proof').normalizedRowKind, 'obligation');
 assert.equal(sourceSyntaxBlock.children.find((child) => child.rowKind === 'lower').normalizedRowKind, 'lowering');
