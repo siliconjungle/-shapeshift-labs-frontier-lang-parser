@@ -10,6 +10,7 @@ const runtimeRows = words('host runtimeHost hostProfile sourceHost targetHost ca
 const semanticEditRows = words('script semanticEditScript projection semanticEditProjection replay semanticEditReplay');
 const gateAdmissionRows = words('gate evidence proofEvidence admission admissionDecision proofObligation obligation gap proofGap');
 const resourceRows = words('sourceLanguage language sourcePath path sourceHash status evidence evidenceIds resource owner loan alias move drop escape lifetime lifetimeRegion life outlives lifetimeRelation lifeRelation borrow borrowScope borrowRegion unsafe unsafeBoundary memory memoryRegion region layout dataLayout pointer ptr address access memoryAccess atomic volatile abi abiBoundary callBoundary sync synchronization synchronisation synchronizationEdge synchronisationEdge happensBefore happens-before hb fence fenceEdge barrier barrierEdge trap traps undefined undefinedBehavior undefinedBehaviour ub conflict proof proofObligation obligation proofEvidence sourceMap sourcemap mapping sourceMapMapping missingEvidence');
+const targetRows = words('language targetLanguage sourceLanguage package packageName emitPath targetPath sourcePath path sourceHash targetHash runtime runtimeHost moduleFormat projection lowering lower layer adapter adapterId readiness disposition status evidence proofEvidence proof loss missingEvidence gap proofGap sourceMap sourcemap mapping sourceMapMapping');
 const coreFailClosed = (reason) => ({ failClosedUnknownRows: true, unknownRowReason: reason });
 
 export const ROW_SYNTAX_CONFIG = Object.freeze({
@@ -35,7 +36,7 @@ export const ROW_SYNTAX_CONFIG = Object.freeze({
   plugin: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow, coreFailClosed('unsupported-application-surface-row')),
   pluginSurface: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow, coreFailClosed('unsupported-application-surface-row')),
   pluginContract: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow, coreFailClosed('unsupported-application-surface-row')),
-  target: rowConfig('targetProjectionRow', 'target_projection_row', words('projection lowering layer')),
+  target: rowConfig('targetProjectionRow', 'target_projection_row', targetRows, normalizeTargetProjectionRow, coreFailClosed('unsupported-target-projection-row')),
   packageManifest: rowConfig('packageManifestRow', 'package_manifest_row', packageRows, normalizePackageManifestRow, coreFailClosed('unsupported-package-manifest-row')),
   packageGraph: rowConfig('packageManifestRow', 'package_manifest_row', packageRows, normalizePackageManifestRow, coreFailClosed('unsupported-package-manifest-row')),
   packageSurface: rowConfig('packageManifestRow', 'package_manifest_row', packageRows, normalizePackageManifestRow, coreFailClosed('unsupported-package-manifest-row')),
@@ -83,6 +84,19 @@ function normalizeRuntimeCapabilityRow(rowKind) {
   if (rowKind === 'requirement' || rowKind === 'requiredRuntime') return 'runtimeRequirement';
   if (rowKind === 'proofEvidence') return 'evidence';
   if (rowKind === 'gap') return 'proofGap';
+  return rowKind;
+}
+
+function normalizeTargetProjectionRow(rowKind) {
+  if (rowKind === 'targetLanguage') return 'language';
+  if (rowKind === 'package') return 'packageName';
+  if (rowKind === 'path') return 'sourcePath';
+  if (rowKind === 'targetPath') return 'emitPath';
+  if (rowKind === 'lower') return 'lowering';
+  if (rowKind === 'adapter') return 'adapterId';
+  if (rowKind === 'proof' || rowKind === 'proofEvidence') return 'evidence';
+  if (rowKind === 'gap') return 'proofGap';
+  if (rowKind === 'sourcemap' || rowKind === 'mapping' || rowKind === 'sourceMapMapping') return 'sourceMap';
   return rowKind;
 }
 
