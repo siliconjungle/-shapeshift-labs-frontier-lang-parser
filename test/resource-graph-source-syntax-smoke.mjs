@@ -23,6 +23,7 @@ resourceGraph LowLevelResources @id("resource_graph_low_level") {
   trap bounds @id("trap_bounds") memoryAccess access_load kind bounds-check reasonCode bounds-check proofStatus missing failClosed
   ub overflow @id("ub_overflow") pointer pointer_packet kind signed-overflow language c proofStatus missing
   proof trapProof @id("proof_trap") subject trap_bounds status missing
+  proofGap aliasProof @id("resource_gap_alias_proof") code resource-alias-proof-missing status missing summary "Alias proof is required." failClosed
   proofEvidence run @id("proof_evidence_run") kind test status passed
   sourceMap lowLevel @id("source_map_low_level") generated dist/lib.rs
   missingEvidence ubProof @id("missing_evidence_ub") reason undefined-behavior-proof
@@ -60,6 +61,7 @@ assert.equal(resourceCounts.synchronizationEdge, 2);
 assert.equal(resourceCounts.trap, 1);
 assert.equal(resourceCounts.undefinedBehavior, 1);
 assert.equal(resourceCounts.proofObligation, 1);
+assert.equal(resourceCounts.proofGap, 1);
 assert.equal(semanticCounts.sourceLanguage, 1);
 assert.equal(semanticCounts.sourcePath, 1);
 assert.equal(resourceGraphRowsReport.summary.sourceSyntaxRowFamilyCounts.sourcePath, 2);
@@ -75,6 +77,7 @@ assert.equal(resourcePathRow.sourceSpan.path, 'resource-rows.frontier');
 assert.equal(pointerRow.normalizedRowKind, 'pointerEdge');
 assert.equal(proofEvidenceRow.normalizedRowKind, 'evidence');
 assert.equal(undefinedBehaviorRow.normalizedRowKind, 'undefinedBehavior');
+assert.equal(resourceBlock.children.find((child) => child.rowKind === 'proofGap').normalizedRowKind, 'proofGap');
 
 const unknownResourceGraphRowsReport = inspectFrontierSourceSyntax(`module UnknownResourceGraphRows @id("mod_unknown_resource_graph_rows") {
 resourceGraph Broken @id("resource_graph_broken") {

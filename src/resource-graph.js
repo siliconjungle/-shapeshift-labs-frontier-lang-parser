@@ -25,6 +25,7 @@ const GROUPS = {
   undefinedBehavior: 'undefinedBehaviors',
   conflict: 'conflicts',
   proofObligation: 'proofObligations',
+  proofGap: 'proofGaps',
   evidence: 'evidence',
   sourceMap: 'sourceMaps',
   missingEvidence: 'missingEvidence'
@@ -165,6 +166,7 @@ function parseResourceRecord(kind, name, text, graph, authoredLine = {}) {
   if (lowLevelRecord) return lowLevelRecord;
   if (kind === 'conflict') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), ownerId: readInlineWord('owner', text) ?? readInlineWord('ownerId', text), loanId: readInlineWord('loan', text) ?? readInlineWord('loanId', text), aliasId: readInlineWord('alias', text) ?? readInlineWord('aliasId', text), unsafeBoundaryId: readInlineWord('unsafeBoundary', text) ?? readInlineWord('unsafeBoundaryId', text), reasonCode: readInlineWord('reasonCode', text), message: readInlineQuoted('message', text), status: readInlineWord('status', text) ?? 'open', severity: readInlineWord('severity', text) ?? 'error' });
   if (kind === 'proofObligation') return cleanRecord({ ...common, resourceId: readInlineWord('resource', text) ?? readInlineWord('resourceId', text), conflictId: readInlineWord('conflict', text) ?? readInlineWord('conflictId', text), kind: readInlineWord('kind', text), status: readInlineWord('status', text) ?? 'open', statement: readInlineQuoted('statement', text) });
+  if (kind === 'proofGap') return cleanRecord({ ...common, code: readInlineWord('code', text) ?? readInlineWord('reasonCode', text) ?? name, reasonCode: readInlineWord('reasonCode', text) ?? readInlineWord('code', text) ?? name, status: readInlineWord('status', text) ?? 'missing', summary: readInlineQuoted('summary', text) ?? readInlineQuoted('message', text), failClosed: common.failClosed ?? true, semanticEquivalenceClaim: false, runtimeEquivalenceClaim: false });
   if (kind === 'evidence') return cleanRecord({ ...common, evidenceKind: readInlineWord('kind', text) ?? readInlineWord('evidenceKind', text) ?? 'resource-proof', status: readInlineWord('status', text) ?? 'unknown', path: readInlineWord('path', text), command: readInlineQuoted('command', text) ?? readInlineWord('command', text), sourceHash: readInlineWord('sourceHash', text), outputHash: readInlineWord('outputHash', text), traceHash: readInlineWord('traceHash', text), summary: readInlineQuoted('summary', text) });
   if (kind === 'sourceMap') return cleanRecord({ ...common, sourceRecordId: readInlineWord('sourceRecord', text) ?? readInlineWord('sourceRecordId', text), targetRecordId: readInlineWord('targetRecord', text) ?? readInlineWord('targetRecordId', text), generatedPath: readInlineWord('generated', text) ?? readInlineWord('generatedPath', text) ?? readInlineWord('targetPath', text), originalPath: readInlineWord('original', text) ?? readInlineWord('originalPath', text), mappingHash: readInlineWord('mappingHash', text), status: readInlineWord('status', text) ?? 'authored' });
   if (kind === 'missingEvidence') return cleanRecord({ ...common, reasonCode: readInlineWord('reason', text) ?? readInlineWord('reasonCode', text) ?? readInlineWord('code', text) ?? name, status: readInlineWord('status', text) ?? 'missing', severity: readInlineWord('severity', text) ?? 'warning', summary: readInlineQuoted('summary', text) ?? readInlineQuoted('message', text), failClosed: common.failClosed ?? true, semanticEquivalenceClaim: false, runtimeEquivalenceClaim: false });
@@ -205,6 +207,7 @@ function normalizeRowKind(kind) {
   if (kind === 'traps') return 'trap';
   if (kind === 'undefined' || kind === 'ub' || kind === 'undefinedBehavior' || kind === 'undefinedBehaviour') return 'undefinedBehavior';
   if (kind === 'proof' || kind === 'obligation' || kind === 'proofObligation') return 'proofObligation';
+  if (kind === 'gap' || kind === 'proofGap') return 'proofGap';
   if (kind === 'evidence' || kind === 'evidenceIds' || kind === 'proofEvidence') return 'evidence';
   if (kind === 'sourcemap' || kind === 'mapping' || kind === 'sourceMapMapping') return 'sourceMap';
   return kind;
@@ -223,6 +226,7 @@ function recordKind(kind) {
   if (kind === 'synchronizationEdge') return 'synchronization-edge';
   if (kind === 'undefinedBehavior') return 'undefined-behavior';
   if (kind === 'proofObligation') return 'proof-obligation';
+  if (kind === 'proofGap') return 'proof-gap';
   if (kind === 'sourceMap') return 'source-map';
   if (kind === 'missingEvidence') return 'missing-evidence';
   return kind;

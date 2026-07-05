@@ -31,6 +31,7 @@ resourceGraph TodoResources @id("resource_graph_todo") {
   undefinedBehavior signedOverflow @id("ub_signed_overflow") resource resource_todos pointer pointer_todos_ptr kind signed-overflow language c operation add reasonCode c-signed-overflow status blocked severity error condition "a + b overflows int32" proofStatus missing message "Signed overflow is undefined behavior." evidence artifact_todo_title_probe
   conflict aliasConflict @id("conflict_todos_alias") resource resource_todos loan loan_read_todos alias alias_todos reasonCode exclusive-resource-alias-overlap-requires-proof status open severity error message "Alias proof is required."
   proof aliasProof @id("proof_obligation_alias") resource resource_todos conflict conflict_todos_alias kind alias-safety status open statement "Prove the alias cannot mutate during the shared loan."
+  gap aliasGap @id("resource_gap_alias_proof") code resource-alias-proof-missing status missing summary "Alias proof is required." failClosed evidence artifact_todo_title_probe
 }
 }`);
 
@@ -62,6 +63,7 @@ assert.equal(graphs.summary.trapWithoutProofCount, 1);
 assert.equal(graphs.summary.undefinedBehaviorWithoutProofCount, 1);
 assert.equal(graphs.summary.conflictCount, 1);
 assert.equal(graphs.summary.proofObligationCount, 1);
+assert.equal(graphs.summary.proofGapCount, 1);
 assert.equal(graphs.graphIds[0], 'resource_graph_todo');
 assert.equal(graphs.resourceIds[0], 'resource_todos');
 assert.equal(graphs.loanIds[0], 'loan_read_todos');
@@ -78,6 +80,7 @@ assert.equal(graphs.synchronizationEdgeIds[3], 'sync_thread_join');
 assert.equal(graphs.trapIds[0], 'trap_bounds_check');
 assert.equal(graphs.undefinedBehaviorIds[0], 'ub_signed_overflow');
 assert.equal(graphs.proofObligationIds[0], 'proof_obligation_alias');
+assert.equal(graphs.proofGapCodes[0], 'resource-alias-proof-missing');
 assert.equal(graphs.graphs[0].kind, 'frontier.lang.semanticResourceGraph');
 assert.equal(graphs.graphs[0].status, 'blocked');
 assert.equal(graphs.graphs[0].claims.borrowCheckerClaim, false);
@@ -107,6 +110,9 @@ assert.equal(graphs.graphs[0].traps[0].semanticEquivalenceClaim, false);
 assert.equal(graphs.graphs[0].undefinedBehaviors[0].reasonCode, 'c-signed-overflow');
 assert.equal(graphs.graphs[0].undefinedBehaviors[0].undefinedBehaviorKind, 'signed-overflow');
 assert.equal(graphs.graphs[0].undefinedBehaviors[0].semanticEquivalenceClaim, false);
+assert.equal(graphs.graphs[0].proofGaps[0].id, 'resource_gap_alias_proof');
+assert.equal(graphs.graphs[0].proofGaps[0].code, 'resource-alias-proof-missing');
+assert.equal(graphs.graphs[0].proofGaps[0].failClosed, true);
 assert.equal(graphs.graphs[0].query.trapIds[0], 'trap_bounds_check');
 assert.equal(graphs.graphs[0].query.undefinedBehaviorIds[0], 'ub_signed_overflow');
 assert.equal(graphs.graphs[0].query.failClosedTrapIds[0], 'trap_bounds_check');
@@ -114,7 +120,9 @@ assert.equal(graphs.graphs[0].query.synchronizationEdgeIds[0], 'sync_counter_rel
 assert.equal(graphs.graphs[0].query.lowLevelPrimitiveIds.includes('sync_counter_release'), true);
 assert.equal(graphs.graphs[0].query.lowLevelPrimitiveIds.includes('trap_bounds_check'), true);
 assert.equal(graphs.graphs[0].query.lowLevelPrimitiveIds.includes('ub_signed_overflow'), true);
+assert.equal(graphs.graphs[0].query.proofGapCodes[0], 'resource-alias-proof-missing');
 assert.equal(graphs.graphs[0].query.blockerReasonCodes[0], 'exclusive-resource-alias-overlap-requires-proof');
+assert.equal(graphs.graphs[0].query.blockerReasonCodes.includes('resource-alias-proof-missing'), true);
 assert.equal(graphs.graphs[0].query.blockerReasonCodes.includes('bounds-check-failed'), true);
 assert.equal(graphs.graphs[0].query.blockerReasonCodes.includes('c-signed-overflow'), true);
 assert.equal(graphs.graphs[0].query.blockerReasonCodes.includes('synchronization-order-proof-missing'), true);
