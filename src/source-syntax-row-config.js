@@ -50,10 +50,10 @@ export const ROW_SYNTAX_CONFIG = Object.freeze({
   gateEvidence: rowConfig('gateAdmissionEvidenceRow', 'gate_admission_evidence_row', gateAdmissionRows, normalizeGateAdmissionRow, coreFailClosed('unsupported-gate-admission-row')),
   admissionEvidence: rowConfig('gateAdmissionEvidenceRow', 'gate_admission_evidence_row', gateAdmissionRows, normalizeGateAdmissionRow, coreFailClosed('unsupported-gate-admission-row')),
   routeEvidence: rowConfig('gateAdmissionEvidenceRow', 'gate_admission_evidence_row', gateAdmissionRows, normalizeGateAdmissionRow, coreFailClosed('unsupported-gate-admission-row')),
-  operations: rowConfig('semanticOperationRow', 'semantic_operation_row', words('operation op'), normalizeOperationRow),
-  semanticOperations: rowConfig('semanticOperationRow', 'semantic_operation_row', words('operation op'), normalizeOperationRow),
-  semanticEdits: rowConfig('semanticEditRecordRow', 'semantic_edit_record_row', semanticEditRows, normalizeSemanticEditRow),
-  semanticEditRecords: rowConfig('semanticEditRecordRow', 'semantic_edit_record_row', semanticEditRows, normalizeSemanticEditRow),
+  operations: rowConfig('semanticOperationRow', 'semantic_operation_row', words('operation op semanticOperation'), normalizeOperationRow, coreFailClosed('unsupported-semantic-operation-row')),
+  semanticOperations: rowConfig('semanticOperationRow', 'semantic_operation_row', words('operation op semanticOperation'), normalizeOperationRow, coreFailClosed('unsupported-semantic-operation-row')),
+  semanticEdits: rowConfig('semanticEditRecordRow', 'semantic_edit_record_row', semanticEditRows, normalizeSemanticEditRow, coreFailClosed('unsupported-semantic-edit-record-row')),
+  semanticEditRecords: rowConfig('semanticEditRecordRow', 'semantic_edit_record_row', semanticEditRows, normalizeSemanticEditRow, coreFailClosed('unsupported-semantic-edit-record-row')),
   paradigm: rowConfig('paradigmRow', 'paradigm_row', words('valueSemantics mutationModel effectModel ownership ownershipModel lifetime lifetimeModel bindingScope binding dispatch typeModel moduleModel concurrency errorModel memoryModel evaluation metaprogramming interop lowering'), normalizeParadigmRow),
   paradigmSemantics: rowConfig('paradigmRow', 'paradigm_row', words('valueSemantics mutationModel effectModel ownership ownershipModel lifetime lifetimeModel bindingScope binding dispatch typeModel moduleModel concurrency errorModel memoryModel evaluation metaprogramming interop lowering'), normalizeParadigmRow),
   proof: rowConfig('proofRow', 'proof_row', words('contract refinement invariant termination temporal obligation artifact assumption')),
@@ -208,7 +208,7 @@ function normalizeDecisionGraphRow(rowKind) {
 }
 
 function normalizeOperationRow(rowKind) {
-  if (rowKind === 'op') return 'operation';
+  if (rowKind === 'op' || rowKind === 'semanticOperation') return 'operation';
   return rowKind;
 }
 

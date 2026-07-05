@@ -4,7 +4,7 @@ export function parseSemanticOperationsBlock(block) {
   for (const authoredLine of readAuthoredLines(block)) {
     const line = authoredLine.text;
     if (!line || line.startsWith('#')) continue;
-    const match = /^(operation|op)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
+    const match = /^(operation|op|semanticOperation)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
     if (match) operationSet.operations.push(parseSemanticOperationRecord(match[2], match[3], authoredLine));
   }
   return operationSet;
