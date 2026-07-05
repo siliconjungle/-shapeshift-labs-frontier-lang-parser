@@ -1,4 +1,5 @@
 import { readSourceSyntaxChildren } from './source-syntax-children.js';
+import { summarizeSourceSyntaxFamilies } from './source-syntax-family-summary.js';
 import { FrontierSourceBlockKinds } from './source-block-kinds.js';
 
 export { FrontierSourceBlockKinds };
@@ -43,6 +44,7 @@ export function inspectFrontierSourceSyntax(source, options = {}) {
   ];
   const malformedBlocks = blocks.filter((block) => block.malformed);
   const failClosed = unknownBlocks.length > 0 || unknownChildren.length > 0 || diagnostics.length > 0;
+  const familySummary = summarizeSourceSyntaxFamilies(blocks);
   return {
     kind: 'frontier.lang.sourceSyntaxReport',
     version: 1,
@@ -65,6 +67,7 @@ export function inspectFrontierSourceSyntax(source, options = {}) {
       recognizedChildKinds: unique(childRecords.filter((child) => child.recognized).map((child) => child.kind)),
       unknownKinds: unique(unknownBlocks.map((block) => block.kind)),
       unknownChildKinds: unique(unknownChildren.map((child) => child.rowKind ?? child.kind)),
+      ...familySummary,
       failClosed,
       unsupportedSyntax: unknownBlocks.length > 0 || unknownChildren.length > 0
     },

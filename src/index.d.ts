@@ -97,6 +97,12 @@ export interface FrontierSourceSyntaxReport {
     readonly recognizedChildKinds: readonly string[];
     readonly unknownKinds: readonly string[];
     readonly unknownChildKinds: readonly string[];
+    readonly sourceSyntaxBlockFamilies: readonly string[];
+    readonly sourceSyntaxBlockFamilyCounts: Readonly<Record<string, number>>;
+    readonly sourceSyntaxRowFamilies: readonly string[];
+    readonly sourceSyntaxRowFamilyCounts: Readonly<Record<string, number>>;
+    readonly sourceSyntaxRowFamiliesByBlockFamily: Readonly<Record<string, readonly string[]>>;
+    readonly sourceSyntaxRowFamilyCountsByBlockFamily: Readonly<Record<string, Readonly<Record<string, number>>>>;
     readonly failClosed: boolean;
     readonly unsupportedSyntax: boolean;
   };
