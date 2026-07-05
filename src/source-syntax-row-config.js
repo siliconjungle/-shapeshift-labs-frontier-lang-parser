@@ -1,6 +1,6 @@
 const appRows = words('role sourcePath path sourceHash host hostId mount provide provides required requires require route event asset gate gap proofGap evidence proofEvidence');
 const canvasRows = words('sourcePath path sourceHash element command state stateWrite trace gap proofGap evidence proofEvidence');
-const constraintRows = words('variable var constraint hard soft preference prefer collapse admission');
+const constraintRows = words('subject scope target variable var constraint hard soft preference prefer collapse admission');
 const dialectRows = words('language sourceLanguage sourcePath path sourceHash dialect record extern');
 const interlinguaRows = words('layer constraint constraintEdge edge obligation proofObligation proof lowering lower source sourceLift lift evidence');
 const machineRows = words('label directive register reg flag conditionFlag basicBlock block instruction inst instr op opcode operand arg memoryEffect memoryAccess load store atomic fence memory mem effect controlEdge edge branch call return ret interrupt irq exception proof proofObligation obligation gap proofGap evidence proofEvidence');
@@ -46,8 +46,8 @@ export const ROW_SYNTAX_CONFIG = Object.freeze({
   canvasGraph: rowConfig('canvasSurfaceRow', 'canvas_surface_row', canvasRows, normalizeCanvasSurfaceRow, coreFailClosed('unsupported-canvas-surface-row')),
   constraintSpace: rowConfig('constraintSpaceRow', 'constraint_space_row', constraintRows, normalizeConstraintSpaceRow, coreFailClosed('unsupported-constraint-space-row')),
   possibilitySpace: rowConfig('constraintSpaceRow', 'constraint_space_row', constraintRows, normalizeConstraintSpaceRow, coreFailClosed('unsupported-constraint-space-row')),
-  decisionGraph: rowConfig('decisionGraphRow', 'decision_graph_row', words('node edge chunk gate evidence semanticChange change patchEvent patch admissionDecision admission candidateDecision candidate mergeDecision merge replay tournament tournamentCandidate panelProjection panel rsiLoop improvementFeedback feedback'), normalizeDecisionGraphRow, coreFailClosed('unsupported-decision-graph-row')),
-  admissionGraph: rowConfig('decisionGraphRow', 'decision_graph_row', words('node edge chunk gate evidence semanticChange change patchEvent patch admissionDecision admission candidateDecision candidate mergeDecision merge replay tournament tournamentCandidate panelProjection panel rsiLoop improvementFeedback feedback'), normalizeDecisionGraphRow, coreFailClosed('unsupported-decision-graph-row')),
+  decisionGraph: rowConfig('decisionGraphRow', 'decision_graph_row', words('graphKind kind scope scopeId root rootId status subject subjects node edge chunk gate evidence semanticChange change patchEvent patch admissionDecision admission candidateDecision candidate mergeDecision merge replay tournament tournamentCandidate panelProjection panel rsiLoop improvementFeedback feedback'), normalizeDecisionGraphRow, coreFailClosed('unsupported-decision-graph-row')),
+  admissionGraph: rowConfig('decisionGraphRow', 'decision_graph_row', words('graphKind kind scope scopeId root rootId status subject subjects node edge chunk gate evidence semanticChange change patchEvent patch admissionDecision admission candidateDecision candidate mergeDecision merge replay tournament tournamentCandidate panelProjection panel rsiLoop improvementFeedback feedback'), normalizeDecisionGraphRow, coreFailClosed('unsupported-decision-graph-row')),
   gateEvidence: rowConfig('gateAdmissionEvidenceRow', 'gate_admission_evidence_row', gateAdmissionRows, normalizeGateAdmissionRow, coreFailClosed('unsupported-gate-admission-row')),
   admissionEvidence: rowConfig('gateAdmissionEvidenceRow', 'gate_admission_evidence_row', gateAdmissionRows, normalizeGateAdmissionRow, coreFailClosed('unsupported-gate-admission-row')),
   routeEvidence: rowConfig('gateAdmissionEvidenceRow', 'gate_admission_evidence_row', gateAdmissionRows, normalizeGateAdmissionRow, coreFailClosed('unsupported-gate-admission-row')),
@@ -201,6 +201,10 @@ function normalizeConstraintSpaceRow(rowKind) {
 }
 
 function normalizeDecisionGraphRow(rowKind) {
+  if (rowKind === 'kind') return 'graphKind';
+  if (rowKind === 'scopeId') return 'scope';
+  if (rowKind === 'rootId') return 'root';
+  if (rowKind === 'subjects') return 'subject';
   if (rowKind === 'change') return 'semanticChange';
   if (rowKind === 'patch') return 'patchEvent';
   if (rowKind === 'admission') return 'admissionDecision';

@@ -33,6 +33,28 @@ assert.equal(paradigmReport.summary.sourceSyntaxRowFamilyCounts.logicProgram, 1)
 assert.equal(paradigmReport.summary.sourceSyntaxRowFamilyCounts.reflectionBoundary, 1);
 assert.equal(paradigmReport.summary.sourceSyntaxRowFamilyCounts.lowering, 1);
 
+const graphPropertyReport = inspectFrontierSourceSyntax(`module GraphPropertyRows @id("mod_graph_property_rows") {
+possibilitySpace Projection @id("space_projection") {
+  subject symbol:user
+  scope mod_graph_property_rows
+  target typescript
+}
+decisionGraph Admission @id("decision_graph_admission") {
+  graphKind semantic-merge-admission
+  scope mod_graph_property_rows
+  root merge_decision
+  subject symbol:user
+}
+}`);
+
+assert.equal(graphPropertyReport.summary.failClosed, false);
+assert.equal(graphPropertyReport.summary.unknownChildCount, 0);
+assert.equal(graphPropertyReport.summary.sourceSyntaxRowFamilyCounts.subject, 2);
+assert.equal(graphPropertyReport.summary.sourceSyntaxRowFamilyCounts.scope, 2);
+assert.equal(graphPropertyReport.summary.sourceSyntaxRowFamilyCounts.target, 1);
+assert.equal(graphPropertyReport.summary.sourceSyntaxRowFamilyCounts.graphKind, 1);
+assert.equal(graphPropertyReport.summary.sourceSyntaxRowFamilyCounts.root, 1);
+
 const report = inspectFrontierSourceSyntax(`module RemainingRowFailClosedSyntax @id("mod_remaining_row_fail_closed") {
 constraintSpace Constraints @id("constraint_space_unknown") {
   solverMagic anneal @id("constraint_unknown_solver")
