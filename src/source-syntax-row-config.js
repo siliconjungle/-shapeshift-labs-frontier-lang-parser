@@ -9,6 +9,7 @@ const packageRows = words('sourcePath path sourceHash packageManager metadata de
 const runtimeRows = words('host runtimeHost hostProfile sourceHost targetHost capability hostCapability hostBinding binding requirement runtimeRequirement requiredRuntime evidence proofEvidence gap proofGap');
 const semanticEditRows = words('script semanticEditScript projection semanticEditProjection replay semanticEditReplay');
 const gateAdmissionRows = words('gate evidence proofEvidence admission admissionDecision proofObligation obligation gap proofGap');
+const resourceRows = words('sourceLanguage language sourcePath path sourceHash status evidence evidenceIds resource owner loan alias move drop escape lifetime lifetimeRegion life outlives lifetimeRelation lifeRelation borrow borrowScope borrowRegion unsafe unsafeBoundary memory memoryRegion region layout dataLayout pointer ptr address access memoryAccess atomic volatile abi abiBoundary callBoundary sync synchronization synchronisation synchronizationEdge synchronisationEdge happensBefore happens-before hb fence fenceEdge barrier barrierEdge trap traps undefined undefinedBehavior undefinedBehaviour ub conflict proof proofObligation obligation proofEvidence sourceMap sourcemap mapping sourceMapMapping missingEvidence');
 const coreFailClosed = (reason) => ({ failClosedUnknownRows: true, unknownRowReason: reason });
 
 export const ROW_SYNTAX_CONFIG = Object.freeze({
@@ -19,8 +20,8 @@ export const ROW_SYNTAX_CONFIG = Object.freeze({
   runtimeCapabilities: rowConfig('runtimeCapabilityRow', 'runtime_capability_row', runtimeRows, normalizeRuntimeCapabilityRow),
   runtimeCapabilityMatrix: rowConfig('runtimeCapabilityRow', 'runtime_capability_row', runtimeRows, normalizeRuntimeCapabilityRow),
   runtimeHosts: rowConfig('runtimeCapabilityRow', 'runtime_capability_row', runtimeRows, normalizeRuntimeCapabilityRow),
-  resourceGraph: rowConfig('resourceGraphRow', 'resource_graph_row', words('resource owner loan alias move drop escape lifetime lifetimeRegion life outlives lifetimeRelation lifeRelation borrow borrowScope borrowRegion unsafe unsafeBoundary memory memoryRegion region layout dataLayout pointer ptr address access memoryAccess atomic volatile abi abiBoundary callBoundary sync synchronization synchronisation synchronizationEdge synchronisationEdge happensBefore hb fence fenceEdge barrier barrierEdge trap traps undefined undefinedBehavior undefinedBehaviour ub conflict proof proofObligation obligation'), normalizeResourceGraphRow),
-  semanticResourceGraph: rowConfig('resourceGraphRow', 'resource_graph_row', words('resource owner loan alias move drop escape lifetime lifetimeRegion life outlives lifetimeRelation lifeRelation borrow borrowScope borrowRegion unsafe unsafeBoundary memory memoryRegion region layout dataLayout pointer ptr address access memoryAccess atomic volatile abi abiBoundary callBoundary sync synchronization synchronisation synchronizationEdge synchronisationEdge happensBefore hb fence fenceEdge barrier barrierEdge trap traps undefined undefinedBehavior undefinedBehaviour ub conflict proof proofObligation obligation'), normalizeResourceGraphRow),
+  resourceGraph: rowConfig('resourceGraphRow', 'resource_graph_row', resourceRows, normalizeResourceGraphRow, coreFailClosed('unsupported-resource-graph-row')),
+  semanticResourceGraph: rowConfig('resourceGraphRow', 'resource_graph_row', resourceRows, normalizeResourceGraphRow, coreFailClosed('unsupported-resource-graph-row')),
   machineGraph: rowConfig('machineGraphRow', 'machine_graph_row', machineRows, normalizeMachineGraphRow, coreFailClosed('unsupported-machine-graph-row')),
   executionGraph: rowConfig('machineGraphRow', 'machine_graph_row', machineRows, normalizeMachineGraphRow, coreFailClosed('unsupported-machine-graph-row')),
   lowLevelGraph: rowConfig('machineGraphRow', 'machine_graph_row', machineRows, normalizeMachineGraphRow, coreFailClosed('unsupported-machine-graph-row')),
@@ -86,19 +87,23 @@ function normalizeRuntimeCapabilityRow(rowKind) {
 }
 
 function normalizeResourceGraphRow(rowKind) {
-  if (rowKind === 'life' || rowKind === 'lifetimeRegion') return 'lifetime';
-  if (rowKind === 'lifeRelation') return 'lifetimeRelation';
-  if (rowKind === 'borrowRegion') return 'borrowScope';
+  if (rowKind === 'language') return 'sourceLanguage';
+  if (rowKind === 'path') return 'sourcePath';
+  if (rowKind === 'lifetime' || rowKind === 'life') return 'lifetimeRegion';
+  if (rowKind === 'outlives' || rowKind === 'lifeRelation') return 'lifetimeRelation';
+  if (rowKind === 'borrow' || rowKind === 'borrowRegion') return 'borrowScope';
   if (rowKind === 'unsafe') return 'unsafeBoundary';
   if (rowKind === 'memory' || rowKind === 'region') return 'memoryRegion';
   if (rowKind === 'layout') return 'dataLayout';
   if (rowKind === 'pointer' || rowKind === 'ptr' || rowKind === 'address') return 'pointerEdge';
   if (rowKind === 'access' || rowKind === 'atomic' || rowKind === 'volatile') return 'memoryAccess';
   if (rowKind === 'abi' || rowKind === 'callBoundary') return 'abiBoundary';
-  if (rowKind === 'sync' || rowKind === 'synchronization' || rowKind === 'synchronisation' || rowKind === 'synchronisationEdge' || rowKind === 'happensBefore' || rowKind === 'hb' || rowKind === 'fence' || rowKind === 'fenceEdge' || rowKind === 'barrier' || rowKind === 'barrierEdge') return 'synchronizationEdge';
+  if (rowKind === 'sync' || rowKind === 'synchronization' || rowKind === 'synchronisation' || rowKind === 'synchronisationEdge' || rowKind === 'happensBefore' || rowKind === 'happens-before' || rowKind === 'hb' || rowKind === 'fence' || rowKind === 'fenceEdge' || rowKind === 'barrier' || rowKind === 'barrierEdge') return 'synchronizationEdge';
   if (rowKind === 'traps') return 'trap';
   if (rowKind === 'undefined' || rowKind === 'undefinedBehaviour' || rowKind === 'ub') return 'undefinedBehavior';
-  if (rowKind === 'proof' || rowKind === 'proofObligation') return 'obligation';
+  if (rowKind === 'proof' || rowKind === 'obligation') return 'proofObligation';
+  if (rowKind === 'evidenceIds' || rowKind === 'proofEvidence') return 'evidence';
+  if (rowKind === 'sourcemap' || rowKind === 'mapping' || rowKind === 'sourceMapMapping') return 'sourceMap';
   return rowKind;
 }
 
