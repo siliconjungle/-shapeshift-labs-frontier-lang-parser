@@ -148,6 +148,88 @@ assert.equal(unknownApplicationSurfaceReport.summary.unknownChildKinds[0], 'secr
 assert.equal(unknownApplicationSurfaceReport.summary.sourceSyntaxRowFamilyCounts.secretCapability, 1);
 assert.equal(unknownApplicationSurfaceReport.unknownChildren[0].reason, 'unsupported-application-surface-row');
 
+const packageCanvasReport = inspectFrontierSourceSyntax(`module PackageCanvasRows @id("mod_package_canvas_rows") {
+packageManifest AppPackage @id("pkg_manifest_app") {
+  sourcePath package.json
+  sourceHash sha256:package
+  packageManager npm@11.0.0
+  evidence packageProbe @id("evidence_package_probe") kind test status passed path reports/package.json
+  metadata name @id("pkg_meta_name") value "@example/app" evidence evidence_package_probe
+  dependency react @id("pkg_dep_react") section dependencies range ^19.0.0 evidence evidence_package_probe
+  script test @id("pkg_script_test") command "vitest --run" proofGap package-script-runtime-boundary evidence evidence_package_probe
+  export root @id("pkg_export_root") section exports name . target ./dist/index.js proofGap package-conditional-resolution-boundary evidence evidence_package_probe
+}
+packageSurface WorkspacePackage @id("pkg_surface_workspace") {
+  path packages/app/package.json
+  sourceHash sha256:workspace
+  dependency vite @id("pkg_dep_vite") section devDependencies range ^7.0.0
+}
+canvasSurface PreviewCanvas @id("canvas_surface_preview") {
+  sourcePath src/draw.js
+  sourceHash sha256:draw
+  evidence canvasProbe @id("evidence_canvas_probe") kind browser-probe status passed path reports/canvas.json
+  element preview @id("canvas_element_preview") name canvas category html-canvas order 1 identity canvas:preview attributes data-frontier-key=preview|width=100 evidence evidence_canvas_probe
+  command fill @id("canvas_command_fill") name fillRect category draw context 2d order 4 proofGap canvas-stateful-render-order-boundary evidence evidence_canvas_probe
+  stateWrite fillStyle @id("canvas_state_fill_style") name fillStyle category state order 3 proofGap canvas-stateful-render-order-boundary evidence evidence_canvas_probe
+  trace drawFrame @id("canvas_trace_draw_frame") commands getContext|fillStyle|fillRect evidence evidence_canvas_probe
+  gap image @id("canvas_gap_image") code canvas-image-resource-boundary summary "Image drawing needs bitmap/resource evidence."
+}
+canvasGraph OffscreenCanvas @id("canvas_graph_offscreen") {
+  path src/offscreen.js
+  sourceHash sha256:offscreen
+  command transfer @id("canvas_command_transfer") name transferControlToOffscreen category offscreen order 1
+}
+}`, { sourcePath: 'package-canvas.frontier' });
+
+assert.equal(packageCanvasReport.summary.failClosed, false);
+assert.equal(packageCanvasReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.packageManifest.sourcePath, 1);
+assert.equal(packageCanvasReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.packageManifest.sourceHash, 1);
+assert.equal(packageCanvasReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.packageManifest.packageManager, 1);
+assert.equal(packageCanvasReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.packageManifest.metadata, 1);
+assert.equal(packageCanvasReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.packageManifest.dependency, 1);
+assert.equal(packageCanvasReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.packageManifest.script, 1);
+assert.equal(packageCanvasReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.packageManifest.export, 1);
+assert.equal(packageCanvasReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.packageSurface.sourcePath, 1);
+assert.equal(packageCanvasReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.packageSurface.dependency, 1);
+assert.equal(packageCanvasReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.canvasSurface.sourcePath, 1);
+assert.equal(packageCanvasReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.canvasSurface.sourceHash, 1);
+assert.equal(packageCanvasReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.canvasSurface.element, 1);
+assert.equal(packageCanvasReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.canvasSurface.command, 1);
+assert.equal(packageCanvasReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.canvasSurface['state-write'], 1);
+assert.equal(packageCanvasReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.canvasSurface.trace, 1);
+assert.equal(packageCanvasReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.canvasGraph.sourcePath, 1);
+assert.equal(packageCanvasReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.canvasGraph.command, 1);
+assert.equal(packageCanvasReport.summary.sourceSyntaxRowFamilyCounts.sourcePath, 4);
+
+const packageSurfaceBlock = packageCanvasReport.recognizedBlocks.find((block) => block.id === 'pkg_surface_workspace');
+const packagePathRow = packageSurfaceBlock.children.find((child) => child.rowKind === 'path');
+assert.equal(packagePathRow.normalizedRowKind, 'sourcePath');
+assert.equal(packagePathRow.name, 'packages/app/package.json');
+assert.equal(packagePathRow.sourceSpan.path, 'package-canvas.frontier');
+
+const canvasBlock = packageCanvasReport.recognizedBlocks.find((block) => block.id === 'canvas_surface_preview');
+const stateWriteRow = canvasBlock.children.find((child) => child.rowKind === 'stateWrite');
+assert.equal(stateWriteRow.normalizedRowKind, 'state-write');
+assert.equal(stateWriteRow.sourceSpan.blockKind, 'canvasSurface');
+
+const unknownPackageCanvasReport = inspectFrontierSourceSyntax(`module UnknownPackageCanvas @id("mod_unknown_package_canvas") {
+packageManifest BrokenPackage @id("pkg_broken") {
+  resolver magic
+}
+canvasSurface BrokenCanvas @id("canvas_broken") {
+  shaderVertex main
+}
+}`);
+
+assert.equal(unknownPackageCanvasReport.summary.failClosed, true);
+assert.equal(unknownPackageCanvasReport.summary.unknownChildCount, 2);
+assert.equal(unknownPackageCanvasReport.summary.unknownChildKinds.includes('resolver'), true);
+assert.equal(unknownPackageCanvasReport.summary.unknownChildKinds.includes('shaderVertex'), true);
+assert.equal(unknownPackageCanvasReport.summary.sourceSyntaxRowFamilyCounts.resolver, 1);
+assert.equal(unknownPackageCanvasReport.summary.sourceSyntaxRowFamilyCounts.shaderVertex, 1);
+assert.equal(unknownPackageCanvasReport.unknownChildren.find((child) => child.rowKind === 'resolver').reason, 'unsupported-package-manifest-row');
+assert.equal(unknownPackageCanvasReport.unknownChildren.find((child) => child.rowKind === 'shaderVertex').reason, 'unsupported-canvas-surface-row');
+
 const coreBlocksReport = inspectFrontierSourceSyntax(`module CoreBlocks @id("mod_core_blocks") {
 migration TodoV1ToV2 @id("migration_todo_v1_v2") {
   fromVersion 1

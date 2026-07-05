@@ -1,11 +1,11 @@
 const appRows = words('role sourcePath path sourceHash host hostId mount provide provides required requires require route event asset gate gap proofGap evidence proofEvidence');
-const canvasRows = words('element command state stateWrite trace gap proofGap evidence proofEvidence');
+const canvasRows = words('sourcePath path sourceHash element command state stateWrite trace gap proofGap evidence proofEvidence');
 const constraintRows = words('variable var constraint hard soft preference prefer collapse admission');
 const dialectRows = words('dialect record extern');
 const interlinguaRows = words('layer constraint edge obligation proofObligation proof lowering lower source sourceLift lift evidence');
 const machineRows = words('label directive register reg flag conditionFlag basicBlock block instruction inst instr op opcode operand arg memoryEffect memoryAccess load store atomic fence memory mem effect controlEdge edge branch call return ret interrupt irq exception proof proofObligation obligation gap proofGap evidence proofEvidence');
 const migrationRows = words('from fromVersion to toVersion change invariant invariants');
-const packageRows = words('metadata dependency script export gap proofGap evidence proofEvidence');
+const packageRows = words('sourcePath path sourceHash packageManager metadata dependency script export gap proofGap evidence proofEvidence');
 const runtimeRows = words('host runtimeHost hostProfile sourceHost targetHost capability hostCapability hostBinding binding requirement runtimeRequirement requiredRuntime evidence proofEvidence gap proofGap');
 const semanticEditRows = words('script semanticEditScript projection semanticEditProjection replay semanticEditReplay');
 const gateAdmissionRows = words('gate evidence proofEvidence admission admissionDecision proofObligation obligation gap proofGap');
@@ -35,11 +35,11 @@ export const ROW_SYNTAX_CONFIG = Object.freeze({
   pluginSurface: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow, coreFailClosed('unsupported-application-surface-row')),
   pluginContract: rowConfig('applicationSurfaceRow', 'application_surface_row', appRows, normalizeApplicationSurfaceRow, coreFailClosed('unsupported-application-surface-row')),
   target: rowConfig('targetProjectionRow', 'target_projection_row', words('projection lowering layer')),
-  packageManifest: rowConfig('packageManifestRow', 'package_manifest_row', packageRows, normalizeProofEvidenceRows),
-  packageGraph: rowConfig('packageManifestRow', 'package_manifest_row', packageRows, normalizeProofEvidenceRows),
-  packageSurface: rowConfig('packageManifestRow', 'package_manifest_row', packageRows, normalizeProofEvidenceRows),
-  canvasSurface: rowConfig('canvasSurfaceRow', 'canvas_surface_row', canvasRows, normalizeCanvasSurfaceRow),
-  canvasGraph: rowConfig('canvasSurfaceRow', 'canvas_surface_row', canvasRows, normalizeCanvasSurfaceRow),
+  packageManifest: rowConfig('packageManifestRow', 'package_manifest_row', packageRows, normalizePackageManifestRow, coreFailClosed('unsupported-package-manifest-row')),
+  packageGraph: rowConfig('packageManifestRow', 'package_manifest_row', packageRows, normalizePackageManifestRow, coreFailClosed('unsupported-package-manifest-row')),
+  packageSurface: rowConfig('packageManifestRow', 'package_manifest_row', packageRows, normalizePackageManifestRow, coreFailClosed('unsupported-package-manifest-row')),
+  canvasSurface: rowConfig('canvasSurfaceRow', 'canvas_surface_row', canvasRows, normalizeCanvasSurfaceRow, coreFailClosed('unsupported-canvas-surface-row')),
+  canvasGraph: rowConfig('canvasSurfaceRow', 'canvas_surface_row', canvasRows, normalizeCanvasSurfaceRow, coreFailClosed('unsupported-canvas-surface-row')),
   constraintSpace: rowConfig('constraintSpaceRow', 'constraint_space_row', constraintRows, normalizeConstraintSpaceRow),
   possibilitySpace: rowConfig('constraintSpaceRow', 'constraint_space_row', constraintRows, normalizeConstraintSpaceRow),
   decisionGraph: rowConfig('decisionGraphRow', 'decision_graph_row', words('node edge chunk gate evidence semanticChange change patchEvent patch admissionDecision admission candidateDecision candidate mergeDecision merge replay tournament tournamentCandidate panelProjection panel rsiLoop improvementFeedback feedback'), normalizeDecisionGraphRow),
@@ -158,7 +158,13 @@ function normalizeProofEvidenceRows(rowKind) {
   return rowKind;
 }
 
+function normalizePackageManifestRow(rowKind) {
+  if (rowKind === 'path') return 'sourcePath';
+  return normalizeProofEvidenceRows(rowKind);
+}
+
 function normalizeCanvasSurfaceRow(rowKind) {
+  if (rowKind === 'path') return 'sourcePath';
   if (rowKind === 'stateWrite') return 'state-write';
   return normalizeProofEvidenceRows(rowKind);
 }
