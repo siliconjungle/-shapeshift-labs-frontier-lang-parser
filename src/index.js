@@ -2,6 +2,7 @@ import { actionNode, capabilityNode, createDocument, effectNode, externNode, lat
 import { readActionBodyRecords, stripNestedBlocks } from './action-body.js';
 import { parseConstraintSpaceBlock } from './constraint-space.js';
 import { parseConversionBlock } from './conversion.js';
+import { readAdapters, readChangeRecords, readUnsupportedTargets } from './core-block-rows.js';
 import { parseApplicationSurfaceBlock } from './application-surface.js';
 import { parseCanvasSurfaceBlock } from './canvas-surface.js';
 import { parseDecisionGraphBlock } from './decision-graph.js';
@@ -115,7 +116,7 @@ function parseAction(block) {
 
 function parseMigration(block) {
   const name = nameFrom(block.header);
-  return migrationNode({ id: idFrom(block.header, `migration_${name}`), name, fromVersion: readWord('fromVersion', block.body) ?? readWord('from', block.body) ?? 'unknown', toVersion: readWord('toVersion', block.body) ?? readWord('to', block.body) ?? 'unknown', changes: readChangeRecords(block.body), invariants: readList('invariants', block.body) });
+  return migrationNode({ id: idFrom(block.header, `migration_${name}`), name, fromVersion: readWord('fromVersion', block.body) ?? readWord('from', block.body) ?? 'unknown', toVersion: readWord('toVersion', block.body) ?? readWord('to', block.body) ?? 'unknown', changes: readChangeRecords(block), invariants: readList('invariants', block.body) });
 }
 function parseEffect(block) {
   const name = nameFrom(block.header);
@@ -139,8 +140,8 @@ function parseCapability(block) {
     returns: parseOptionalTypeExpression(/returns\s+([^\n]+)/.exec(block.body)?.[1]),
     effects: readList('effects', block.body),
     resources: readList('resources', block.body),
-    adapters: readAdapters(block.body),
-    unsupportedTargets: readUnsupportedTargets(block.body)
+    adapters: readAdapters(block),
+    unsupportedTargets: readUnsupportedTargets(block)
   });
 }
 function parseType(block) {
@@ -214,54 +215,6 @@ function parseTarget(block) {
 function readList(label, body) { const line = new RegExp('^\\s*' + label + '\\s+([^\\n]+)', 'm').exec(body)?.[1]; return line ? line.split(',').map((item) => item.trim()).filter(Boolean) : undefined; }
 function readLine(label, body) { return new RegExp('^\\s*' + label + '\\s+([^\\n]+)', 'm').exec(body)?.[1]?.trim(); }
 function readWord(label, body) { return new RegExp('^\\s*' + label + '\\s+([^\\s,]+)', 'm').exec(body)?.[1]?.trim(); }
-function readInlineWord(label, text) { return new RegExp('(?:^|\\s)' + label + '\\s+([^\\s,]+)').exec(text)?.[1]?.trim(); }
-function readInlineQuoted(label, text) { return new RegExp("(?:^|\\s)" + label + "\\s+[\"']([^\"']+)[\"']").exec(text)?.[1]?.trim(); }
-function readAdapters(body) {
-  const adapters = [];
-  const re = /^\s*adapter\s+([A-Za-z][\w-]*)\s+symbol\s+([^\s]+)([^\n]*)$/gm;
-  let match;
-  while ((match = re.exec(body))) {
-    const rest = match[3] ?? '';
-    adapters.push({
-      target: {
-        language: match[1],
-        platform: readInlineWord('platform', rest),
-        framework: readInlineWord('framework', rest),
-        packageName: readInlineWord('package', rest) ?? readInlineWord('packageName', rest),
-        adapterPackage: readInlineWord('adapterPackage', rest)
-      },
-      symbol: match[2],
-      kind: readInlineWord('kind', rest),
-      packageName: readInlineWord('package', rest) ?? readInlineWord('packageName', rest),
-      importPath: readInlineWord('import', rest) ?? readInlineWord('importPath', rest),
-      requires: readInlineWord('requires', rest)?.split('|').map((item) => item.trim()).filter(Boolean)
-    });
-  }
-  return adapters.length ? adapters : undefined;
-}
-function readUnsupportedTargets(body) {
-  const unsupported = [];
-  const re = /^\s*unsupported\s+([A-Za-z][\w-]*)([^\n]*)$/gm;
-  let match;
-  while ((match = re.exec(body))) {
-    const rest = match[2] ?? '';
-    unsupported.push({
-      target: { language: match[1], platform: readInlineWord('platform', rest), framework: readInlineWord('framework', rest) },
-      reason: readInlineQuoted('reason', rest) ?? (rest.trim() || 'Unsupported by this target.')
-    });
-  }
-  return unsupported.length ? unsupported : undefined;
-}
-function readChangeRecords(body) {
-  const changes = [];
-  const re = /^\s*change\s+([A-Za-z][\w-]*)(?:\s+([^\n]+))?/gm;
-  let match;
-  while ((match = re.exec(body))) {
-    const statement = match[2]?.trim();
-    changes.push({ id: `change_${changes.length}`, kind: match[1], ...(statement ? { statement, target: statement.split(/\s+/)[0] } : {}) });
-  }
-  return changes;
-}
 function readVariants(body) {
   const variants = [];
   const seenNames = new Set();
@@ -273,9 +226,9 @@ function readVariants(body) {
     if (fields === null) continue;
     const id = /@id\(\s*["']([^"']+)["']\s*\)/.exec(match[2] ?? '')?.[1];
     const variantId = id ?? `type_variant_${safeId(match[1])}`;
-    if (seenNames.has(match[1]) || seenIds.has(variantId)) continue;
-    seenNames.add(match[1]); seenIds.add(variantId);
+    if (seenNames.has(match[1]) || seenIds.has(variantId)) continue; seenNames.add(match[1]); seenIds.add(variantId);
     variants.push({ ...(id ? { id } : {}), name: match[1], ...(fields?.length ? { fields } : {}) });
   }
   return variants.length ? variants : undefined;
 }
+function safeId(value) { return String(value ?? 'value').replace(/[^A-Za-z0-9_$-]+/g, '_'); }
