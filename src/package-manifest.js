@@ -1,4 +1,5 @@
 import { hashSemanticValue } from '@shapeshift-labs/frontier-lang-kernel';
+import { readAuthoredLines } from './authored-lines.js';
 import { createRowIdentityTracker } from './row-identity.js';
 
 export function parsePackageManifestBlock(block) {
@@ -9,21 +10,21 @@ export function parsePackageManifestBlock(block) {
   const evidence = [];
   const records = [];
   const proofGaps = [];
-  for (const rawLine of block.body.split('\n')) {
-    const line = rawLine.trim();
+  for (const authoredLine of readAuthoredLines(block)) {
+    const line = authoredLine.text;
     if (!line || line.startsWith('#') || isPropertyLine(line)) continue;
     const match = /^(metadata|dependency|script|export|evidence|proofEvidence|gap|proofGap)\s+([A-Za-z_$.*@/][\w$./@*-]*)(.*)$/.exec(line);
     if (!match) continue;
     const [, rowKind, rowName, rest] = match;
     if (rowKind === 'evidence' || rowKind === 'proofEvidence') {
-      rowIdentity.push(evidence, packageEvidence(rowName, rest), { rowKind, normalizedRowKind: 'evidence', name: rowName });
+      rowIdentity.push(evidence, packageEvidence(rowName, rest, authoredLine), { rowKind, normalizedRowKind: 'evidence', name: rowName });
       continue;
     }
     if (rowKind === 'gap' || rowKind === 'proofGap') {
-      rowIdentity.push(proofGaps, packageProofGap(rowName, rest), { rowKind, normalizedRowKind: 'proofGap', name: rowName });
+      rowIdentity.push(proofGaps, packageProofGap(rowName, rest, authoredLine), { rowKind, normalizedRowKind: 'proofGap', name: rowName });
       continue;
     }
-    const record = packageRecord(rowKind, rowName, rest, { sourcePath, sourceHash, evidence });
+    const record = packageRecord(rowKind, rowName, rest, { sourcePath, sourceHash, evidence, authoredLine });
     rowIdentity.push(records, record, { rowKind, normalizedRowKind: rowKind, name: rowName });
   }
   const recordGaps = records.flatMap((record) => record.proofGaps ?? []);
@@ -58,7 +59,7 @@ function packageRecord(kind, name, text, context) {
   const section = readInlineWord('section', text) ?? defaultSection(kind);
   const recordName = readInlineWord('name', text) ?? name;
   const value = packageValue(kind, text);
-  const proofGaps = readInlineList(text, 'proofGap', 'proofGaps', 'gap', 'gaps')?.map((code) => packageProofGap(code, '')) ?? [];
+  const proofGaps = readInlineList(text, 'proofGap', 'proofGaps', 'gap', 'gaps')?.map((code) => packageProofGap(code, '', context.authoredLine)) ?? [];
   return cleanRecord({
     kind,
     id: idFrom(text, `package_${kind}_${safeId(section)}_${safeId(recordName)}`),
@@ -69,7 +70,8 @@ function packageRecord(kind, name, text, context) {
     identityKey: readInlineWord('identity', text) ?? readInlineWord('identityKey', text) ?? `${kind}:${section}:${recordName}`,
     sourcePath: readInlineWord('sourcePath', text) ?? readInlineWord('path', text) ?? context.sourcePath,
     sourceHash: readInlineWord('sourceHash', text) ?? context.sourceHash,
-    sourceSpan: parseSpan(readInlineWord('sourceSpan', text)),
+    sourceSpan: parseSpan(readInlineWord('sourceSpan', text)) ?? context.authoredLine?.sourceSpan,
+    authoredSourceSpan: context.authoredLine?.sourceSpan,
     evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
     proofGaps
   });
@@ -89,7 +91,7 @@ function defaultSection(kind) {
   return 'metadata';
 }
 
-function packageProofGap(name, text) {
+function packageProofGap(name, text, authoredLine = {}) {
   const code = readInlineWord('code', text) ?? name;
   return cleanRecord({
     id: idFrom(text, `package_gap_${safeId(code)}`),
@@ -101,17 +103,20 @@ function packageProofGap(name, text) {
     packageInstallEquivalenceClaim: false,
     installEquivalenceClaim: false,
     runtimeEquivalenceClaim: false,
-    sourceSpan: parseSpan(readInlineWord('sourceSpan', text))
+    sourceSpan: parseSpan(readInlineWord('sourceSpan', text)) ?? authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan
   });
 }
 
-function packageEvidence(name, text) {
+function packageEvidence(name, text, authoredLine = {}) {
   return cleanRecord({
     id: idFrom(text, `evidence_${name}`),
     kind: readInlineWord('kind', text) ?? 'note',
     status: readInlineWord('status', text) ?? 'unknown',
     path: readInlineWord('path', text),
     summary: readInlineQuoted('summary', text),
+    sourceSpan: parseSpan(readInlineWord('sourceSpan', text)) ?? authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan,
     metadata: { name }
   });
 }

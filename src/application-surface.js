@@ -1,4 +1,5 @@
 import { hashSemanticValue } from '@shapeshift-labs/frontier-lang-kernel';
+import { readAuthoredLines } from './authored-lines.js';
 import { createRowIdentityTracker } from './row-identity.js';
 
 export function parseApplicationSurfaceBlock(block) {
@@ -11,18 +12,18 @@ export function parseApplicationSurfaceBlock(block) {
   const evidence = [];
   const records = [];
   const proofGaps = [];
-  for (const rawLine of block.body.split('\n')) {
-    const line = rawLine.trim();
+  for (const authoredLine of readAuthoredLines(block)) {
+    const line = authoredLine.text;
     if (!line || line.startsWith('#') || isPropertyLine(line)) continue;
     const match = /^(mount|provide|provides|required|requires|require|route|event|asset|gate|evidence|proofEvidence|gap|proofGap)\s+([A-Za-z_$@/.*][\w$./@:*+-]*)(.*)$/.exec(line);
     if (!match) continue;
     const [, rowKind, rowName, rest] = match;
     if (rowKind === 'evidence' || rowKind === 'proofEvidence') {
-      rowIdentity.push(evidence, applicationEvidence(rowName, rest), { rowKind, normalizedRowKind: 'evidence', name: rowName });
+      rowIdentity.push(evidence, applicationEvidence(rowName, rest, authoredLine), { rowKind, normalizedRowKind: 'evidence', name: rowName });
       continue;
     }
     if (rowKind === 'gap' || rowKind === 'proofGap') {
-      rowIdentity.push(proofGaps, applicationProofGap(rowName, rest), { rowKind, normalizedRowKind: 'proofGap', name: rowName });
+      rowIdentity.push(proofGaps, applicationProofGap(rowName, rest, authoredLine), { rowKind, normalizedRowKind: 'proofGap', name: rowName });
       continue;
     }
     const normalizedRowKind = normalizeRowKind(rowKind);
@@ -31,7 +32,8 @@ export function parseApplicationSurfaceBlock(block) {
       surfaceName: name,
       role,
       sourcePath,
-      sourceHash
+      sourceHash,
+      authoredLine
     }), { rowKind, normalizedRowKind, name: rowName });
   }
   const allGaps = [...records.flatMap((record) => record.proofGaps ?? []), ...proofGaps];
@@ -102,7 +104,7 @@ export function mergeApplicationSurfaceBlocks(blocks) {
 
 function applicationRecord(kind, name, text, context) {
   const recordName = readInlineWord('name', text) ?? name;
-  const proofGaps = readInlineList(text, 'proofGap', 'proofGaps', 'gap', 'gaps')?.map((code) => applicationProofGap(code, '')) ?? [];
+  const proofGaps = readInlineList(text, 'proofGap', 'proofGaps', 'gap', 'gaps')?.map((code) => applicationProofGap(code, '', context.authoredLine)) ?? [];
   const base = {
     kind: 'frontier.lang.applicationSurface.record',
     recordKind: kind,
@@ -114,7 +116,8 @@ function applicationRecord(kind, name, text, context) {
     identityKey: readInlineWord('identity', text) ?? readInlineWord('identityKey', text) ?? `${kind}:${context.role}:${recordName}`,
     sourcePath: readInlineWord('sourcePath', text) ?? context.sourcePath,
     sourceHash: readInlineWord('sourceHash', text) ?? context.sourceHash,
-    sourceSpan: parseSpan(readInlineWord('sourceSpan', text)),
+    sourceSpan: parseSpan(readInlineWord('sourceSpan', text)) ?? context.authoredLine?.sourceSpan,
+    authoredSourceSpan: context.authoredLine?.sourceSpan,
     evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
     proofEvidenceIds: readInlineList(text, 'proofEvidence', 'proofEvidenceIds'),
     missingEvidence: readInlineList(text, 'missingEvidence'),
@@ -194,7 +197,7 @@ function applicationRecord(kind, name, text, context) {
   return cleanRecord(base);
 }
 
-function applicationProofGap(name, text) {
+function applicationProofGap(name, text, authoredLine = {}) {
   const code = readInlineWord('code', text) ?? name;
   return cleanRecord({
     id: idFrom(text, `application_gap_${safeId(code)}`),
@@ -203,17 +206,20 @@ function applicationProofGap(name, text) {
     summary: readInlineQuoted('summary', text) ?? readInlineQuoted('message', text),
     failClosed: true,
     ...applicationFalseClaims(),
-    sourceSpan: parseSpan(readInlineWord('sourceSpan', text))
+    sourceSpan: parseSpan(readInlineWord('sourceSpan', text)) ?? authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan
   });
 }
 
-function applicationEvidence(name, text) {
+function applicationEvidence(name, text, authoredLine = {}) {
   return cleanRecord({
     id: idFrom(text, `evidence_${name}`),
     kind: readInlineWord('kind', text) ?? 'note',
     status: readInlineWord('status', text) ?? 'unknown',
     path: readInlineWord('path', text),
     summary: readInlineQuoted('summary', text),
+    sourceSpan: parseSpan(readInlineWord('sourceSpan', text)) ?? authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan,
     metadata: { name }
   });
 }

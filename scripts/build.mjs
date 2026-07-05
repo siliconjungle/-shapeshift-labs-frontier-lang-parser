@@ -13,6 +13,7 @@ await copyFile("src/action-match-block.js", "dist/action-match-block.js");
 await copyFile("src/action-source-blocks.js", "dist/action-source-blocks.js");
 await copyFile("src/action-syntax-children.js", "dist/action-syntax-children.js");
 await copyFile("src/application-surface.js", "dist/application-surface.js");
+await copyFile("src/authored-lines.js", "dist/authored-lines.js");
 await copyFile("src/constraint-space.js", "dist/constraint-space.js");
 await copyFile("src/core-block-rows.js", "dist/core-block-rows.js");
 await copyFile("src/conversion-constraint-record.js", "dist/conversion-constraint-record.js");

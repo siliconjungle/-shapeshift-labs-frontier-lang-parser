@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { parseFrontierSource } from '../dist/index.js';
 
-const doc = parseFrontierSource(`
+const source = `
 module PackageCanvasProbe @id("mod_package_canvas_probe")
 
 packageManifest AppPackage @id("pkg_manifest_app") {
@@ -10,7 +10,7 @@ packageManifest AppPackage @id("pkg_manifest_app") {
   packageManager npm@11.0.0
   evidence packageProbe @id("evidence_package_probe") kind test status passed path reports/package.json
   metadata name @id("pkg_meta_name") value "@example/app" evidence evidence_package_probe
-  dependency react @id("pkg_dep_react") section dependencies range ^19.0.0 evidence evidence_package_probe
+  dependency react @id("pkg_dep_react") section dependencies range ^19.0.0 sourceSpan package.json:12:3-12:22 evidence evidence_package_probe
   dependency typescript @id("pkg_dep_typescript") section peerDependencies range ^5.9.0 proofGap package-peer-compatibility-boundary evidence evidence_package_probe
   script test @id("pkg_script_test") command "vitest --run" proofGap package-script-runtime-boundary evidence evidence_package_probe
   export root @id("pkg_export_root") section exports name . target ./dist/index.js proofGap package-conditional-resolution-boundary evidence evidence_package_probe
@@ -24,12 +24,14 @@ canvasSurface PreviewCanvas @id("canvas_surface_preview") {
   element preview @id("canvas_element_preview") name canvas category html-canvas order 1 identity canvas:preview attributes data-frontier-key=preview|width=100 evidence evidence_canvas_probe
   command context @id("canvas_command_context") name getContext category context context 2d order 2 proofGap canvas-context-runtime-boundary evidence evidence_canvas_probe
   state fillStyle @id("canvas_state_fill_style") name fillStyle category state order 3 proofGap canvas-stateful-render-order-boundary evidence evidence_canvas_probe
-  command fill @id("canvas_command_fill") name fillRect category draw context 2d order 4 proofGap canvas-stateful-render-order-boundary evidence evidence_canvas_probe
+  command fill @id("canvas_command_fill") name fillRect category draw context 2d order 4 sourceSpan src/draw.js:4:1-4:20 proofGap canvas-stateful-render-order-boundary evidence evidence_canvas_probe
   command offscreen @id("canvas_command_offscreen") name transferControlToOffscreen category offscreen order 5 proofGap canvas-offscreen-worker-boundary evidence evidence_canvas_probe
   trace drawFrame @id("canvas_trace_draw_frame") commands getContext|fillStyle|fillRect|transferControlToOffscreen evidence evidence_canvas_probe
   gap image @id("canvas_gap_image") code canvas-image-resource-boundary summary "Image drawing needs bitmap/resource evidence."
 }
-`);
+`;
+
+const doc = parseFrontierSource(source, { sourcePath: 'package-canvas-probe.frontier' });
 
 assert.equal(doc.metadata.packageManifests.summary.manifestCount, 1);
 assert.equal(doc.metadata.packageManifests.summary.dependencyCount, 2);
@@ -43,6 +45,14 @@ assert.equal(packageManifest.kind, 'frontier.lang.packageManifestSemanticTree');
 assert.equal(packageManifest.packageManager, 'npm@11.0.0');
 assert.equal(packageManifest.records.find((record) => record.id === 'pkg_dep_react').identityKey, 'dependency:dependencies:react');
 assert.equal(packageManifest.records.find((record) => record.id === 'pkg_dep_typescript').proofGaps[0].installEquivalenceClaim, false);
+const packageEvidence = packageManifest.evidence.find((record) => record.id === 'evidence_package_probe');
+const reactDependency = packageManifest.records.find((record) => record.id === 'pkg_dep_react');
+const workspaceGap = packageManifest.proofGaps.find((record) => record.id === 'pkg_gap_workspace');
+assert.equal(packageEvidence.authoredSourceSpan.path, 'package-canvas-probe.frontier');
+assert.equal(reactDependency.sourceSpan.path, 'package.json');
+assert.equal(reactDependency.authoredSourceSpan.path, 'package-canvas-probe.frontier');
+assert.equal(source.slice(reactDependency.authoredSourceSpan.startOffset, reactDependency.authoredSourceSpan.endOffset).startsWith('dependency react'), true);
+assert.equal(workspaceGap.authoredSourceSpan.path, 'package-canvas-probe.frontier');
 
 assert.equal(doc.metadata.canvasSurfaces.summary.surfaceCount, 1);
 assert.equal(doc.metadata.canvasSurfaces.summary.drawCommandCount, 1);
@@ -56,6 +66,16 @@ assert.equal(canvasSurface.kind, 'frontier.lang.canvasSemanticTree');
 assert.equal(canvasSurface.records.find((record) => record.id === 'canvas_element_preview').attributes.width, '100');
 assert.equal(canvasSurface.records.find((record) => record.id === 'canvas_command_fill').proofGaps[0].canvasVisualEquivalenceClaim, false);
 assert.equal(canvasSurface.commandTraces[0].records.length, 4);
+const canvasEvidence = canvasSurface.evidence.find((record) => record.id === 'evidence_canvas_probe');
+const fillCommand = canvasSurface.records.find((record) => record.id === 'canvas_command_fill');
+const canvasGap = canvasSurface.proofGaps.find((record) => record.id === 'canvas_gap_image');
+assert.equal(canvasEvidence.authoredSourceSpan.path, 'package-canvas-probe.frontier');
+assert.equal(fillCommand.sourceSpan.path, 'src/draw.js');
+assert.equal(fillCommand.authoredSourceSpan.path, 'package-canvas-probe.frontier');
+assert.equal(fillCommand.proofGaps[0].authoredSourceSpan.path, 'package-canvas-probe.frontier');
+assert.equal(canvasSurface.commandTraces[0].authoredSourceSpan.path, 'package-canvas-probe.frontier');
+assert.equal(canvasSurface.commandTraces[0].records[0].authoredSourceSpan.path, 'package-canvas-probe.frontier');
+assert.equal(canvasGap.authoredSourceSpan.path, 'package-canvas-probe.frontier');
 
 assert.deepEqual(doc.metadata.universalAst.packageManifestIds, ['pkg_manifest_app']);
 assert.deepEqual(doc.metadata.universalAst.canvasSurfaceIds, ['canvas_surface_preview']);

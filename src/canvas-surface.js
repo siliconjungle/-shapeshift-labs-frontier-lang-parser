@@ -1,4 +1,5 @@
 import { hashSemanticValue } from '@shapeshift-labs/frontier-lang-kernel';
+import { readAuthoredLines } from './authored-lines.js';
 import { createRowIdentityTracker } from './row-identity.js';
 
 export function parseCanvasSurfaceBlock(block) {
@@ -10,26 +11,26 @@ export function parseCanvasSurfaceBlock(block) {
   const records = [];
   const commandTraces = [];
   const proofGaps = [];
-  for (const rawLine of block.body.split('\n')) {
-    const line = rawLine.trim();
+  for (const authoredLine of readAuthoredLines(block)) {
+    const line = authoredLine.text;
     if (!line || line.startsWith('#') || isPropertyLine(line)) continue;
     const match = /^(element|command|state|stateWrite|trace|evidence|proofEvidence|gap|proofGap)\s+([A-Za-z_$][\w$-]*)(.*)$/.exec(line);
     if (!match) continue;
     const [, rowKind, rowName, rest] = match;
     if (rowKind === 'evidence' || rowKind === 'proofEvidence') {
-      rowIdentity.push(evidence, canvasEvidence(rowName, rest), { rowKind, normalizedRowKind: 'evidence', name: rowName });
+      rowIdentity.push(evidence, canvasEvidence(rowName, rest, authoredLine), { rowKind, normalizedRowKind: 'evidence', name: rowName });
       continue;
     }
     if (rowKind === 'gap' || rowKind === 'proofGap') {
-      rowIdentity.push(proofGaps, canvasProofGap(rowName, rest), { rowKind, normalizedRowKind: 'proofGap', name: rowName });
+      rowIdentity.push(proofGaps, canvasProofGap(rowName, rest, authoredLine), { rowKind, normalizedRowKind: 'proofGap', name: rowName });
       continue;
     }
     if (rowKind === 'trace') {
-      rowIdentity.push(commandTraces, canvasTrace(rowName, rest, { sourcePath }), { rowKind, normalizedRowKind: 'trace', name: rowName });
+      rowIdentity.push(commandTraces, canvasTrace(rowName, rest, { sourcePath, authoredLine }), { rowKind, normalizedRowKind: 'trace', name: rowName });
       continue;
     }
     const normalizedRowKind = rowKind === 'stateWrite' ? 'state-write' : rowKind;
-    rowIdentity.push(records, canvasRecord(normalizedRowKind, rowName, rest, { sourcePath, sourceHash }), { rowKind, normalizedRowKind, name: rowName });
+    rowIdentity.push(records, canvasRecord(normalizedRowKind, rowName, rest, { sourcePath, sourceHash, authoredLine }), { rowKind, normalizedRowKind, name: rowName });
   }
   const allGaps = [...records.flatMap((record) => record.proofGaps ?? []), ...proofGaps];
   const tree = {
@@ -62,7 +63,7 @@ function canvasRecord(kind, name, text, context) {
   const category = readInlineWord('category', text) ?? defaultCategory(kind);
   const recordName = readInlineWord('name', text) ?? name;
   const order = readInlineNumber('order', text) ?? readInlineNumber('renderOrder', text) ?? 0;
-  const proofGaps = readInlineList(text, 'proofGap', 'proofGaps', 'gap', 'gaps')?.map((code) => canvasProofGap(code, '')) ?? [];
+  const proofGaps = readInlineList(text, 'proofGap', 'proofGaps', 'gap', 'gaps')?.map((code) => canvasProofGap(code, '', context.authoredLine)) ?? [];
   const textValue = readInlineQuoted('text', text) ?? readInlineWord('text', text) ?? `${kind}:${category}:${recordName}:${order}`;
   return cleanRecord({
     kind,
@@ -74,7 +75,8 @@ function canvasRecord(kind, name, text, context) {
     identityKey: readInlineWord('identity', text) ?? readInlineWord('identityKey', text) ?? `canvas:${kind}:${category}:${recordName}:${order || safeId(recordName)}`,
     sourcePath: readInlineWord('sourcePath', text) ?? readInlineWord('path', text) ?? context.sourcePath,
     sourceHash: readInlineWord('sourceHash', text) ?? context.sourceHash,
-    sourceSpan: parseSpan(readInlineWord('sourceSpan', text)),
+    sourceSpan: parseSpan(readInlineWord('sourceSpan', text)) ?? context.authoredLine?.sourceSpan,
+    authoredSourceSpan: context.authoredLine?.sourceSpan,
     textHash: hashSemanticValue({ kind: 'frontier.lang.canvas.authoredRecordText.v1', text: textValue }),
     attributes: parsePairs(readInlineWord('attributes', text) ?? readInlineWord('attrs', text) ?? readInlineWord('attr', text)),
     evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
@@ -91,6 +93,8 @@ function canvasTrace(name, text, context) {
     ordinal: index + 1,
     commandHash: hashSemanticValue({ kind: 'frontier.lang.canvas.authoredTraceCommand.v1', command, index }),
     argsHash: hashSemanticValue({ kind: 'frontier.lang.canvas.authoredTraceArgs.v1', command, index }),
+    sourceSpan: context.authoredLine?.sourceSpan,
+    authoredSourceSpan: context.authoredLine?.sourceSpan,
     proofGaps: []
   }));
   return cleanRecord({
@@ -99,6 +103,8 @@ function canvasTrace(name, text, context) {
     id: idFrom(text, `canvas_trace_${name}`),
     name,
     sourcePath: readInlineWord('sourcePath', text) ?? readInlineWord('path', text) ?? context.sourcePath,
+    sourceSpan: parseSpan(readInlineWord('sourceSpan', text)) ?? context.authoredLine?.sourceSpan,
+    authoredSourceSpan: context.authoredLine?.sourceSpan,
     traceHash: hashSemanticValue({ kind: 'frontier.lang.canvas.authoredTrace.v1', commands }),
     records,
     evidenceIds: readInlineList(text, 'evidence', 'evidenceIds'),
@@ -112,7 +118,7 @@ function canvasTrace(name, text, context) {
   });
 }
 
-function canvasProofGap(name, text) {
+function canvasProofGap(name, text, authoredLine = {}) {
   const code = readInlineWord('code', text) ?? name;
   return cleanRecord({
     id: idFrom(text, `canvas_gap_${safeId(code)}`),
@@ -124,17 +130,20 @@ function canvasProofGap(name, text) {
     browserRuntimeEquivalenceClaim: false,
     canvasRuntimeEquivalenceClaim: false,
     canvasVisualEquivalenceClaim: false,
-    sourceSpan: parseSpan(readInlineWord('sourceSpan', text))
+    sourceSpan: parseSpan(readInlineWord('sourceSpan', text)) ?? authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan
   });
 }
 
-function canvasEvidence(name, text) {
+function canvasEvidence(name, text, authoredLine = {}) {
   return cleanRecord({
     id: idFrom(text, `evidence_${name}`),
     kind: readInlineWord('kind', text) ?? 'note',
     status: readInlineWord('status', text) ?? 'unknown',
     path: readInlineWord('path', text),
     summary: readInlineQuoted('summary', text),
+    sourceSpan: parseSpan(readInlineWord('sourceSpan', text)) ?? authoredLine.sourceSpan,
+    authoredSourceSpan: authoredLine.sourceSpan,
     metadata: { name }
   });
 }
