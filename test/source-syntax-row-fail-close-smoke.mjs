@@ -1,6 +1,38 @@
 import assert from 'node:assert/strict';
 import { inspectFrontierSourceSyntax } from '../dist/index.js';
 
+const paradigmReport = inspectFrontierSourceSyntax(`module ParadigmRows @id("mod_paradigm_rows") {
+paradigm Semantics @id("paradigm_semantics") {
+  bindingScope module @id("scope_module") kind module
+  binding title @id("binding_title") bindingScope scope_module
+  pattern destructure @id("pattern_destructure") binding binding_title
+  typeConstraint titleText @id("type_title_text") binding binding_title
+  evaluationModel asyncEvent @id("eval_async_event")
+  memoryLocation cache @id("memory_cache")
+  effectRegion write @id("effect_region_write")
+  controlRegion retry @id("control_region_retry")
+  logicProgram validation @id("logic_validation")
+  actorSystem workers @id("actor_workers")
+  stackEffect pushArg @id("stack_push_arg")
+  arrayShape list @id("array_shape_list")
+  numericKernel score @id("numeric_kernel_score")
+  dataflowNetwork sync @id("dataflow_sync")
+  clockModel animation @id("clock_animation")
+  objectModel prototype @id("object_model_proto")
+  macroExpansion derive @id("macro_derive")
+  reflectionBoundary dynamicImport @id("reflection_dynamic_import")
+  loweringRecord rustBinding @id("lowering_rust_binding")
+}
+}`);
+
+assert.equal(paradigmReport.summary.failClosed, false);
+assert.equal(paradigmReport.summary.unknownChildCount, 0);
+assert.equal(paradigmReport.summary.sourceSyntaxRowFamilyCounts.typeConstraint, 1);
+assert.equal(paradigmReport.summary.sourceSyntaxRowFamilyCounts.effectRegion, 1);
+assert.equal(paradigmReport.summary.sourceSyntaxRowFamilyCounts.logicProgram, 1);
+assert.equal(paradigmReport.summary.sourceSyntaxRowFamilyCounts.reflectionBoundary, 1);
+assert.equal(paradigmReport.summary.sourceSyntaxRowFamilyCounts.lowering, 1);
+
 const report = inspectFrontierSourceSyntax(`module RemainingRowFailClosedSyntax @id("mod_remaining_row_fail_closed") {
 constraintSpace Constraints @id("constraint_space_unknown") {
   solverMagic anneal @id("constraint_unknown_solver")
