@@ -19,9 +19,9 @@ export const ROW_SYNTAX_CONFIG = Object.freeze({
   universalInterlingua: rowConfig('interlinguaRow', 'interlingua_row', interlinguaRows, normalizeInterlinguaRow, coreFailClosed('unsupported-interlingua-row')),
   dialectRegistry: rowConfig('dialectRegistryRow', 'dialect_registry_row', dialectRows, normalizeDialectRegistryRow, coreFailClosed('unsupported-dialect-registry-row')),
   universalDialectRegistry: rowConfig('dialectRegistryRow', 'dialect_registry_row', dialectRows, normalizeDialectRegistryRow, coreFailClosed('unsupported-dialect-registry-row')),
-  runtimeCapabilities: rowConfig('runtimeCapabilityRow', 'runtime_capability_row', runtimeRows, normalizeRuntimeCapabilityRow),
-  runtimeCapabilityMatrix: rowConfig('runtimeCapabilityRow', 'runtime_capability_row', runtimeRows, normalizeRuntimeCapabilityRow),
-  runtimeHosts: rowConfig('runtimeCapabilityRow', 'runtime_capability_row', runtimeRows, normalizeRuntimeCapabilityRow),
+  runtimeCapabilities: rowConfig('runtimeCapabilityRow', 'runtime_capability_row', runtimeRows, normalizeRuntimeCapabilityRow, coreFailClosed('unsupported-runtime-capability-row')),
+  runtimeCapabilityMatrix: rowConfig('runtimeCapabilityRow', 'runtime_capability_row', runtimeRows, normalizeRuntimeCapabilityRow, coreFailClosed('unsupported-runtime-capability-row')),
+  runtimeHosts: rowConfig('runtimeCapabilityRow', 'runtime_capability_row', runtimeRows, normalizeRuntimeCapabilityRow, coreFailClosed('unsupported-runtime-capability-row')),
   resourceGraph: rowConfig('resourceGraphRow', 'resource_graph_row', resourceRows, normalizeResourceGraphRow, coreFailClosed('unsupported-resource-graph-row')),
   semanticResourceGraph: rowConfig('resourceGraphRow', 'resource_graph_row', resourceRows, normalizeResourceGraphRow, coreFailClosed('unsupported-resource-graph-row')),
   machineGraph: rowConfig('machineGraphRow', 'machine_graph_row', machineRows, normalizeMachineGraphRow, coreFailClosed('unsupported-machine-graph-row')),
@@ -82,6 +82,7 @@ function normalizeDialectRegistryRow(rowKind) {
 }
 
 function normalizeRuntimeCapabilityRow(rowKind) {
+  if (rowKind === 'host' || rowKind === 'runtimeHost' || rowKind === 'sourceHost' || rowKind === 'targetHost') return 'hostProfile';
   if (rowKind === 'capability') return 'hostCapability';
   if (rowKind === 'binding') return 'hostBinding';
   if (rowKind === 'requirement' || rowKind === 'requiredRuntime') return 'runtimeRequirement';

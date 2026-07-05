@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { parseFrontierSource } from '../dist/index.js';
+import { inspectFrontierSourceSyntax, parseFrontierSource } from '../dist/index.js';
 
 const doc = parseFrontierSource(`
 module RuntimeCapabilityProbe @id("mod_runtime_capability_probe")
@@ -51,3 +51,53 @@ assert.equal(runtime.claims.autoMergeClaim, false);
 assert.equal(doc.metadata.runtimeCapabilityMatrix.id, runtime.id);
 assert.equal(doc.metadata.universalAst.runtimeCapabilityIds[0], 'runtime_caps_web_rust');
 assert.equal(doc.metadata.universalAst.metadata.authoredRuntimeCapabilityIds[0], 'runtime_caps_web_rust');
+
+const syntaxReport = inspectFrontierSourceSyntax(`module RuntimeCapabilitySyntaxProbe @id("mod_runtime_capability_syntax_probe") {
+runtimeCapabilities Runtime @id("runtime_syntax") {
+  host browser @id("runtime_host_browser") language javascript runtime web path src/browser.ts sourceHash sha256:browser
+  runtimeHost node @id("runtime_host_node") language javascript runtime node
+  sourceHost web @id("runtime_host_web") language javascript runtime web
+  targetHost rust @id("runtime_host_rust") language rust runtime cli
+  capability fetch @id("runtime_capability_fetch") host runtime_host_web support native
+  binding fetchBinding @id("runtime_binding_fetch") host runtime_host_web capability fetch kind native-api
+  requirement fetchAdapter @id("runtime_requirement_fetch_adapter") sourceHost runtime_host_web targetHost runtime_host_rust capability fetch requiredSignals source-hash|target-hash|runtime-command
+  proofEvidence fetchProbe @id("runtime_evidence_fetch") kind runtime-adapter-proof status passed
+  gap domProbe @id("runtime_gap_dom_probe") code runtime-dom-proof status missing
+}
+}`, { sourcePath: 'runtime-capabilities.frontier' });
+
+assert.equal(syntaxReport.summary.failClosed, false);
+assert.equal(syntaxReport.summary.unknownChildCount, 0);
+assert.equal(syntaxReport.summary.sourceSyntaxRowFamilyCounts.hostProfile, 4);
+assert.equal(syntaxReport.summary.sourceSyntaxRowFamilyCounts.hostCapability, 1);
+assert.equal(syntaxReport.summary.sourceSyntaxRowFamilyCounts.hostBinding, 1);
+assert.equal(syntaxReport.summary.sourceSyntaxRowFamilyCounts.runtimeRequirement, 1);
+assert.equal(syntaxReport.summary.sourceSyntaxRowFamilyCounts.evidence, 1);
+assert.equal(syntaxReport.summary.sourceSyntaxRowFamilyCounts.proofGap, 1);
+assert.equal(syntaxReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.runtimeCapabilities.hostProfile, 4);
+const runtimeSyntaxBlock = syntaxReport.recognizedBlocks.find((block) => block.id === 'runtime_syntax');
+assert.ok(runtimeSyntaxBlock);
+const sourceHostRow = runtimeSyntaxBlock.children.find((child) => child.rowKind === 'sourceHost');
+assert.equal(sourceHostRow.normalizedRowKind, 'hostProfile');
+assert.equal(sourceHostRow.sourceSpan.path, 'runtime-capabilities.frontier');
+assert.equal(sourceHostRow.sourceSpan.blockKind, 'runtimeCapabilities');
+
+const unknownRuntimeRows = inspectFrontierSourceSyntax(`module UnknownRuntimeRows @id("mod_unknown_runtime_rows") {
+runtimeCapabilityMatrix Runtime @id("runtime_unknown_matrix") {
+  schedulerMagic workStealing @id("runtime_scheduler_magic")
+}
+runtimeHosts Hosts @id("runtime_unknown_hosts") {
+  secretHost root @id("runtime_secret_host")
+}
+}`);
+
+assert.equal(unknownRuntimeRows.summary.failClosed, true);
+assert.equal(unknownRuntimeRows.summary.unknownChildCount, 2);
+assert.equal(unknownRuntimeRows.summary.sourceSyntaxRowFamilyCounts.schedulerMagic, 1);
+assert.equal(unknownRuntimeRows.summary.sourceSyntaxRowFamilyCounts.secretHost, 1);
+assert.equal(unknownRuntimeRows.summary.sourceSyntaxRowFamilyCountsByBlockFamily.runtimeCapabilityMatrix.schedulerMagic, 1);
+assert.equal(unknownRuntimeRows.summary.sourceSyntaxRowFamilyCountsByBlockFamily.runtimeHosts.secretHost, 1);
+assert.deepEqual(
+  unknownRuntimeRows.unknownChildren.map((child) => child.reason),
+  ['unsupported-runtime-capability-row', 'unsupported-runtime-capability-row']
+);
