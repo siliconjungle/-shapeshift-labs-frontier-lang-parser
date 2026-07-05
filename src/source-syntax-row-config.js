@@ -1,7 +1,7 @@
 const appRows = words('role sourcePath path sourceHash host hostId mount provide provides required requires require route event asset gate gap proofGap evidence proofEvidence');
 const canvasRows = words('sourcePath path sourceHash element command state stateWrite trace gap proofGap evidence proofEvidence');
 const constraintRows = words('variable var constraint hard soft preference prefer collapse admission');
-const dialectRows = words('dialect record extern');
+const dialectRows = words('language sourceLanguage sourcePath path sourceHash dialect record extern');
 const interlinguaRows = words('layer constraint constraintEdge edge obligation proofObligation proof lowering lower source sourceLift lift evidence');
 const machineRows = words('label directive register reg flag conditionFlag basicBlock block instruction inst instr op opcode operand arg memoryEffect memoryAccess load store atomic fence memory mem effect controlEdge edge branch call return ret interrupt irq exception proof proofObligation obligation gap proofGap evidence proofEvidence');
 const migrationRows = words('from fromVersion to toVersion change invariant invariants');
@@ -75,6 +75,8 @@ function normalizeInterlinguaRow(rowKind) {
 }
 
 function normalizeDialectRegistryRow(rowKind) {
+  if (rowKind === 'sourceLanguage') return 'language';
+  if (rowKind === 'path') return 'sourcePath';
   if (rowKind === 'record') return 'dialect';
   return rowKind;
 }

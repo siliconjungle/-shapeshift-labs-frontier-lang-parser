@@ -26,6 +26,9 @@ assert.equal(doc.metadata.dialects.metadata.semanticEquivalenceClaim, false);
 
 const syntaxReport = inspectFrontierSourceSyntax(`module DialectRegistrySyntax @id("mod_dialect_registry_syntax") {
 universalDialectRegistry RuntimeDialects @id("dialect_registry_syntax") {
+  language javascript
+  path src/runtime.ts
+  sourceHash sha256:runtime
   record nodeProcess @id("dialect_registry_syntax_node_process") dialect node.runtime kind runtime target rust readiness blocked
   dialect browserDom @id("dialect_registry_syntax_browser_dom") dialect browser.dom kind runtime target swiftui readiness needs-review
   extern viteRoutes @id("dialect_registry_syntax_vite_routes") dialect vite.plugin.virtual-module target rust readiness runtime-required
@@ -34,8 +37,14 @@ universalDialectRegistry RuntimeDialects @id("dialect_registry_syntax") {
 
 assert.equal(syntaxReport.summary.failClosed, false);
 assert.equal(syntaxReport.summary.sourceSyntaxBlockFamilyCounts.universalDialectRegistry, 1);
+assert.equal(syntaxReport.summary.sourceSyntaxRowFamilyCounts.language, 1);
+assert.equal(syntaxReport.summary.sourceSyntaxRowFamilyCounts.sourcePath, 1);
+assert.equal(syntaxReport.summary.sourceSyntaxRowFamilyCounts.sourceHash, 1);
 assert.equal(syntaxReport.summary.sourceSyntaxRowFamilyCounts.dialect, 2);
 assert.equal(syntaxReport.summary.sourceSyntaxRowFamilyCounts.extern, 1);
+assert.equal(syntaxReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.universalDialectRegistry.language, 1);
+assert.equal(syntaxReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.universalDialectRegistry.sourcePath, 1);
+assert.equal(syntaxReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.universalDialectRegistry.sourceHash, 1);
 assert.equal(syntaxReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.universalDialectRegistry.dialect, 2);
 assert.equal(syntaxReport.summary.sourceSyntaxRowFamilyCountsByBlockFamily.universalDialectRegistry.extern, 1);
 assert.equal(syntaxReport.summary.sourceSyntaxRowFamiliesByBlockFamily.universalDialectRegistry.includes('dialect'), true);
@@ -47,6 +56,10 @@ assert.equal(recordRow.normalizedRowKind, 'dialect');
 assert.equal(recordRow.name, 'nodeProcess');
 assert.equal(recordRow.sourceSpan.path, 'dialects.frontier');
 assert.equal(recordRow.sourceSpan.blockKind, 'universalDialectRegistry');
+
+const pathRow = syntaxBlock.children.find((child) => child.rowKind === 'path');
+assert.equal(pathRow.normalizedRowKind, 'sourcePath');
+assert.equal(pathRow.name, 'src/runtime.ts');
 
 const unsupportedSyntaxReport = inspectFrontierSourceSyntax(`module UnknownDialectRegistrySyntax @id("mod_unknown_dialect_registry_syntax") {
 dialectRegistry UnknownDialects @id("dialect_registry_unknown") {
