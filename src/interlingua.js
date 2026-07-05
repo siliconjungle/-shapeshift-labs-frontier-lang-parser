@@ -207,7 +207,7 @@ function allEvidence(record) {
 }
 
 function normalizeRowKind(kind) {
-  if (kind === 'constraintEdge') return 'constraint';
+  if (kind === 'constraintEdge' || kind === 'edge') return 'constraint';
   if (kind === 'proof' || kind === 'proofObligation') return 'obligation';
   if (kind === 'lower' || kind === 'lowering') return 'lowering';
   if (kind === 'source' || kind === 'sourceLift') return 'lift';
